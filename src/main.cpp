@@ -194,6 +194,7 @@ int main(int argc, char **argv)
                 std::cerr << "warn: did not reach EOF of file" << std::endl;
             ifs.close();
         }
+        fprintf(stderr,"read %lu bytes\n",renderer.getHistogramSizeBytes());
     }
     size_t buffer_sum_initial = 0;
     for (size_t i = 0; i < renderer.getHistogramSize(); ++i)
