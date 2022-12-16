@@ -1,0 +1,27 @@
+{
+    "name": "rectangle",
+    "size_x": 512,
+    "size_y": 512,
+    "xmin": -3.0,
+    "xmax": 3.0,
+    "ymin": -3.0,
+    "ymax": 3.0,
+    "xforms": [
+        {
+            "weight": 1.0,
+            "variations": [
+                {"name":"linear","weight":1.0}
+            ],
+            "pre_affine": [0.0,-0.75,-1.0,0.75,0.0,0.0],
+            "post_affine": [1.0,0.0,0.0,0.0,1.0,0.0]
+        },
+        {
+            "weight": 1.0,
+            "variations": [
+                {"name":"linear","weight":1.0}
+            ],
+            "pre_affine": [0.0,0.75,1.0,-0.75,0.0,0.0],
+            "post_affine": [1.0,0.0,0.0,0.0,1.0,0.0]
+        }
+    ]
+}

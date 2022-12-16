@@ -1,0 +1,44 @@
+// test flame from flam3
+{
+    "name": "flam3_test_1",
+    "size_x": 512,
+    "size_y": 512,
+    "xmin": -2.0,
+    "xmax": 2.0,
+    "ymin": -2.0,
+    "ymax": 2.0,
+    "xforms": [
+        {
+            "weight": 0.25,
+            "variations": [
+                {"name":"spherical","weight":1.0}
+            ],
+            "pre_affine":[-0.681206, 0.20769, -0.0416126, -0.0779465, 0.755065, -0.262334],
+            "post_affine":[1.0,0.0,0.0,0.0,1.0,0.0]
+        },
+        {
+            "weight": 0.25,
+            "variations": [
+                {"name":"spherical","weight":1.0}
+            ],
+            "pre_affine":[0.953766, 0.43268, 0.642503, 0.48396, -0.0542476, -0.995898],
+            "post_affine":[1.0,0.0,0.0,0.0,1.0,0.0]
+        },
+        {
+            "weight": 0.25,
+            "variations": [
+                {"name":"spherical","weight":1.0}
+            ],
+            "pre_affine":[0.840613, 0.318971, 0.905589, -0.816191, -0.430402, 0.909402],
+            "post_affine":[1.0,0.0,0.0,0.0,1.0,0.0]
+        },
+        {
+            "weight": 0.25,
+            "variations": [
+                {"name":"spherical","weight":1.0}
+            ],
+            "pre_affine":[0.960492, 0.215383, -0.126074, -0.466555, -0.727377, 0.253509],
+            "post_affine":[1.0,0.0,0.0,0.0,1.0,0.0]
+        }
+    ]
+}

@@ -1,0 +1,42 @@
+{
+    "name": "sierpinski_with_variations",
+    "size_x": 512,
+    "size_y": 512,
+    "xmin": -2.0,
+    "xmax": 2.0,
+    "ymin": -2.0,
+    "ymax": 2.0,
+    "xforms": [
+        {
+            // point (0,0)
+            "weight": 1.0,
+            "variations": [
+                {"name":"linear","weight":1.0},
+                {"name":"spherical","weight":-1.0},
+                {"name":"fisheye","weight":1.0}
+            ],
+            "pre_affine":  [0.5,0.0,-0.0, 0.0,0.5,-0.0],
+            "post_affine": [1.0,0.0,0.0, 0.0,1.0,0.0]
+        },
+        {
+            // point (0,1)
+            "weight": 1.0,
+            "variations": [
+                {"name":"linear","weight":0.5},
+                {"name":"disc","weight":0.5}
+            ],
+            "pre_affine":  [0.5,0.0,0.0, 0.0,0.5,0.5],
+            "post_affine": [1.0,0.0,0.0, 0.0,1.0,0.0]
+        },
+        {
+            // point (1,0)
+            "weight": 1.0,
+            "variations": [
+                {"name":"linear","weight":0.5},
+                {"name":"swirl","weight":0.5}
+            ],
+            "pre_affine":  [0.5,0.0,0.5, 0.0,0.5,0.0],
+            "post_affine": [1.0,0.0,0.0, 0.0,1.0,0.0]
+        }
+    ]
+}
