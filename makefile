@@ -1,6 +1,6 @@
 # basic akefile to compile the entire program at once
 
-LIBS=-lm -lpng -lboost_program_options
+LIBS=-lm -lpng -lboost_program_options -lpthread
 
 all: nlohmann/json.hpp
 	mkdir -p bin
