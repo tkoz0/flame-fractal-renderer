@@ -72,9 +72,9 @@ template <> struct bad_value_threshold<double>
 // multiplier to adjust numbers for scaling
 template <typename T> struct scale_adjust {};
 template <> struct scale_adjust<float>
-{ static constexpr float value = 1.0F - 8.0F*emach<float>::value; };
+{ static constexpr float value = 1.0F - 2.0F*emach<float>::value; };
 template <> struct scale_adjust<double>
-{ static constexpr double value = 1.0 - 8.0*emach<double>::value; };
+{ static constexpr double value = 1.0 - 2.0*emach<double>::value; };
 
 // image scaling multiplier for [0.0,1.0] scale
 // it is made to be slightly smaller than 2^bits so rounded down
