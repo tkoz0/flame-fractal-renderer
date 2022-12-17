@@ -30,6 +30,14 @@
 #define TP state.t
 #define EPS eps<num_t>::value
 
+// pre-calculate flags
+#define PC_ATAN   (1 << 0)
+#define PC_ATANYX (1 << 1)
+#define PC_SINT   (1 << 2)
+#define PC_COST   (1 << 3)
+#define PC_R      (1 << 4)
+#define PC_R2     (1 << 5)
+
 namespace tkoz
 {
 namespace flame
@@ -42,10 +50,11 @@ template <typename num_t, typename rand_t> struct IterState;
 template <typename num_t, typename rand_t> struct VarInfo
 {
     const std::function<void(STATE_T,const num_t*)> func;
+    u32 pc_flags;
     const std::function<void(XFORM_T,JSON_T,num_t,PARAM_T)> params;
-    VarInfo(std::function<void(STATE_T,const num_t*)> func,
+    VarInfo(std::function<void(STATE_T,const num_t*)> func, u32 pc_flags,
         std::function<void(XFORM_T,JSON_T,num_t,PARAM_T)> params = nullptr):
-        func(func),params(params) {}
+        func(func),pc_flags(pc_flags),params(params) {}
 };
 
 // struct containing hardcoded information of available variations
@@ -99,14 +108,16 @@ vars<num_t,rand_t>::data =
         {
             num_t W = params[0];
             VAR_RET(W * TP);
-        }
+        },
+        0
     )},
     {"sinusoidal", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
             VAR_RET(W * VEC(sin(TX),sin(TY)));
-        }
+        },
+        0
     )},
     {"spherical", VAR_T(
         VAR_FUNC
@@ -114,7 +125,8 @@ vars<num_t,rand_t>::data =
             num_t W = params[0];
             num_t r = W / (TP.r2() + EPS);
             VAR_RET(r * TP);
-        }
+        },
+        0
     )},
     {"swirl", VAR_T(
         VAR_FUNC
@@ -123,7 +135,8 @@ vars<num_t,rand_t>::data =
             num_t sr,cr;
             sincosg(TP.r2(),&sr,&cr);
             VAR_RET(W * VEC(sr*TX-cr*TY,cr*TX+sr*TY));
-        }
+        },
+        0
     )},
     {"horseshoe", VAR_T(
         VAR_FUNC
@@ -131,14 +144,16 @@ vars<num_t,rand_t>::data =
             num_t W = params[0];
             num_t r = W / (TP.r() + EPS);
             VAR_RET(r * VEC((TX-TY)*(TX+TY),2.0*TX*TY));
-        }
+        },
+        0
     )},
     {"polar", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
             VAR_RET(W * VEC(TP.atan()*M_1_PI,TP.r()-1.0));
-        }
+        },
+        0
     )},
     {"handkerchief", VAR_T(
         VAR_FUNC
@@ -147,7 +162,8 @@ vars<num_t,rand_t>::data =
             num_t a = TP.atan();
             num_t r = TP.r();
             VAR_RET(W * r * VEC(sin(a+r),cos(a-r)));
-        }
+        },
+        0
     )},
     {"heart", VAR_T(
         VAR_FUNC
@@ -157,7 +173,8 @@ vars<num_t,rand_t>::data =
             num_t sa,ca;
             sincosg(r*TP.atan(),&sa,&ca);
             VAR_RET(r * W * VEC(sa,-ca));
-        }
+        },
+        0
     )},
     {"disc", VAR_T(
         VAR_FUNC
@@ -168,6 +185,7 @@ vars<num_t,rand_t>::data =
             sincosg(M_PI*TP.r(),&sr,&cr);
             VAR_RET(a * VEC(sr,cr));
         },
+        0,
         // store: weight/pi
         VAR_PARSE
         {
@@ -185,7 +203,8 @@ vars<num_t,rand_t>::data =
             sincosg(r,&sr,&cr);
             num_t r1 = W / r;
             VAR_RET(r1 * VEC(ca+sr,sa-cr));
-        }
+        },
+        0
     )},
     {"hyperbolic", VAR_T(
         VAR_FUNC
@@ -195,7 +214,8 @@ vars<num_t,rand_t>::data =
             num_t sa,ca;
             sincosg(TP.atan(),&sa,&ca);
             VAR_RET(W * VEC(sa/r,ca*r));
-        }
+        },
+        0
     )},
     {"diamond", VAR_T(
         VAR_FUNC
@@ -206,7 +226,8 @@ vars<num_t,rand_t>::data =
             num_t sr,cr;
             sincosg(TP.r(),&sr,&cr);
             VAR_RET(W * VEC(sa*cr,ca*sr));
-        }
+        },
+        0
     )},
     {"ex", VAR_T(
         VAR_FUNC
@@ -220,7 +241,8 @@ vars<num_t,rand_t>::data =
             num_t m0 = n0*n0*n0 * r;
             num_t m1 = n1*n1*n1 * r;
             VAR_RET(W * VEC(m0+m1,m0-m1));
-        }
+        },
+        0
     )},
     {"julia", VAR_T(
         VAR_FUNC
@@ -231,7 +253,8 @@ vars<num_t,rand_t>::data =
             num_t sa,ca;
             sincosg(0.5*TP.atan()+table[state.randBool()],&sa,&ca);
             VAR_RET(r * VEC(ca,sa));
-        }
+        },
+        0
     )},
     {"bent", VAR_T(
         VAR_FUNC
@@ -244,7 +267,8 @@ vars<num_t,rand_t>::data =
             x *= table_x[x < 0.0];
             y *= table_y[y < 0.0];
             VAR_RET(W * VEC(x,y));
-        }
+        },
+        0
     )},
     {"waves", VAR_T(
         VAR_FUNC
@@ -258,6 +282,7 @@ vars<num_t,rand_t>::data =
             num_t y = TY * e * sin(TX * dy2);
             VAR_RET(W * VEC(x,y));
         },
+        0,
         // store: weight,dx2,dy2,b,e
         VAR_PARSE
         {
@@ -276,6 +301,7 @@ vars<num_t,rand_t>::data =
             num_t r = Wt2 / (TP.r() + 1.0);
             VAR_RET(r * VEC(TY,TX));
         },
+        0,
         // store: 2*weight
         VAR_PARSE
         {
@@ -292,6 +318,7 @@ vars<num_t,rand_t>::data =
             num_t dy = f * sin(tan(3.0*TX));
             VAR_RET(W * (TP + VEC(dx,dy)));
         },
+        0,
         // store: weight,c,f
         VAR_PARSE
         {
@@ -308,7 +335,8 @@ vars<num_t,rand_t>::data =
             num_t sdy,cdy;
             sincosg(M_PI*TY,&sdy,&cdy);
             VAR_RET(dx * VEC(cdy,sdy));
-        }
+        },
+        0
     )},
     {"power", VAR_T(
         VAR_FUNC
@@ -318,7 +346,8 @@ vars<num_t,rand_t>::data =
             sincosg(TP.atan(),&sa,&ca);
             num_t r = W * pow(TP.r(),sa);
             VAR_RET(r * VEC(ca,sa));
-        }
+        },
+        0
     )},
     {"cosine", VAR_T(
         VAR_FUNC
@@ -327,7 +356,8 @@ vars<num_t,rand_t>::data =
             num_t sa,ca;
             sincosg(TX*M_PI,&sa,&ca);
             VAR_RET(W * VEC(ca*cosh(TY),-sa*sinh(TY)));
-        }
+        },
+        0
     )},
     {"rings", VAR_T(
         VAR_FUNC
@@ -340,6 +370,7 @@ vars<num_t,rand_t>::data =
             sincosg(TP.atan(),&sa,&ca);
             VAR_RET(r * VEC(ca,sa));
         },
+        0,
         // store: weight,dx
         VAR_PARSE
         {
@@ -364,6 +395,7 @@ vars<num_t,rand_t>::data =
             sincosg(a,&sa,&ca);
             VAR_RET(r * VEC(ca,sa));
         },
+        0,
         // store: weight,dx,dy
         VAR_PARSE
         {
@@ -385,6 +417,7 @@ vars<num_t,rand_t>::data =
             r *= (mid + diff2*sin(waves*a));
             VAR_RET(W * r * VEC(sin(a),cos(a)));
         },
+        0,
         // parse: low,high,waves
         // store: weight,mid,diff/2,waves
         VAR_PARSE
@@ -412,6 +445,7 @@ vars<num_t,rand_t>::data =
             num_t ny2 = cos(d*TY);
             VAR_RET(W * VEC(ny1-nx1,nx2-ny2));
         },
+        0,
         // parse: a,b,c,d
         // store: weight,a,b,c,d
         VAR_PARSE
@@ -440,6 +474,7 @@ vars<num_t,rand_t>::data =
             sincosg(a,&sa,&ca);
             VAR_RET(r * VEC(sa,ca));
         },
+        0,
         // parse: x,y
         // store: weight,dx,dy,1/dx
         VAR_PARSE
@@ -466,6 +501,7 @@ vars<num_t,rand_t>::data =
             sincosg(a,&sa,&ca);
             VAR_RET(W * r * VEC(sa,ca));
         },
+        0,
         // parse: value
         // store: weight,dx,1/(2*dx)
         VAR_PARSE
@@ -484,6 +520,7 @@ vars<num_t,rand_t>::data =
             num_t r = Wt2 / (TP.r() + 1.0);
             VAR_RET(r * TP);
         },
+        0,
         // store: 2*weight
         VAR_PARSE
         {
@@ -497,6 +534,7 @@ vars<num_t,rand_t>::data =
             num_t r = Wt4 / (TP.r2() + 4.0); // W/(0.25*r^2+1) = 4*W/(r^2+4)
             VAR_RET(r * TP);
         },
+        0,
         // store: 4*weight
         VAR_PARSE
         {
@@ -508,7 +546,8 @@ vars<num_t,rand_t>::data =
         {
             num_t W = params[0];
             VAR_RET(W * VEC(sin(TX),TY));
-        }
+        },
+        0
     )},
     {"perspective", VAR_T(
         VAR_FUNC
@@ -520,6 +559,7 @@ vars<num_t,rand_t>::data =
             num_t t = 1.0 / (dist - TY*vsin);
             VAR_RET(W * t * VEC(dist*TX,vfcos*TY));
         },
+        0,
         // parse: distance,angle
         // store: weight,distance,persp_vsin,persp_vfcos
         VAR_PARSE
@@ -541,7 +581,8 @@ vars<num_t,rand_t>::data =
             sincosg(tr,&sr,&cr);
             num_t r = W * state.randNum();
             VAR_RET(r * VEC(TX*cr,TY*sr));
-        }
+        },
+        0
     )},
     {"julian", VAR_T(
         VAR_FUNC
@@ -557,6 +598,7 @@ vars<num_t,rand_t>::data =
             sincosg(a,&sa,&ca);
             VAR_RET(r * VEC(ca,sa));
         },
+        0,
         // parse: power,distance
         // store: weight,abs(power),1/power,cn
         VAR_PARSE
@@ -584,6 +626,7 @@ vars<num_t,rand_t>::data =
             num_t r = W * pow(TP.r2(),cn);
             VAR_RET(r * VEC(ca,sa));
         },
+        0,
         // parse: power,distance
         // store: weight,abs(power),1/power,cn
         VAR_PARSE
@@ -604,7 +647,8 @@ vars<num_t,rand_t>::data =
             num_t sa,ca;
             sincosg(a,&sa,&ca);
             VAR_RET(W * state.randNum() * VEC(ca,sa));
-        }
+        },
+        0
     )},
     {"gaussian_blur", VAR_T(
         VAR_FUNC
@@ -616,7 +660,8 @@ vars<num_t,rand_t>::data =
             num_t g = (state.randNum() + state.randNum()
                 + state.randNum() + state.randNum() - 2.0);
             VAR_RET(W * g * VEC(ca,sa));
-        }
+        },
+        0
     )},
     {"radial_blur", VAR_T(
         VAR_FUNC
@@ -633,6 +678,7 @@ vars<num_t,rand_t>::data =
             num_t rz = zoom*g - 1.0;
             VAR_RET(ra*VEC(ca,sa) + rz*TP);
         },
+        0,
         // parse: angle
         // store: weight,spin,zoom
         VAR_PARSE
@@ -660,6 +706,7 @@ vars<num_t,rand_t>::data =
             sincosg(a,&sa,&ca);
             VAR_RET(r * VEC(ca,sa));
         },
+        0,
         // parse: slices,rotation,thickness
         // store: weight,slices,rotation,thickness,1/slices
         VAR_PARSE
@@ -690,6 +737,7 @@ vars<num_t,rand_t>::data =
             amp /= (r + EPS);
             VAR_RET(W * amp * TP);
         },
+        0,
         // parse: power,sides,corners,circle
         // store: weight,power/2,2*pi/sides,corners,circle,sides/(2*pi)
         VAR_PARSE
@@ -714,6 +762,7 @@ vars<num_t,rand_t>::data =
             num_t r = W / (re*re + im*im); // +EPS ???
             VAR_RET(r * VEC(TX*re+TY*im,TY*re-TX*im));
         },
+        0,
         // parse: c1,c2
         // store: weight,c1,c2
         VAR_PARSE
@@ -737,6 +786,7 @@ vars<num_t,rand_t>::data =
             else y = (2.0*floor(TY/py) + 1.0)*py - TY;
             VAR_RET(W * VEC(x,y));
         },
+        0,
         // parse: x,y
         // store: weight,x,y
         VAR_PARSE
@@ -754,14 +804,16 @@ vars<num_t,rand_t>::data =
             num_t sa,ca;
             sincosg(a,&sa,&ca);
             VAR_RET(W * VEC(sa,sa*sa/ca));
-        }
+        },
+        0
     )},
     {"tangent", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
             VAR_RET(W * VEC(sin(TX)/cos(TY),tan(TY)));
-        }
+        },
+        0
     )},
     {"square", VAR_T(
         VAR_FUNC
@@ -770,7 +822,8 @@ vars<num_t,rand_t>::data =
             num_t x = state.randNum();
             num_t y = state.randNum();
             VAR_RET(W * VEC(x-0.5,y-0.5));
-        }
+        },
+        0
     )},
     {"rays", VAR_T(
         VAR_FUNC
@@ -780,7 +833,8 @@ vars<num_t,rand_t>::data =
             num_t r = W / (TP.r2() + EPS);
             num_t tr = W * tan(a) * r;
             VAR_RET(tr * VEC(cos(TX),sin(TY)));
-        }
+        },
+        0
     )},
     {"blade", VAR_T(
         VAR_FUNC
@@ -790,7 +844,8 @@ vars<num_t,rand_t>::data =
             num_t sr,cr;
             sincosg(r,&sr,&cr);
             VAR_RET(W * TX * VEC(cr+sr,cr-sr));
-        }
+        },
+        0
     )},
     {"secant2", VAR_T(
         VAR_FUNC
@@ -800,7 +855,8 @@ vars<num_t,rand_t>::data =
             num_t cr = cos(W*TP.r());
             num_t icr = 1.0/cos(W*TP.r());
             VAR_RET(W * VEC(TX,icr+table[cr<0]));
-        }
+        },
+        0
     )},
     {"twintrian", VAR_T(
         VAR_FUNC
@@ -812,7 +868,8 @@ vars<num_t,rand_t>::data =
             diff = log10(sr*sr)+cr;
             if (unlikely(bad_value(diff))) diff = -30.0;
             VAR_RET(W * TX * VEC(diff,diff-sr*M_PI));
-        }
+        },
+        0
     )},
     {"cross", VAR_T(
         VAR_FUNC
@@ -821,7 +878,8 @@ vars<num_t,rand_t>::data =
             num_t s = TX*TX - TY*TY;
             num_t r = W * sqrt(1.0 / (s*s + EPS));
             VAR_RET(r * TP);
-        }
+        },
+        0
     )},
     {"disc2", VAR_T(
         VAR_FUNC
@@ -836,6 +894,7 @@ vars<num_t,rand_t>::data =
             num_t r = W_pi * TP.atan();
             VAR_RET(r * VEC(st+cosadd,ct+sinadd));
         },
+        0,
         // parse: rotation,twist
         // store: weight/pi,timespi,cosadd,sinadd
         VAR_PARSE
@@ -876,6 +935,7 @@ vars<num_t,rand_t>::data =
                         * pow(t1+t2,pneg1_n1) / tr; // +EPS ???
             VAR_RET(r * TP);
         },
+        0,
         // parse: rnd,m,n1,n2,n3,holes
         // store: weight,pm_4,pneg1_n1,n2,n3,rnd,holes
         VAR_PARSE
@@ -901,6 +961,7 @@ vars<num_t,rand_t>::data =
                 / TP.r(); // +EPS ???
             VAR_RET(r * TP);
         },
+        0,
         // parse: petals,holes
         // store: weight,petals,holes
         VAR_PARSE
@@ -922,6 +983,7 @@ vars<num_t,rand_t>::data =
                 / (tr + tr*eccen*ct);
             VAR_RET(r * TP);
         },
+        0,
         // parse: eccentricity,holes
         // store: weight,eccentricity,holes
         VAR_PARSE
@@ -941,6 +1003,7 @@ vars<num_t,rand_t>::data =
             sincosg(TP.r(),&sr,&cr);
             VAR_RET(W * VEC(ht*sr*sr*state.randNum(),wt*cr*state.randNum()));
         },
+        0,
         // parse: height,width
         // store: weight,height,width
         VAR_PARSE
@@ -963,6 +1026,7 @@ vars<num_t,rand_t>::data =
             if (ny < 0.0) ny *= py;
             VAR_RET(W * VEC(nx,ny));
         },
+        0,
         // parse: x,y
         // store: weight,x,y
         VAR_PARSE
@@ -984,6 +1048,7 @@ vars<num_t,rand_t>::data =
             y -= M_PI * floor(y*M_1_PI + 0.5);
             VAR_RET(W2_pi * VEC(0.25*log((t+x2)/(t-x2)),y));
         },
+        0,
         // parse: shift
         // store: weight*2/pi,-(pi/2)*shift
         VAR_PARSE
@@ -1022,7 +1087,8 @@ vars<num_t,rand_t>::data =
                     VAR_RET(W * VEC(x,y));
                 }
             }
-        }
+        },
+        0
     )},
     {"butterfly", VAR_T(
         VAR_FUNC
@@ -1032,6 +1098,7 @@ vars<num_t,rand_t>::data =
             num_t r = wx * sqrt(fabs(TX*TY)  / (EPS + TX*TX + y2*y2));
             VAR_RET(r * VEC(TX,y2));
         },
+        0,
         // store: weight*1.3029400317411197908970256609023
         VAR_PARSE
         {
@@ -1062,6 +1129,7 @@ vars<num_t,rand_t>::data =
             }
             VAR_RET(W * VEC(dx+x*size,-dy-y*size));
         },
+        0,
         // parse: size
         // store: weight,size,1/size
         VAR_PARSE
@@ -1088,6 +1156,7 @@ vars<num_t,rand_t>::data =
             num_t m = W * exp(vc*lnr - vd*a);
             VAR_RET(m * VEC(ca,sa));
         },
+        0,
         // parse: r,i,power
         // store: weight,va,vc,vd,power
         VAR_PARSE
@@ -1113,6 +1182,7 @@ vars<num_t,rand_t>::data =
             VEC_T v = VEC(xamp*exp(-TY*TY*invxl),yamp*(-TX*TX*invyl));
             VAR_RET(W * (TP + v));
         },
+        0,
         // parse: xamp,yamp,xlen,ylen
         // store: weight,1.0/pc_xlen,1.0/pc_ylen,xamp,yamp
         VAR_PARSE
@@ -1147,6 +1217,7 @@ vars<num_t,rand_t>::data =
             s1 *= table[TY > 0.0];
             VAR_RET(W_c * VEC(c2*c1,s2*s1));
         },
+        0,
         // store: weight*0.0864278365005759 (division by 11.57034632 in flam3)
         VAR_PARSE
         {
@@ -1169,6 +1240,7 @@ vars<num_t,rand_t>::data =
             ssx = ssx < 0.0 ? 0.0 : sqrt(ssx);
             VAR_RET(W2_pi * VEC(atan2(a,b),table[TY>0.0]*log(xmax+ssx)));
         },
+        0,
         // store: weight*2/pi
         VAR_PARSE
         {
@@ -1189,6 +1261,7 @@ vars<num_t,rand_t>::data =
             sincosg(n,&sn,&cn);
             VAR_RET(m * VEC(cn,sn));
         },
+        0,
         // parse: beta
         // store: weight,vc,vd
         VAR_PARSE
@@ -1211,7 +1284,8 @@ vars<num_t,rand_t>::data =
             sincosg(TY,&sn,&cn);
             num_t tmp = W / (expx + expnx - cn);
             VAR_RET(tmp * VEC(expx-expnx,sn));
-        }
+        },
+        0
     )},
     {"lazysusan", VAR_T(
         VAR_FUNC
@@ -1239,6 +1313,7 @@ vars<num_t,rand_t>::data =
                 VAR_RET(VEC(r*x+px,r*y-py));
             }
         },
+        0,
         // parse: spin,space,twist,x,y
         // store: weight,x,y,spin,twist,(1+space)*weight
         VAR_PARSE
@@ -1260,7 +1335,8 @@ vars<num_t,rand_t>::data =
             num_t r = W;
             if (r2 < w2) r *= sqrt(w2/r2 - 1.0);
             VAR_RET(r * TP);
-        }
+        },
+        0
     )},
     {"pre_blur", VAR_T(
         VAR_FUNC
@@ -1272,7 +1348,8 @@ vars<num_t,rand_t>::data =
             num_t sa,ca;
             sincosg(a,&sa,&ca);
             VAR_RET(g * VEC(ca,sa));
-        }
+        },
+        0
     )},
     {"modulus", VAR_T(
         VAR_FUNC
@@ -1286,6 +1363,7 @@ vars<num_t,rand_t>::data =
             num_t y = TY - py*floor(TY*pyinv + 0.5);
             VAR_RET(W * VEC(x,y));
         },
+        0,
         // parse: x,y
         // store: weight,2*x,2*y,1/(2*x),1/(2*y)
         VAR_PARSE
@@ -1313,6 +1391,7 @@ vars<num_t,rand_t>::data =
             num_t y = table[fabs(TY) <= t] * TY;
             VAR_RET(W * VEC(TX,y));
         },
+        0,
         // parse: separation,frequency,amplitude,damping
         // store: weight,tpf(2*pi*freq),amplitude,damping,separation
         VAR_PARSE
@@ -1331,6 +1410,7 @@ vars<num_t,rand_t>::data =
             num_t W_pi = params[0];
             VAR_RET(W_pi * VEC(TP.atan(),0.5*log(TP.r2())));
         },
+        0,
         // store: weight/pi
         VAR_PARSE
         {
@@ -1348,6 +1428,7 @@ vars<num_t,rand_t>::data =
             num_t dy = py*sin(tan(TX*pc));
             VAR_RET(W * (TP + VEC(dx,dy)));
         },
+        0,
         // parse: x,y,c
         // store: weight,x,y,c
         VAR_PARSE
@@ -1365,7 +1446,8 @@ vars<num_t,rand_t>::data =
             num_t t = TP.r2();
             num_t r = 1.0 / (sqrt(t) * (t + 1.0/(W + EPS)));
             VAR_RET(r * TP);
-        }
+        },
+        0
     )},
     {"separation", VAR_T(
         VAR_FUNC
@@ -1382,6 +1464,7 @@ vars<num_t,rand_t>::data =
             num_t y = sqrt(TY*TY + y2) + table[!yp]*yin;
             VAR_RET(W * VEC(table[xp]*x,table[yp]*y));
         },
+        0,
         // parse: x,y,xin,yin
         // store: weight,x*x,y*y,xin,yin
         VAR_PARSE
@@ -1406,6 +1489,7 @@ vars<num_t,rand_t>::data =
             bool yp = cos(TY*yspi) >= 0.0;
             VAR_RET(W * VEC(table[xp]*TY,table[yp]*TX));
         },
+        0,
         // parse: xsize,ysize
         // store: weight,pi*xsize,pi*ysize
         VAR_PARSE
@@ -1424,6 +1508,7 @@ vars<num_t,rand_t>::data =
             static const num_t table[2] = {-1.0,1.0};
             VAR_RET(W * (TP + VEC(table[TX>=0.0]*px,table[TY>=0.0]*py)));
         },
+        0,
         // parse: x,y
         // store: weight,x,y
         VAR_PARSE
@@ -1443,6 +1528,7 @@ vars<num_t,rand_t>::data =
             num_t ox = TX - rx;
             VAR_RET(W * VEC(ox*space+rx,TY+ox*ox*warp));
         },
+        0,
         // parse: space,warp
         // store: weight,1-space,warp
         VAR_PARSE
@@ -1469,6 +1555,7 @@ vars<num_t,rand_t>::data =
             sincosg(a,&sa,&ca);
             VAR_RET(W * (r + hole) * VEC(ca,sa));
         },
+        0,
         // parse: angle,hole,count,swirl
         // store: weight,swirl,count,angle,hole
         VAR_PARSE
@@ -1499,6 +1586,7 @@ vars<num_t,rand_t>::data =
             sincosg(a,&sa,&ca);
             VAR_RET(r * VEC(ca,sa));
         },
+        0,
         // parse: angle,count,power,distance
         // store: weight,cn,abs(power),power,count,angle,cf
         VAR_PARSE
@@ -1533,6 +1621,7 @@ vars<num_t,rand_t>::data =
             sincosg(a,&sa,&ca);
             VAR_RET(W * (r + hole) * VEC(ca,sa));
         },
+        0,
         // parse: angle,count,hole,swirl
         // store: weight,swirl,count,cf,angle,hole
         VAR_PARSE
@@ -1559,6 +1648,7 @@ vars<num_t,rand_t>::data =
             sincosg(a,&sa,&ca);
             VAR_RET(W * r * VEC(ca,sa));
         },
+        0,
         // parse: inside,outside
         // store: weight,inside,outside
         VAR_PARSE
@@ -1580,6 +1670,7 @@ vars<num_t,rand_t>::data =
             num_t dy = yscale*sin(TX*yfreq);
             VAR_RET(W * (TP + VEC(dx,dy)));
         },
+        0,
         // parse: xfreq,xscale,yfreq,yscale
         // store: weight,xfreq,xscale,yfreq,yscale
         VAR_PARSE
@@ -1599,14 +1690,16 @@ vars<num_t,rand_t>::data =
             num_t es,ec;
             sincosg(TY,&es,&ec);
             VAR_RET(W * e * VEC(ec,es));
-        }
+        },
+        0
     )},
     {"log", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
             VAR_RET(W * VEC(0.5*log(TP.r2()),TP.atanyx()));
-        }
+        },
+        0
     )},
     {"sin", VAR_T(
         VAR_FUNC
@@ -1617,7 +1710,8 @@ vars<num_t,rand_t>::data =
             num_t sh = sinh(TY);
             num_t ch = cosh(TY);
             VAR_RET(W * VEC(s*ch,c*sh));
-        }
+        },
+        0
     )},
     {"cos", VAR_T(
         VAR_FUNC
@@ -1628,7 +1722,8 @@ vars<num_t,rand_t>::data =
             num_t sh = sinh(TY);
             num_t ch = cosh(TY);
             VAR_RET(W * VEC(c*ch,-s*sh));
-        }
+        },
+        0
     )},
     {"tan", VAR_T(
         VAR_FUNC
@@ -1640,7 +1735,8 @@ vars<num_t,rand_t>::data =
             num_t ch = cosh(2.0*TY);
             num_t den = W/(c+ch);
             VAR_RET(den * VEC(s,sh));
-        }
+        },
+        0
     )},
     {"sec", VAR_T(
         VAR_FUNC
@@ -1653,6 +1749,7 @@ vars<num_t,rand_t>::data =
             num_t den = Wt2/(cos(2.0*TX)+cosh(2.0*TY));
             VAR_RET(den * VEC(c*ch,s*sh));
         },
+        0,
         // store: 2*weight
         VAR_PARSE
         {
@@ -1670,6 +1767,7 @@ vars<num_t,rand_t>::data =
             num_t den = Wt2/(cosh(2.0*TY)-cos(2.0*TX));
             VAR_RET(den * VEC(s*ch,-c*sh));
         },
+        0,
         // store: 2*weight
         VAR_PARSE
         {
@@ -1686,7 +1784,8 @@ vars<num_t,rand_t>::data =
             num_t ch = cosh(2.0*TY);
             num_t den = W/(ch-c);
             VAR_RET(den * VEC(s,-sh));
-        }
+        },
+        0
     )},/////////////////////////////////////////////////////////////////////////
     {"sinh", VAR_T(
         VAR_FUNC
@@ -1697,7 +1796,8 @@ vars<num_t,rand_t>::data =
             num_t sh = sinh(TX);
             num_t ch = cosh(TX);
             VAR_RET(W * VEC(sh*c,ch*s));
-        }
+        },
+        0
     )},
     {"cosh", VAR_T(
         VAR_FUNC
@@ -1708,7 +1808,8 @@ vars<num_t,rand_t>::data =
             num_t sh = sinh(TX);
             num_t ch = cosh(TX);
             VAR_RET(W * VEC(ch*c,sh*s));
-        }
+        },
+        0
     )},
     {"tanh", VAR_T(
         VAR_FUNC
@@ -1720,7 +1821,8 @@ vars<num_t,rand_t>::data =
             num_t ch = cosh(2.0*TX);
             num_t den = W/(c+ch);
             VAR_RET(den * VEC(sh,s));
-        }
+        },
+        0
     )},
     {"sech", VAR_T(
         VAR_FUNC
@@ -1733,6 +1835,7 @@ vars<num_t,rand_t>::data =
             num_t den = Wt2/(cos(2.0*TY)+cosh(2.0*TX));
             VAR_RET(den * VEC(c*ch,-s*sh));
         },
+        0,
         // store: 2*weight
         VAR_PARSE
         {
@@ -1750,6 +1853,7 @@ vars<num_t,rand_t>::data =
             num_t den = Wt2/(cosh(2.0*TX)-cos(2.0*TY));
             VAR_RET(den * VEC(sh*c,-ch*s));
         },
+        0,
         // store: 2*weight
         VAR_PARSE
         {
@@ -1766,7 +1870,8 @@ vars<num_t,rand_t>::data =
             num_t ch = cosh(2.0*TX);
             num_t den = W/(ch-c);
             VAR_RET(den * VEC(sh,s));
-        }
+        },
+        0
     )},
     {"auger", VAR_T(
         VAR_FUNC
@@ -1782,6 +1887,7 @@ vars<num_t,rand_t>::data =
             num_t dx = aw*(scale + fabs(TX))*t;
             VAR_RET(W * VEC(TX+sym*dx,dy));
         },
+        0,
         // parse: sym,auger_weight,freq,scale
         // store: weight,freq,auger_weight,scale/2,sym
         VAR_PARSE
@@ -1807,6 +1913,7 @@ vars<num_t,rand_t>::data =
             sincosg(aa,&sa,&ca);
             VAR_RET(ar * VEC(ca,sa));
         },
+        0,
         // parse: spread
         // store: weight,2+spread
         VAR_PARSE
@@ -1834,6 +1941,7 @@ vars<num_t,rand_t>::data =
             num_t rad_v = W / (re_v*re_v + im_v*im_v); // +EPS ???
             VAR_RET(rad_v * VEC(re_u*re_v+im_u*im_v,im_u*re_v-re_u*im_v));
         },
+        0,
         // parse: re_a,re_b,re_c,re_d,im_a,im_b,im_c,im_d
         // store: weight,re_a,re_b,re_c,re_d,im_a,im_b,im_c,im_d
         VAR_PARSE

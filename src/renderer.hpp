@@ -175,6 +175,7 @@ public:
                 fitr->second.params(*this,varj,weight,varp);
             else // store just the weight by default
                 varp.push_back(weight);
+            // TODO use precalc flags
         }
     }
     // optimize
