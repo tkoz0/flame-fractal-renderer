@@ -1687,7 +1687,7 @@ vars<num_t,rand_t>::data =
             num_t den = W/(ch-c);
             VAR_RET(den * VEC(s,-sh));
         }
-    )},/////////////////////////////////////////////////////////////////////////
+    )},
     {"sinh", VAR_T(
         VAR_FUNC
         {
