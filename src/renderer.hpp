@@ -281,10 +281,6 @@ public:
     const XForm<num_t,rand_t>& getFinalXForm() const { return final_xform; }
 };
 
-// TODO make mutex to use for bad value stuff and accumulate at end of render function
-// try with and without atomic operations for histogram incrementing
-// setup the termination if not enough samples land in the rectangle
-//
 // render histogram only (count of samples in each pixel)
 template <typename num_t, typename hist_t, typename rand_t>
 class RendererBasic
