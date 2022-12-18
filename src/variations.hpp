@@ -151,7 +151,7 @@ vars<num_t,rand_t>::data =
         VAR_FUNC
         {
             num_t W = params[0];
-            VAR_RET(W * VEC(TP.atan()*M_1_PI,TP.r()-1.0));
+            VAR_RET(W * VEC(TP.atanxy()*M_1_PI,TP.r()-1.0));
         },
         0
     )},
@@ -159,7 +159,7 @@ vars<num_t,rand_t>::data =
         VAR_FUNC
         {
             num_t W = params[0];
-            num_t a = TP.atan();
+            num_t a = TP.atanxy();
             num_t r = TP.r();
             VAR_RET(W * r * VEC(sin(a+r),cos(a-r)));
         },
@@ -171,7 +171,7 @@ vars<num_t,rand_t>::data =
             num_t W = params[0];
             num_t r = TP.r();
             num_t sa,ca;
-            sincosg(r*TP.atan(),&sa,&ca);
+            sincosg(r*TP.atanxy(),&sa,&ca);
             VAR_RET(r * W * VEC(sa,-ca));
         },
         0
@@ -180,7 +180,7 @@ vars<num_t,rand_t>::data =
         VAR_FUNC
         {
             num_t W_pi = params[0]; // W/pi
-            num_t a = TP.atan() * W_pi;
+            num_t a = TP.atanxy() * W_pi;
             num_t sr,cr;
             sincosg(M_PI*TP.r(),&sr,&cr);
             VAR_RET(a * VEC(sr,cr));
@@ -197,7 +197,7 @@ vars<num_t,rand_t>::data =
         {
             num_t W = params[0];
             num_t sa,ca;
-            sincosg(TP.atan(),&sa,&ca);
+            sincosg(TP.atanxy(),&sa,&ca);
             num_t r = TP.r() + EPS;
             num_t sr,cr;
             sincosg(r,&sr,&cr);
@@ -212,7 +212,7 @@ vars<num_t,rand_t>::data =
             num_t W = params[0];
             num_t r = TP.r() + EPS;
             num_t sa,ca;
-            sincosg(TP.atan(),&sa,&ca);
+            sincosg(TP.atanxy(),&sa,&ca);
             VAR_RET(W * VEC(sa/r,ca*r));
         },
         0
@@ -222,7 +222,7 @@ vars<num_t,rand_t>::data =
         {
             num_t W = params[0];
             num_t sa,ca;
-            sincosg(TP.atan(),&sa,&ca);
+            sincosg(TP.atanxy(),&sa,&ca);
             num_t sr,cr;
             sincosg(TP.r(),&sr,&cr);
             VAR_RET(W * VEC(sa*cr,ca*sr));
@@ -233,7 +233,7 @@ vars<num_t,rand_t>::data =
         VAR_FUNC
         {
             num_t W = params[0];
-            num_t a = TP.atan();
+            num_t a = TP.atanxy();
             num_t r = TP.r();
             num_t n0 = sin(a+r);
             num_t n1 = cos(a-r);
@@ -251,7 +251,7 @@ vars<num_t,rand_t>::data =
             static const num_t table[2] = {0.0,M_PI};
             num_t r = TP.r() * W;
             num_t sa,ca;
-            sincosg(0.5*TP.atan()+table[state.randBool()],&sa,&ca);
+            sincosg(0.5*TP.atanxy()+table[state.randBool()],&sa,&ca);
             VAR_RET(r * VEC(ca,sa));
         },
         0
@@ -343,7 +343,7 @@ vars<num_t,rand_t>::data =
         {
             num_t W = params[0];
             num_t sa,ca;
-            sincosg(TP.atan(),&sa,&ca);
+            sincosg(TP.atanxy(),&sa,&ca);
             num_t r = W * pow(TP.r(),sa);
             VAR_RET(r * VEC(ca,sa));
         },
@@ -367,7 +367,7 @@ vars<num_t,rand_t>::data =
             num_t r = TP.r();
             r = W * (fmod(r+dx,2.0*dx) - dx + r*(1.0-dx));
             num_t sa,ca;
-            sincosg(TP.atan(),&sa,&ca);
+            sincosg(TP.atanxy(),&sa,&ca);
             VAR_RET(r * VEC(ca,sa));
         },
         0,
@@ -387,7 +387,7 @@ vars<num_t,rand_t>::data =
             num_t dy = params[2];
             static const num_t table[2] = {1.0,-1.0};
             num_t dx2 = dx*0.5;
-            num_t a = TP.atan();
+            num_t a = TP.atanxy();
             num_t r = W * TP.r();
             num_t sa,ca;
             num_t m = table[fmod(a+dy,dx) > dx2];
@@ -413,7 +413,7 @@ vars<num_t,rand_t>::data =
             num_t diff2 = params[2];
             num_t waves = params[3];
             num_t r = TP.r();
-            num_t a = TP.atan();
+            num_t a = TP.atanxy();
             r *= (mid + diff2*sin(waves*a));
             VAR_RET(W * r * VEC(sin(a),cos(a)));
         },
@@ -466,7 +466,7 @@ vars<num_t,rand_t>::data =
             num_t dxinv = params[3];
             static const num_t table[2] = {1.0,-1.0};
             num_t dx2 = 0.5 * dx;
-            num_t a = TP.atan();
+            num_t a = TP.atanxy();
             num_t sa,ca;
             num_t r = W * TP.r();
             num_t t = a + dy - dx*(i32)((a + dy) * dxinv);
@@ -496,7 +496,7 @@ vars<num_t,rand_t>::data =
             num_t dx2inv = params[2];
             num_t r = TP.r();
             r += -2.0*dx*(i32)((r+dx)*dx2inv) + r*(1.0 - dx);
-            num_t a = TP.atan();
+            num_t a = TP.atanxy();
             num_t sa,ca;
             sincosg(a,&sa,&ca);
             VAR_RET(W * r * VEC(sa,ca));
@@ -891,7 +891,7 @@ vars<num_t,rand_t>::data =
             num_t t = rotpi * (TX + TY);
             num_t st,ct;
             sincosg(t,&st,&ct);
-            num_t r = W_pi * TP.atan();
+            num_t r = W_pi * TP.atanxy();
             VAR_RET(r * VEC(st+cosadd,ct+sinadd));
         },
         0,
@@ -1408,7 +1408,7 @@ vars<num_t,rand_t>::data =
         VAR_FUNC
         {
             num_t W_pi = params[0];
-            VAR_RET(W_pi * VEC(TP.atan(),0.5*log(TP.r2())));
+            VAR_RET(W_pi * VEC(TP.atanxy(),0.5*log(TP.r2())));
         },
         0,
         // store: weight/pi

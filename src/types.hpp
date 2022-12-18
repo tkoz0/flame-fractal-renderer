@@ -126,7 +126,7 @@ template <typename T> struct Point2D
     { x /= k; y /= k; return *this; }
     inline T r() const { return hypot(x,y); }
     inline T r2() const { return x*x + y*y; }
-    inline T atan() const { return atan2(x,y); }
+    inline T atanxy() const { return atan2(x,y); }
     inline T atanyx() const { return atan2(y,x); }
     // modify this point by an affine transformation
     inline Point2D<T> transform(const Affine2D<T>& t)
