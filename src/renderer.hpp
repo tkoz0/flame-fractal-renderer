@@ -301,6 +301,8 @@ private:
     std::vector<u32> bad_value_xforms; // last xforms leading to bad value
     std::vector<Point2D<num_t>> bad_value_points; // points at bad value
     hist_t *xfdist; // xform selection (TODO maybe remove)
+    // extreme coordinates during render, not handled atomically
+    // only guaranteed to be correct with 1 thread
     num_t xmin,ymin,xmax,ymax;
 public:
     // construct a renderer object from a flame, optionally an existing buffer
