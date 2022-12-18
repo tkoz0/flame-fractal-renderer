@@ -126,6 +126,7 @@ private:
     Affine2D<num_t> pre; // pre affine transformation
     Affine2D<num_t> post; // post affine transformation
     bool has_pre,has_post;
+    u32 pc_flags; // precalculate flags
 public:
     XForm(){}
     // construct from JSON data
@@ -158,6 +159,7 @@ public:
         }
         else
             post = Affine2D<num_t>();
+        pc_flags = 0;
         for (Json varj : input["variations"].arrayValue())
         {
             XFormVar<num_t,rand_t> var;
@@ -175,7 +177,7 @@ public:
                 fitr->second.params(*this,varj,weight,varp);
             else // store just the weight by default
                 varp.push_back(weight);
-            // TODO use precalc flags
+            pc_flags |= fitr->second.pc_flags;
         }
     }
     // optimize
