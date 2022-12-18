@@ -109,6 +109,7 @@ template <typename T> struct rgba_t
 };
 
 template <typename T> struct Affine2D;
+template <typename T> struct Affine3D;
 
 // point in 2d space
 template <typename T> struct Point2D
@@ -129,7 +130,7 @@ template <typename T> struct Point2D
     inline T atanxy() const { return atan2(x,y); }
     inline T atanyx() const { return atan2(y,x); }
     // modify this point by an affine transformation
-    inline Point2D<T> transform(const Affine2D<T>& t)
+    inline void transform(const Affine2D<T>& t)
     {
         T xnew = t.a*x+t.b*y+t.c;
         T ynew = t.d*x+t.e*y+t.f;
@@ -144,6 +145,44 @@ template <typename T> struct Point2D
     { Point2D<T> ret = a; ret *= k; return ret; }
     friend inline Point2D<T> operator*(T k, Point2D<T> a)
     { return a*k; }
+    friend inline Point2D<T> operator/(Point2D<T> a, T k)
+    { Point2D<T> ret = a; ret /= k; return ret; }
+};
+
+template <typename T> struct Point3D
+{
+    T x, y, z;
+    Point3D(): x(0),y(0),z(0) {}
+    Point3D(T x, T y, T z): x(x),y(y),z(z) {}
+    inline Point3D& operator+=(const Point3D& p)
+    { x += p.x; y += p.y; z += p.z; return *this; }
+    inline Point3D& operator-=(const Point3D& p)
+    { x -= p.x; y -= p.y; z -= p.z; return *this; }
+    inline Point3D& operator*=(T k)
+    { x *= k; y *= k; z *= k; return *this; }
+    inline Point3D& operator/=(T k)
+    { x /= k; y /= k; z /= k; return *this; }
+    inline T r() const { return sqrt(x*x+y*y+z*z); }
+    inline T r2() const { return x*x+y*y+z*z; }
+    inline void transform(const Affine3D<T>& t)
+    {
+        T xnew = t.a*x+t.b*y+t.c*z+t.d;
+        T ynew = t.e*x+t.f*y+t.g*z+t.h;
+        T znew = t.i*x+t.j*y+t.k*z+t.l;
+        x = xnew;
+        y = ynew;
+        z = znew;
+    }
+    friend inline Point3D<T> operator+(Point3D<T> a, Point3D<T> b)
+    { Point3D<T> ret = a; ret += b; return ret; }
+    friend inline Point3D<T> operator-(Point3D<T> a, Point3D<T> b)
+    { Point3D<T> ret = a; ret -= b; return ret; }
+    friend inline Point3D<T> operator*(Point3D<T> a, T k)
+    { Point3D<T> ret = a; ret *= k; return ret; }
+    friend inline Point3D<T> operator*(T k, Point3D<T> a)
+    { return a*k; }
+    friend inline Point3D<T> operator/(Point3D<T> a, T k)
+    { Point3D<T> ret = a; ret /= k; return ret; }
 };
 
 template <typename T>
@@ -153,19 +192,40 @@ std::ostream& operator<<(std::ostream& os, const Point2D<T>& p)
     return os;
 }
 
+template <typename T>
+std::ostream& operator<<(std::ostream& os, const Point3D<T>& p)
+{
+    os << "(" << p.x << "," << p.y << "," << p.z << ")";
+    return os;
+}
+
 // parameters for affine transformation (x,y) -> (a*x+b*y+c,d*x+e*y+f)
 template <typename T> struct Affine2D
 {
     T a, b, c, d, e, f;
     // default to (x,y) -> (x,y)
-    Affine2D(): a(1.0),b(0.0),c(0.0),d(0.0),e(1.0),f(0.0) {}
+    Affine2D(): a(1.0),b(0.0),c(0.0),
+                d(0.0),e(1.0),f(0.0) {}
     // take 6 arguments
     Affine2D(T a, T b, T c, T d, T e, T f):
         a(a),b(b),c(c),d(d),e(e),f(f) {}
     inline Point2D<T> apply_to(Point2D<T> p) const
-    { return Point2D<T>(a*p.x+b*p.y+c, d*p.x+e*p.y+f); }
-    inline Point2D<T> apply_to(T x, T y) const
-    { return Point2D<T>(a*x+b*y+c, d*x+e*y+f); }
+    { return Point2D<T>(a*p.x + b*p.y + c,
+                        d*p.x + e*p.y + f); }
+};
+
+template <typename T> struct Affine3D
+{
+    T a, b, c, d, e, f, g, h, i, j, k, l;
+    Affine3D(): a(1.0),b(0.0),c(0.0),d(0.0),
+                e(0.0),f(1.0),g(0.0),h(0.0),
+                i(0.0),j(0.0),k(1.0),l(0.0) {}
+    Affine3D(T a, T b, T c, T d, T e, T f, T g, T h, T i, T j, T k, T l):
+        a(a),b(b),c(c),d(d),e(e),f(f),g(g),h(h),i(i),j(j),k(k),l(l) {}
+    inline Point3D<T> apply_to(Point3D<T> p) const
+    { return Point3D<T>(a*p.x + b*p.y + c*p.z + d,
+                        e*p.x + f*p.y + g*p.z + h,
+                        i*p.x + j*p.y + k*p.z + l); }
 };
 
 // forward declarations for renderer.hpp
