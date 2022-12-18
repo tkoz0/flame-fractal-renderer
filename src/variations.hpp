@@ -31,7 +31,7 @@
 #define EPS eps<num_t>::value
 
 // pre-calculate flags
-#define PC_ATAN   (1 << 0)
+#define PC_ATANXY (1 << 0)
 #define PC_ATANYX (1 << 1)
 #define PC_SINT   (1 << 2)
 #define PC_COST   (1 << 3)
