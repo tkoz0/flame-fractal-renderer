@@ -63,6 +63,11 @@ Flames fractals for this software are specified in JSON. See the example flames
 for a good idea of how to write them. This documentation should be expanded
 eventually. The software does not give good error messages for incorrect format.
 
+## building
+
+Simply run `make` in the directory. It will build the executable `bin/ffbuf`.
+This was only tested on Ubuntu 20.04 and 22.04.
+
 ## command line options
 
 The help message:
