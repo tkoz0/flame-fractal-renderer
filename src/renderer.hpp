@@ -207,7 +207,6 @@ public:
 };
 
 // flame fractal
-// TODO enable final xform
 template <typename num_t, typename rand_t> class Flame
 {
 private:
