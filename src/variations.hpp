@@ -133,7 +133,18 @@ template <typename num_t, typename rand_t>
 const std::unordered_map<std::string,VAR_T>
 vars<num_t,rand_t>::data =
 {
-    {"linear", VAR_T(
+/*
+Variations based on the flam3 source code. These are implemented to operate on
+the coordinates exactly as flam3 does, without using precalculated values. They
+are mostly based on the y-axis being down instead of up and using a different
+system for the angle (atan2(x,y) rather than atan2(y,x)). Some attempts to
+optimize them have been made. Many have not been verified to be bug free, so
+there may be a few implemented incorrectly.
+
+These are included for attempting to have some sort of compatibility with flam3,
+but these variations will get redone.
+*/
+    {"flam3_linear", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -141,7 +152,7 @@ vars<num_t,rand_t>::data =
         },
         0
     )},
-    {"sinusoidal", VAR_T(
+    {"flam3_sinusoidal", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -149,7 +160,7 @@ vars<num_t,rand_t>::data =
         },
         0
     )},
-    {"spherical", VAR_T(
+    {"flam3_spherical", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -158,7 +169,7 @@ vars<num_t,rand_t>::data =
         },
         0
     )},
-    {"swirl", VAR_T(
+    {"flam3_swirl", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -168,7 +179,7 @@ vars<num_t,rand_t>::data =
         },
         0
     )},
-    {"horseshoe", VAR_T(
+    {"flam3_horseshoe", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -177,7 +188,7 @@ vars<num_t,rand_t>::data =
         },
         0
     )},
-    {"polar", VAR_T(
+    {"flam3_polar", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -185,7 +196,7 @@ vars<num_t,rand_t>::data =
         },
         0
     )},
-    {"handkerchief", VAR_T(
+    {"flam3_handkerchief", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -195,7 +206,7 @@ vars<num_t,rand_t>::data =
         },
         0
     )},
-    {"heart", VAR_T(
+    {"flam3_heart", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -206,7 +217,7 @@ vars<num_t,rand_t>::data =
         },
         0
     )},
-    {"disc", VAR_T(
+    {"flam3_disc", VAR_T(
         VAR_FUNC
         {
             num_t W_pi = params[0]; // W/pi
@@ -222,7 +233,7 @@ vars<num_t,rand_t>::data =
             varp.push_back(M_1_PI*weight);
         }
     )},
-    {"spiral", VAR_T(
+    {"flam3_spiral", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -236,7 +247,7 @@ vars<num_t,rand_t>::data =
         },
         0
     )},
-    {"hyperbolic", VAR_T(
+    {"flam3_hyperbolic", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -247,7 +258,7 @@ vars<num_t,rand_t>::data =
         },
         0
     )},
-    {"diamond", VAR_T(
+    {"flam3_diamond", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -259,7 +270,7 @@ vars<num_t,rand_t>::data =
         },
         0
     )},
-    {"ex", VAR_T(
+    {"flam3_ex", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -274,7 +285,7 @@ vars<num_t,rand_t>::data =
         },
         0
     )},
-    {"julia", VAR_T(
+    {"flam3_julia", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -286,7 +297,7 @@ vars<num_t,rand_t>::data =
         },
         0
     )},
-    {"bent", VAR_T(
+    {"flam3_bent", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -300,7 +311,7 @@ vars<num_t,rand_t>::data =
         },
         0
     )},
-    {"waves", VAR_T(
+    {"flam3_waves", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -324,7 +335,7 @@ vars<num_t,rand_t>::data =
             varp.push_back(aff.e);
         }
     )},
-    {"fisheye", VAR_T(
+    {"flam3_fisheye", VAR_T(
         VAR_FUNC
         {
             num_t Wt2 = params[0]; // 2*weight
@@ -338,7 +349,7 @@ vars<num_t,rand_t>::data =
             varp.push_back(2.0*weight);
         }
     )},
-    {"popcorn", VAR_T(
+    {"flam3_popcorn", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -357,7 +368,7 @@ vars<num_t,rand_t>::data =
             varp.push_back(xform.getPreAffine().f);
         }
     )},
-    {"exponential", VAR_T(
+    {"flam3_exponential", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -368,7 +379,7 @@ vars<num_t,rand_t>::data =
         },
         0
     )},
-    {"power", VAR_T(
+    {"flam3_power", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -379,7 +390,7 @@ vars<num_t,rand_t>::data =
         },
         0
     )},
-    {"cosine", VAR_T(
+    {"flam3_cosine", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -389,7 +400,7 @@ vars<num_t,rand_t>::data =
         },
         0
     )},
-    {"rings", VAR_T(
+    {"flam3_rings", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -409,7 +420,7 @@ vars<num_t,rand_t>::data =
             varp.push_back(aff.c*aff.c + eps<num_t>::value);
         }
     )},
-    {"fan", VAR_T(
+    {"flam3_fan", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -435,7 +446,7 @@ vars<num_t,rand_t>::data =
             varp.push_back(aff.f);
         }
     )},
-    {"blob", VAR_T(
+    {"flam3_blob", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -461,7 +472,7 @@ vars<num_t,rand_t>::data =
             varp.push_back(waves);
         }
     )},
-    {"pdj", VAR_T(
+    {"flam3_pdj", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -487,7 +498,7 @@ vars<num_t,rand_t>::data =
             varp.push_back(json["d"].floatValue());
         }
     )},
-    {"fan2", VAR_T(
+    {"flam3_fan2", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -518,7 +529,7 @@ vars<num_t,rand_t>::data =
             varp.push_back(1.0/dx);
         }
     )},
-    {"rings2", VAR_T(
+    {"flam3_rings2", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -543,7 +554,7 @@ vars<num_t,rand_t>::data =
             varp.push_back(0.5/dx);
         }
     )},
-    {"eyefish", VAR_T(
+    {"flam3_eyefish", VAR_T(
         VAR_FUNC
         {
             num_t Wt2 = params[0]; // 2*weight
@@ -557,7 +568,7 @@ vars<num_t,rand_t>::data =
             varp.push_back(2.0*weight);
         }
     )},
-    {"bubble", VAR_T(
+    {"flam3_bubble", VAR_T(
         VAR_FUNC
         {
             num_t Wt4 = params[0];
@@ -571,7 +582,7 @@ vars<num_t,rand_t>::data =
             varp.push_back(4.0*weight);
         }
     )},
-    {"cylinder", VAR_T(
+    {"flam3_cylinder", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -579,7 +590,7 @@ vars<num_t,rand_t>::data =
         },
         0
     )},
-    {"perspective", VAR_T(
+    {"flam3_perspective", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -602,7 +613,7 @@ vars<num_t,rand_t>::data =
             varp.push_back(dist*cos(angle));
         }
     )},
-    {"noise", VAR_T(
+    {"flam3_noise", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -614,7 +625,7 @@ vars<num_t,rand_t>::data =
         },
         0
     )},
-    {"julian", VAR_T(
+    {"flam3_julian", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -641,7 +652,7 @@ vars<num_t,rand_t>::data =
             varp.push_back(dist/(2.0*power));
         }
     )},
-    {"juliascope", VAR_T(
+    {"flam3_juliascope", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -669,7 +680,7 @@ vars<num_t,rand_t>::data =
             varp.push_back(dist/(2.0*power));
         }
     )},
-    {"blur", VAR_T(
+    {"flam3_blur", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -680,7 +691,7 @@ vars<num_t,rand_t>::data =
         },
         0
     )},
-    {"gaussian_blur", VAR_T(
+    {"flam3_gaussian_blur", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -693,7 +704,7 @@ vars<num_t,rand_t>::data =
         },
         0
     )},
-    {"radial_blur", VAR_T(
+    {"flam3_radial_blur", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -721,7 +732,7 @@ vars<num_t,rand_t>::data =
             varp.push_back(zoom);
         }
     )},
-    {"pie", VAR_T(
+    {"flam3_pie", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -749,7 +760,7 @@ vars<num_t,rand_t>::data =
             varp.push_back(1.0/slices);
         }
     )},
-    {"ngon", VAR_T(
+    {"flam3_ngon", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -781,7 +792,7 @@ vars<num_t,rand_t>::data =
             varp.push_back(sides/(2.0*M_PI));
         }
     )},
-    {"curl", VAR_T(
+    {"flam3_curl", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -802,7 +813,7 @@ vars<num_t,rand_t>::data =
             varp.push_back(json["c2"].floatValue());
         }
     )},
-    {"rectangles", VAR_T(
+    {"flam3_rectangles", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -826,7 +837,7 @@ vars<num_t,rand_t>::data =
             varp.push_back(json["y"].floatValue());
         }
     )},
-    {"arch", VAR_T(
+    {"flam3_arch", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -837,7 +848,7 @@ vars<num_t,rand_t>::data =
         },
         0
     )},
-    {"tangent", VAR_T(
+    {"flam3_tangent", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -845,7 +856,7 @@ vars<num_t,rand_t>::data =
         },
         0
     )},
-    {"square", VAR_T(
+    {"flam3_square", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -855,7 +866,7 @@ vars<num_t,rand_t>::data =
         },
         0
     )},
-    {"rays", VAR_T(
+    {"flam3_rays", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -866,7 +877,7 @@ vars<num_t,rand_t>::data =
         },
         0
     )},
-    {"blade", VAR_T(
+    {"flam3_blade", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -877,7 +888,7 @@ vars<num_t,rand_t>::data =
         },
         0
     )},
-    {"secant2", VAR_T(
+    {"flam3_secant2", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -888,7 +899,7 @@ vars<num_t,rand_t>::data =
         },
         0
     )},
-    {"twintrian", VAR_T(
+    {"flam3_twintrian", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -901,7 +912,7 @@ vars<num_t,rand_t>::data =
         },
         0
     )},
-    {"cross", VAR_T(
+    {"flam3_cross", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -911,7 +922,7 @@ vars<num_t,rand_t>::data =
         },
         0
     )},
-    {"disc2", VAR_T(
+    {"flam3_disc2", VAR_T(
         VAR_FUNC
         {
             num_t W_pi = params[0];
@@ -945,7 +956,7 @@ vars<num_t,rand_t>::data =
             varp.push_back(sinadd*k);
         }
     )},
-    {"supershape", VAR_T(
+    {"flam3_supershape", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -980,7 +991,7 @@ vars<num_t,rand_t>::data =
             varp.push_back(json["holes"].floatValue());
         }
     )},
-    {"flower", VAR_T(
+    {"flam3_flower", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -1001,7 +1012,7 @@ vars<num_t,rand_t>::data =
             varp.push_back(json["holes"].floatValue());
         }
     )},
-    {"conic", VAR_T(
+    {"flam3_conic", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -1023,7 +1034,7 @@ vars<num_t,rand_t>::data =
             varp.push_back(json["holes"].floatValue());
         }
     )},
-    {"parabola", VAR_T(
+    {"flam3_parabola", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -1043,7 +1054,7 @@ vars<num_t,rand_t>::data =
             varp.push_back(json["width"].floatValue());
         }
     )},
-    {"bent2", VAR_T(
+    {"flam3_bent2", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -1066,7 +1077,7 @@ vars<num_t,rand_t>::data =
             varp.push_back(json["y"].floatValue());
         }
     )},
-    {"bipolar", VAR_T(
+    {"flam3_bipolar", VAR_T(
         VAR_FUNC
         {
             num_t W2_pi = params[0];
@@ -1087,7 +1098,7 @@ vars<num_t,rand_t>::data =
             varp.push_back(-M_PI_2*json["shift"].floatValue());
         }
     )},
-    {"boarders", VAR_T(
+    {"flam3_boarders", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -1120,7 +1131,7 @@ vars<num_t,rand_t>::data =
         },
         0
     )},
-    {"butterfly", VAR_T(
+    {"flam3_butterfly", VAR_T(
         VAR_FUNC
         {
             num_t wx = params[0];
@@ -1136,7 +1147,7 @@ vars<num_t,rand_t>::data =
             varp.push_back(weight*1.3029400317411197908970256609023);
         }
     )},
-    {"cell", VAR_T(
+    {"flam3_cell", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -1170,7 +1181,7 @@ vars<num_t,rand_t>::data =
             varp.push_back(1.0/size);
         }
     )},
-    {"cpow", VAR_T(
+    {"flam3_cpow", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -1201,7 +1212,7 @@ vars<num_t,rand_t>::data =
             varp.push_back(power);
         }
     )},
-    {"curve", VAR_T(
+    {"flam3_curve", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -1230,7 +1241,7 @@ vars<num_t,rand_t>::data =
             varp.push_back(yamp);
         }
     )},
-    {"edisc", VAR_T(
+    {"flam3_edisc", VAR_T(
         VAR_FUNC
         {
             num_t W_c = params[0];
@@ -1254,7 +1265,7 @@ vars<num_t,rand_t>::data =
             varp.push_back(weight*0.0864278365005759);
         }
     )},
-    {"elliptic", VAR_T(
+    {"flam3_elliptic", VAR_T(
         VAR_FUNC
         {
             num_t W2_pi = params[0];
@@ -1277,7 +1288,7 @@ vars<num_t,rand_t>::data =
             varp.push_back(weight*M_2_PI);
         }
     )},
-    {"escher", VAR_T(
+    {"flam3_escher", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -1304,7 +1315,7 @@ vars<num_t,rand_t>::data =
             varp.push_back(0.5*seb);
         }
     )},
-    {"foci", VAR_T(
+    {"flam3_foci", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -1317,7 +1328,7 @@ vars<num_t,rand_t>::data =
         },
         0
     )},
-    {"lazysusan", VAR_T(
+    {"flam3_lazysusan", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -1356,7 +1367,7 @@ vars<num_t,rand_t>::data =
             varp.push_back((1.0+json["space"].floatValue())*weight);
         }
     )},
-    {"loonie", VAR_T(
+    {"flam3_loonie", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -1368,7 +1379,7 @@ vars<num_t,rand_t>::data =
         },
         0
     )},
-    {"pre_blur", VAR_T(
+    {"flam3_pre_blur", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -1381,7 +1392,7 @@ vars<num_t,rand_t>::data =
         },
         0
     )},
-    {"modulus", VAR_T(
+    {"flam3_modulus", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -1407,7 +1418,7 @@ vars<num_t,rand_t>::data =
             varp.push_back(1.0/(2.0*y));
         }
     )},
-    {"oscope", VAR_T(
+    {"flam3_oscope", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -1434,7 +1445,7 @@ vars<num_t,rand_t>::data =
             varp.push_back(json["separation"].floatValue());
         }
     )},
-    {"polar2", VAR_T(
+    {"flam3_polar2", VAR_T(
         VAR_FUNC
         {
             num_t W_pi = params[0];
@@ -1447,7 +1458,7 @@ vars<num_t,rand_t>::data =
             varp.push_back(weight*M_1_PI);
         }
     )},
-    {"popcorn2", VAR_T(
+    {"flam3_popcorn2", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -1469,7 +1480,7 @@ vars<num_t,rand_t>::data =
             varp.push_back(json["c"].floatValue());
         }
     )},
-    {"scry", VAR_T(
+    {"flam3_scry", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -1479,7 +1490,7 @@ vars<num_t,rand_t>::data =
         },
         0
     )},
-    {"separation", VAR_T(
+    {"flam3_separation", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -1508,7 +1519,7 @@ vars<num_t,rand_t>::data =
             varp.push_back(json["yin"].floatValue());
         }
     )},
-    {"split", VAR_T(
+    {"flam3_split", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -1529,7 +1540,7 @@ vars<num_t,rand_t>::data =
             varp.push_back(M_PI*json["ysize"].floatValue());
         }
     )},
-    {"splits", VAR_T(
+    {"flam3_splits", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -1548,7 +1559,7 @@ vars<num_t,rand_t>::data =
             varp.push_back(json["y"].floatValue());
         }
     )},
-    {"stripes", VAR_T(
+    {"flam3_stripes", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -1568,7 +1579,7 @@ vars<num_t,rand_t>::data =
             varp.push_back(json["warp"].floatValue());
         }
     )},
-    {"wedge", VAR_T(
+    {"flam3_wedge", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -1597,7 +1608,7 @@ vars<num_t,rand_t>::data =
             varp.push_back(json["hole"].floatValue());
         }
     )},
-    {"wedge_julia", VAR_T(
+    {"flam3_wedge_julia", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -1634,7 +1645,7 @@ vars<num_t,rand_t>::data =
             varp.push_back(1.0-angle*count*M_1_PI*0.5);
         }
     )},
-    {"wedge_sph", VAR_T(
+    {"flam3_wedge_sph", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -1666,7 +1677,7 @@ vars<num_t,rand_t>::data =
             varp.push_back(json["hole"].floatValue());
         }
     )},
-    {"whorl", VAR_T(
+    {"flam3_whorl", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -1688,7 +1699,7 @@ vars<num_t,rand_t>::data =
             varp.push_back(json["outside"].floatValue());
         }
     )},
-    {"waves2", VAR_T(
+    {"flam3_waves2", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -1712,7 +1723,7 @@ vars<num_t,rand_t>::data =
             varp.push_back(json["yscale"].floatValue());
         }
     )},
-    {"exp", VAR_T(
+    {"flam3_exp", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -1723,7 +1734,7 @@ vars<num_t,rand_t>::data =
         },
         0
     )},
-    {"log", VAR_T(
+    {"flam3_log", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -1731,7 +1742,7 @@ vars<num_t,rand_t>::data =
         },
         0
     )},
-    {"sin", VAR_T(
+    {"flam3_sin", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -1743,7 +1754,7 @@ vars<num_t,rand_t>::data =
         },
         0
     )},
-    {"cos", VAR_T(
+    {"flam3_cos", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -1755,7 +1766,7 @@ vars<num_t,rand_t>::data =
         },
         0
     )},
-    {"tan", VAR_T(
+    {"flam3_tan", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -1768,7 +1779,7 @@ vars<num_t,rand_t>::data =
         },
         0
     )},
-    {"sec", VAR_T(
+    {"flam3_sec", VAR_T(
         VAR_FUNC
         {
             num_t Wt2 = params[0];
@@ -1786,7 +1797,7 @@ vars<num_t,rand_t>::data =
             varp.push_back(2.0*weight);
         }
     )},
-    {"csc", VAR_T(
+    {"flam3_csc", VAR_T(
         VAR_FUNC
         {
             num_t Wt2 = params[0];
@@ -1804,7 +1815,7 @@ vars<num_t,rand_t>::data =
             varp.push_back(2.0*weight);
         }
     )},
-    {"cot", VAR_T(
+    {"flam3_cot", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -1817,7 +1828,7 @@ vars<num_t,rand_t>::data =
         },
         0
     )},
-    {"sinh", VAR_T(
+    {"flam3_sinh", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -1829,7 +1840,7 @@ vars<num_t,rand_t>::data =
         },
         0
     )},
-    {"cosh", VAR_T(
+    {"flam3_cosh", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -1841,7 +1852,7 @@ vars<num_t,rand_t>::data =
         },
         0
     )},
-    {"tanh", VAR_T(
+    {"flam3_tanh", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -1854,7 +1865,7 @@ vars<num_t,rand_t>::data =
         },
         0
     )},
-    {"sech", VAR_T(
+    {"flam3_sech", VAR_T(
         VAR_FUNC
         {
             num_t Wt2 = params[0];
@@ -1872,7 +1883,7 @@ vars<num_t,rand_t>::data =
             varp.push_back(2.0*weight);
         }
     )},
-    {"csch", VAR_T(
+    {"flam3_csch", VAR_T(
         VAR_FUNC
         {
             num_t Wt2 = params[0];
@@ -1890,7 +1901,7 @@ vars<num_t,rand_t>::data =
             varp.push_back(2.0*weight);
         }
     )},
-    {"coth", VAR_T(
+    {"flam3_coth", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -1903,7 +1914,7 @@ vars<num_t,rand_t>::data =
         },
         0
     )},
-    {"auger", VAR_T(
+    {"flam3_auger", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -1929,7 +1940,7 @@ vars<num_t,rand_t>::data =
             varp.push_back(json["sym"].floatValue());
         }
     )},
-    {"flux", VAR_T(
+    {"flam3_flux", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
@@ -1952,7 +1963,7 @@ vars<num_t,rand_t>::data =
             varp.push_back(2.0+json["spread"].floatValue());
         }
     )},
-    {"mobius", VAR_T(
+    {"flam3_mobius", VAR_T(
         VAR_FUNC
         {
             num_t W = params[0];
