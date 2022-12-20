@@ -29,6 +29,8 @@ template <typename num_t> struct IterState<num_t,JavaRandom>
     // points, p = current point, t = pre affine transformed point
     // v = variation sum point
     Point2D<num_t> p, t, v;
+    // precalculated values
+    num_t pc_r2, pc_r, pc_angle, pc_sin, pc_cos;
     // random number generator state
     JavaRandom& rng;
     // current xform
@@ -68,6 +70,7 @@ template <typename num_t, typename word_t, size_t rparam>
 struct IterState<num_t,Isaac<word_t,rparam>>
 {
     Point2D<num_t> p, t, v;
+    num_t pc_r2, pc_r, pc_angle, pc_sin, pc_cos;
     Isaac<word_t,rparam>& rng;
     const XForm<num_t,Isaac<word_t,rparam>> *xf;
     num_t *cw;
@@ -179,6 +182,7 @@ public:
                 varp.push_back(weight);
             pc_flags |= fitr->second.pc_flags;
         }
+        pc_flags = set_flag_dependencies(pc_flags);
     }
     // optimize
     void optimize()
@@ -195,13 +199,25 @@ public:
     // iterate a state for the rendering process
     inline void applyIteration(IterState<num_t,rand_t>& state) const
     {
+#ifdef TKOZ_FLAME_PRECALC
+        if (pc_flags & FLAG_PC_R2)
+            state.pc_r2 = state.t.x*state.t.x + state.t.y*state.t.y;
+        if (pc_flags & FLAG_PC_R)
+            state.pc_r = sqrt(state.pc_r2);
+        if (pc_flags & FLAG_PC_ANGLE)
+            state.pc_angle = atan2(state.t.y,state.t.x);
+        if (pc_flags & FLAG_PC_SIN)
+            state.pc_sin = state.t.y / state.pc_r; // +EPS?
+        if (pc_flags & FLAG_PC_COS)
+            state.pc_cos = state.t.x / state.pc_r; // +EPS?
+#endif
         state.xf = this;
-        //if (has_pre)
+        //if (has_pre) (faster to use identity affine instead of branching)
             state.t = pre.apply_to(state.p);
         state.v = Point2D<num_t>(0.0,0.0);
         for (XFormVar<num_t,rand_t> v : vars)
             v.func(state,varp.data()+v.index);
-        //if (has_post)
+        //if (has_post) (faster to use identity affine instead of branching)
             state.p = post.apply_to(state.v);
     }
 };

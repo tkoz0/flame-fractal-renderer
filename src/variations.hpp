@@ -20,7 +20,6 @@
 #define VEC_T   Point2D<num_t>
 
 // macros for variation functions
-//#define VAR_FUNC  [](STATE_T S, num_t W, const num_t *P)
 #define VAR_FUNC  [](STATE_T state, const num_t *params)
 #define VAR_PARSE [](XFORM_T xform, JSON_T json, num_t weight, PARAM_T varp)
 #define VAR_RET(ret) state.v += (ret)
@@ -31,12 +30,26 @@
 #define EPS eps<num_t>::value
 
 // pre-calculate flags
-#define PC_ATANXY (1 << 0)
-#define PC_ATANYX (1 << 1)
-#define PC_SINT   (1 << 2)
-#define PC_COST   (1 << 3)
-#define PC_R      (1 << 4)
-#define PC_R2     (1 << 5)
+#define FLAG_PC_R2    (1 << 0) // x*x + y*y
+#define FLAG_PC_R     (1 << 1) // sqrt(R2), requires R2
+#define FLAG_PC_ANGLE (1 << 2) // atan2(y,x)
+#define FLAG_PC_SIN   (1 << 3) // y/R, requires R
+#define FLAG_PC_COS   (1 << 4) // x/R, requires R
+
+// values that may be precalculated
+#ifndef TKOZ_FLAME_PRECALC // do not precalculate
+#define PC_R2 (TP.r2())
+#define PC_R (TP.r())
+#define PC_ANGLE (TP.atanyx())
+#define PC_SIN (sin(PC_ANGLE))
+#define PC_COS (cos(PC_ANGLE))
+#else // use precalculated values (flags must be set correctly)
+#define PC_R2 state.pc_r2
+#define PC_R state.pc_r
+#define PC_ANGLE state.pc_angle
+#define PC_SIN state.pc_sin
+#define PC_COS state.pc_cos
+#endif
 
 namespace tkoz
 {
@@ -80,11 +93,30 @@ num_t parse_var_param(const Json& j, const std::string& key,
         return default_;
 }
 
+// precalc flag dependencies
+u32 set_flag_dependencies(u32 flags)
+{
+    if ((flags & FLAG_PC_SIN) | (flags & FLAG_PC_COS))
+        flags |= FLAG_PC_R;
+    if (flags & FLAG_PC_R)
+        flags |= FLAG_PC_R2;
+    return flags;
+}
+
 /*
 Variation functions, parameters IterState<num_t>& state, const num_t *params
 - Inputs are the iteration state and pointer to parameters
 - Each computes a point (vector) from S.t to add to S.v (the variation sum)
   - use the TX,TY,TP,VAR_RET macros above
+- Additionally can use the precomputed values
+  - state.pc_r2 (radius squared)
+  - state.pc_r (radius)
+  - state.pc_angle (angle on the unit circle)
+  - state.pc_sin (sin of angle)
+  - state.pc_cos (cos of angle)
+  - the precalculate flags must be set for which ones the variation uses
+  - use the macros starting with FLAG_
+  - combine with bitwise or, example: FLAG_PC_SIN | FLAG_PC_COS
 - Additional details and the RNG are accessible through state
 - Parameters and some precomputed values are accessible through params
 - if the parser function is not specified
@@ -95,8 +127,6 @@ Variations using extra parameters have another function to create them
 - Parameters can be parsed from the JSON data for the variation
 - Details about the xform can be used (such as the affine transforms)
 - If not specified, then params[0] is weight and there are no others
-
-TODO precomputed variables based on S.t for each iteration
 */
 
 template <typename num_t, typename rand_t>
