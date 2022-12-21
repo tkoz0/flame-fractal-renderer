@@ -199,6 +199,10 @@ public:
     // iterate a state for the rendering process
     inline void applyIteration(IterState<num_t,rand_t>& state) const
     {
+        state.xf = this;
+        //if (has_pre) (faster to use identity affine instead of branching)
+            state.t = pre.apply_to(state.p);
+        state.v = Point2D<num_t>(0.0,0.0);
 #ifdef TKOZ_FLAME_PRECALC
         if (pc_flags & FLAG_PC_R2)
             state.pc_r2 = state.t.x*state.t.x + state.t.y*state.t.y;
@@ -211,10 +215,6 @@ public:
         if (pc_flags & FLAG_PC_COS)
             state.pc_cos = state.t.x / state.pc_r; // +EPS?
 #endif
-        state.xf = this;
-        //if (has_pre) (faster to use identity affine instead of branching)
-            state.t = pre.apply_to(state.p);
-        state.v = Point2D<num_t>(0.0,0.0);
         for (XFormVar<num_t,rand_t> v : vars)
             v.func(state,varp.data()+v.index);
         //if (has_post) (faster to use identity affine instead of branching)

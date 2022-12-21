@@ -36,19 +36,22 @@
 #define FLAG_PC_SIN   (1 << 3) // y/R, requires R
 #define FLAG_PC_COS   (1 << 4) // x/R, requires R
 
+// enable precalculation
+#define TKOZ_FLAME_PRECALC
+
 // values that may be precalculated
 #ifndef TKOZ_FLAME_PRECALC // do not precalculate
-#define PC_R2 (TP.r2())
-#define PC_R (TP.r())
-#define PC_ANGLE (TP.atanyx())
-#define PC_SIN (sin(PC_ANGLE))
-#define PC_COS (cos(PC_ANGLE))
+#define C_R2 (TP.r2())
+#define C_R (TP.r())
+#define C_ANGLE (TP.atanyx())
+#define C_SIN (sin(PC_ANGLE))
+#define C_COS (cos(PC_ANGLE))
 #else // use precalculated values (flags must be set correctly)
-#define PC_R2 state.pc_r2
-#define PC_R state.pc_r
-#define PC_ANGLE state.pc_angle
-#define PC_SIN state.pc_sin
-#define PC_COS state.pc_cos
+#define C_R2 state.pc_r2
+#define C_R state.pc_r
+#define C_ANGLE state.pc_angle
+#define C_SIN state.pc_sin
+#define C_COS state.pc_cos
 #endif
 
 namespace tkoz
@@ -76,21 +79,41 @@ template <typename num_t, typename rand_t> struct vars
     static const std::unordered_map<std::string,VAR_T> data;
 };
 
-// parse JSON or use default value
+// parse integer parameter
+// use default if null or key does not exist
 template <typename num_t>
-num_t parse_var_param(const Json& j, const std::string& key,
-        num_t default_, bool allow_integer = false)
+num_t parse_int(const Json& j, const std::string& key,
+        bool enable_default = false, i32 default_ = 0)
 {
-    Json value;
-    if (j.valueAt(key,value))
+    Json v;
+    if (j.valueAt(key,v))
     {
-        if (value.isFloat()) return value.floatValue();
-        if (value.isInt()) return (num_t) value.intValue();
-        if (value.isNull()) return default_;
-        throw std::runtime_error("value is not a number");
+        if (v.isInt()) return (num_t) v.intValue();
+        if (v.isNull() && enable_default)
+            return (num_t) default_;
     }
-    else
-        return default_;
+    else if (enable_default)
+        return (num_t) default_;
+    throw std::runtime_error("not int or no default");
+}
+
+// parse number (integer or floating point)
+// use default if null or key does not exist
+template <typename num_t>
+num_t parse_float(const Json& j, const std::string& key,
+        bool enable_default = false, num_t default_ = 0.0)
+{
+    Json v;
+    if (j.valueAt(key,v))
+    {
+        if (v.isInt()) return (num_t) v.intValue();
+        if (v.isFloat()) return (num_t) v.floatValue();
+        if (v.isNull() && enable_default)
+            return (num_t) default_;
+    }
+    else if (enable_default)
+        return (num_t) default_;
+    throw std::runtime_error("not float or no default");
 }
 
 // precalc flag dependencies
@@ -108,19 +131,19 @@ Variation functions, parameters IterState<num_t>& state, const num_t *params
 - Inputs are the iteration state and pointer to parameters
 - Each computes a point (vector) from S.t to add to S.v (the variation sum)
   - use the TX,TY,TP,VAR_RET macros above
-- Additionally can use the precomputed values
-  - state.pc_r2 (radius squared)
-  - state.pc_r (radius)
-  - state.pc_angle (angle on the unit circle)
-  - state.pc_sin (sin of angle)
-  - state.pc_cos (cos of angle)
+- Additionally can use the precomputed values (use the C_ macros)
+  - C_R2:    state.pc_r2    (radius squared)
+  - C_R:     state.pc_r     (radius)
+  - C_ANGLE: state.pc_angle (angle on the unit circle)
+  - C_SIN:   state.pc_sin   (sin of angle)
+  - C_COS:   state.pc_cos   (cos of angle)
   - the precalculate flags must be set for which ones the variation uses
   - use the macros starting with FLAG_
   - combine with bitwise or, example: FLAG_PC_SIN | FLAG_PC_COS
 - Additional details and the RNG are accessible through state
 - Parameters and some precomputed values are accessible through params
 - if the parser function is not specified
-  - params[0] is the weight (0 should have the effect of S.v += (0,0))
+  - params[0] is the weight (0 should have the effect of state.v += (0,0))
 
 Variations using extra parameters have another function to create them
 - They call push_back to the vector `varp` for each precomputed parameter
@@ -133,6 +156,53 @@ template <typename num_t, typename rand_t>
 const std::unordered_map<std::string,VAR_T>
 vars<num_t,rand_t>::data =
 {
+    /*
+    Linear, use the coordinate point as is
+    f(x,y) = (x,y)
+    */
+    {"linear", VAR_T(
+        VAR_FUNC
+        {
+            num_t weight = params[0];
+            VAR_RET(weight * TP);
+        },
+        0
+    )},
+    /*
+    Sinusoidal from flam3 with frequency constants added
+    f(x,y) = (sin(ax),sin(by))
+    frequency constants a,b
+    */
+    {"sinusoidal", VAR_T(
+        VAR_FUNC
+        {
+            num_t weight = params[0];
+            num_t freq_x = params[1];
+            num_t freq_y = params[2];
+            VAR_RET(weight * VEC(sin(freq_x*TX),sin(freq_y*TY)));
+        },
+        0,
+        VAR_PARSE
+        {
+            varp.push_back(weight);
+            varp.push_back(parse_float(json,"freq_x",true,1.0));
+            varp.push_back(parse_float(json,"freq_y",true,1.0));
+        }
+    )},
+    /*
+    Spherical from flam3
+    f(x,y) = (1/r^2) * (x,y)
+    */
+    {"spherical", VAR_T(
+        VAR_FUNC
+        {
+            num_t weight = params[0];
+            //num_t r = weight / (C_R2 + EPS);
+            num_t r = weight / C_R2;
+            VAR_RET(r * TP);
+        },
+        FLAG_PC_R2
+    )},
 /*
 Variations based on the flam3 source code. These are implemented to operate on
 the coordinates exactly as flam3 does, without using precalculated values. They
@@ -142,7 +212,11 @@ optimize them have been made. Many have not been verified to be bug free, so
 there may be a few implemented incorrectly.
 
 These are included for attempting to have some sort of compatibility with flam3,
-but these variations will get redone.
+but these variations will get redone. They are named the same as the variations
+in flam3 apart from the "flam3_" prefix.
+
+See the flam3 source at:
+https://github.com/scottdraves/flam3/blob/7fb50c82e90e051f00efcc3123d0e06de26594b2/variations.c
 */
     {"flam3_linear", VAR_T(
         VAR_FUNC
