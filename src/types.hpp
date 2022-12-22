@@ -115,7 +115,7 @@ template <typename T> struct Affine3D;
 template <typename T> struct Point2D
 {
     T x, y;
-    Point2D(): x(0),y(0) {}
+    Point2D(): x(0.0),y(0.0) {}
     Point2D(T x, T y): x(x),y(y) {}
     inline Point2D& operator+=(const Point2D& p)
     { x += p.x; y += p.y; return *this; }
@@ -152,7 +152,7 @@ template <typename T> struct Point2D
 template <typename T> struct Point3D
 {
     T x, y, z;
-    Point3D(): x(0),y(0),z(0) {}
+    Point3D(): x(0.0),y(0.0),z(0.0) {}
     Point3D(T x, T y, T z): x(x),y(y),z(z) {}
     inline Point3D& operator+=(const Point3D& p)
     { x += p.x; y += p.y; z += p.z; return *this; }

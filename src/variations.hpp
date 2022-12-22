@@ -150,6 +150,11 @@ Variations using extra parameters have another function to create them
 - Parameters can be parsed from the JSON data for the variation
 - Details about the xform can be used (such as the affine transforms)
 - If not specified, then params[0] is weight and there are no others
+
+Variation functions from R^2 to R^2 that map (x,y) to (x',y'). Typically, the
+weight parameter should be used as a scalar for (x',y'), that is, adding
+weight*(x',y') to the result. It is possible to use the weight parameter in
+other ways and quite a few variations from flam3 do that.
 */
 
 template <typename num_t, typename rand_t>
@@ -182,6 +187,8 @@ vars<num_t,rand_t>::data =
             VAR_RET(weight * VEC(sin(freq_x*TX),sin(freq_y*TY)));
         },
         0,
+        // parse: freq_x,freq_y
+        // store: weight,freq_x,freq_y
         VAR_PARSE
         {
             varp.push_back(weight);
@@ -202,6 +209,94 @@ vars<num_t,rand_t>::data =
             VAR_RET(r * TP);
         },
         FLAG_PC_R2
+    )},
+    /*
+    Swirl from flam3
+    f(x,y) = (x*sin(r^2) - y*cos(r^2), x*cos(r^2) + y*sin(r^2))
+    */
+    {"swirl", VAR_T(
+        VAR_FUNC
+        {
+            num_t weight = params[0];
+            num_t sr,cr;
+            sincosg(C_R2,&sr,&cr);
+            VAR_RET(weight * VEC(sr*TX-cr*TY,cr*TX+sr*TY));
+        },
+        FLAG_PC_R2
+    )},
+    /*
+    Horseshoe from flam3
+    f(x,y) = (1/r) * ((x-y)*(x+y), 2*x*y)
+    */
+    {"horseshoe", VAR_T(
+        VAR_FUNC
+        {
+            num_t weight = params[0];
+            num_t r = weight / C_R;
+            VAR_RET(r * VEC((TX-TY)*(TX+TY),2.0*TX*TY));
+        },
+        FLAG_PC_R
+    )},
+    /*
+    Polar from flam3 (angle changed)
+    f(x,y) = (theta/pi, r-1)
+    */
+    {"polar", VAR_T(
+        VAR_FUNC
+        {
+            num_t weight = params[0];
+            VAR_RET(weight * VEC(C_ANGLE*M_1_PI,C_R-1.0));
+        },
+        FLAG_PC_R | FLAG_PC_ANGLE
+    )},
+    /*
+    Handkerchief based on flam3
+    f(x,y) = r * (cos(theta-r), sin(theta+r))
+    */
+    {"handkerchief", VAR_T(
+        VAR_FUNC
+        {
+            num_t weight = params[0];
+            num_t r = C_R;
+            num_t a = C_ANGLE;
+            VAR_RET(weight * r * VEC(cos(a-r),sin(a+r)));
+        },
+        FLAG_PC_R | FLAG_PC_ANGLE
+    )},
+    /*
+    Heart based on flam3
+    f(x,y) = r * (-cos(theta*r), sin(theta*r))
+    */
+    {"heart", VAR_T(
+        VAR_FUNC
+        {
+            num_t weight = params[0];
+            num_t r = C_R;
+            num_t sa,ca;
+            sincosg(r*C_ANGLE,&sa,&ca);
+            VAR_RET(weight * r * VEC(-ca,sa));
+        },
+        FLAG_PC_R | FLAG_PC_ANGLE
+    )},
+    /*
+    Disc based on flam3
+    f(x,y) = (theta/pi) * (cos(pi*r),sin(pi*r)))
+    */
+    {"disc", VAR_T(
+        VAR_FUNC
+        {
+            num_t weight = params[0];
+            num_t r = C_ANGLE * weight;
+            num_t sr,cr;
+            sincosg(M_PI*C_R,&sr,&cr);
+            VAR_RET(r * VEC(cr,sr));
+        },
+        FLAG_PC_ANGLE,
+        // store: weight/pi
+        VAR_PARSE
+        {
+            varp.push_back(weight*M_1_PI);
+        }
     )},
 /*
 Variations based on the flam3 source code. These are implemented to operate on

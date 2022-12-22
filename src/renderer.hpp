@@ -29,16 +29,17 @@ template <typename num_t> struct IterState<num_t,JavaRandom>
     // points, p = current point, t = pre affine transformed point
     // v = variation sum point
     Point2D<num_t> p, t, v;
-    // precalculated values
-    num_t pc_r2, pc_r, pc_angle, pc_sin, pc_cos;
     // random number generator state
     JavaRandom& rng;
     // current xform
     const XForm<num_t,JavaRandom> *xf;
     // information for selecting random xform
     num_t *cw;
+    // precalculated values
+    num_t pc_r2, pc_r, pc_angle, pc_sin, pc_cos;
     IterState(JavaRandom& rng):
-        p(0.0,0.0),t(0.0,0.0),v(0.0,0.0),rng(rng),xf(nullptr) {}
+        p(0.0,0.0),t(0.0,0.0),v(0.0,0.0),rng(rng),xf(nullptr),
+        pc_r2(0.0),pc_r(0.0),pc_angle(0.0),pc_sin(0.0),pc_cos(0.0) {}
     // functions to get random numbers
     inline bool randBool() { return rng.nextBool(); }
     FUNC_ENABLE_IF(num_t,float,float) inline randNum()
@@ -70,12 +71,13 @@ template <typename num_t, typename word_t, size_t rparam>
 struct IterState<num_t,Isaac<word_t,rparam>>
 {
     Point2D<num_t> p, t, v;
-    num_t pc_r2, pc_r, pc_angle, pc_sin, pc_cos;
     Isaac<word_t,rparam>& rng;
     const XForm<num_t,Isaac<word_t,rparam>> *xf;
     num_t *cw;
+    num_t pc_r2, pc_r, pc_angle, pc_sin, pc_cos;
     IterState(Isaac<word_t,rparam>& rng):
-        p(0.0,0.0),t(0.0,0.0),v(0.0,0.0),rng(rng),xf(nullptr) {}
+        p(0.0,0.0),t(0.0,0.0),v(0.0,0.0),rng(rng),xf(nullptr),
+        pc_r2(0.0),pc_r(0.0),pc_angle(0.0),pc_sin(0.0),pc_cos(0.0) {}
     inline bool randBool() { return rng.next() & 1; }
     FUNC_ENABLE_IF2(num_t,float,word_t,u32,float) inline randNum()
     { return (rng.next() >> 8) / (float)(1 << 24); }
@@ -201,8 +203,7 @@ public:
     {
         state.xf = this;
         //if (has_pre) (faster to use identity affine instead of branching)
-            state.t = pre.apply_to(state.p);
-        state.v = Point2D<num_t>(0.0,0.0);
+        state.t = pre.apply_to(state.p);
 #ifdef TKOZ_FLAME_PRECALC
         if (pc_flags & FLAG_PC_R2)
             state.pc_r2 = state.t.x*state.t.x + state.t.y*state.t.y;
@@ -215,10 +216,11 @@ public:
         if (pc_flags & FLAG_PC_COS)
             state.pc_cos = state.t.x / state.pc_r; // +EPS?
 #endif
+        state.v = Point2D<num_t>(0.0,0.0);
         for (XFormVar<num_t,rand_t> v : vars)
             v.func(state,varp.data()+v.index);
         //if (has_post) (faster to use identity affine instead of branching)
-            state.p = post.apply_to(state.v);
+        state.p = post.apply_to(state.v);
     }
 };
 
