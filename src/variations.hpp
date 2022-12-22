@@ -291,12 +291,26 @@ vars<num_t,rand_t>::data =
             sincosg(M_PI*C_R,&sr,&cr);
             VAR_RET(r * VEC(cr,sr));
         },
-        FLAG_PC_ANGLE,
+        FLAG_PC_ANGLE | FLAG_PC_R,
         // store: weight/pi
         VAR_PARSE
         {
             varp.push_back(weight*M_1_PI);
         }
+    )},
+    /*
+    Spiral based on flam3
+    f(x,y) = (1/r) * (cos(theta)+sin(r), sin(theta)-cos(r))
+    */
+    {"spiral", VAR_T(
+        VAR_FUNC
+        {
+            num_t weight = params[0];
+            num_t sr,cr;
+            sincosg(C_R,&sr,&cr);
+            VAR_RET((weight / C_R) * VEC(C_COS+sr,C_SIN-cr));
+        },
+        FLAG_PC_R | FLAG_PC_COS | FLAG_PC_SIN
     )},
 /*
 Variations based on the flam3 source code. These are implemented to operate on
