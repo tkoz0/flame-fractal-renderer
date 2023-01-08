@@ -14,6 +14,10 @@ typedef std::vector<Json> JsonArray;
 // type to use for JSON objects
 typedef std::unordered_map<std::string,Json> JsonObject;
 
+typedef bool JsonBool;
+typedef int64_t JsonInt;
+typedef double JsonFloat;
+
 /*
 interface for using nlohmann::json with the features needed for this project
 supports comments in JSON
@@ -44,6 +48,8 @@ public:
     bool isArray() const;
     // is value an object
     bool isObject() const;
+    // returns the length of the value (for arrays and objects)
+    size_t length() const;
     // returns boolean value, exception if not a boolean
     bool boolValue() const;
     // returns integer value, exception if not an integer

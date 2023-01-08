@@ -53,6 +53,11 @@ bool Json::isObject() const
     return this->is_object();
 }
 
+size_t Json::length() const
+{
+    return this->size();
+}
+
 bool Json::boolValue() const
 {
     return this->get<bool>();

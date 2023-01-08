@@ -158,7 +158,7 @@ int main(int argc, char **argv)
         json_flame = Json(read_text_file(arg_flame));
     std::cerr << "flame json (comments removed): " << json_flame << std::endl;
     tkoz::flame::RendererBasic<num_t,u32,rand_t> renderer(json_flame);
-    const tkoz::flame::Flame<num_t,rand_t>& flame = renderer.getFlame();
+    const tkoz::flame::Flame<num_t,2,rand_t>& flame = renderer.getFlame();
     std::cerr << "x size: " << flame.getSizeX() << std::endl;
     std::cerr << "y size: " << flame.getSizeY() << std::endl;
     num_t xdiff = flame.getXMax() - flame.getXMin();
@@ -200,7 +200,6 @@ int main(int argc, char **argv)
     for (size_t i = 0; i < renderer.getHistogramSize(); ++i)
         buffer_sum_initial += buf[i];
     fprintf(stderr,"buffer sum (initial): %lu\n",buffer_sum_initial);
-    std::cerr << "flame name: " << renderer.getFlame().getName() << std::endl;
     if (arg_samples)
     {
         std::cerr << "render start" << std::endl;
@@ -257,7 +256,7 @@ int main(int argc, char **argv)
         std::cerr << std::endl;
         std::cerr << "bad value points:";
         for (auto p : renderer.getBadValuePoints())
-            fprintf(stderr," (%le,%le)",p.x,p.y);
+            fprintf(stderr," (%le,%le)",p.x(),p.y());
         std::cerr << std::endl;
         u32 sample_min = -1;
         u32 sample_max = 0;

@@ -1,3 +1,9 @@
+// TODO FIXME this entire file needs to be templated properly for dimension
+// generic variations
+// right now it is 2d variations only with an unused dimension parameter
+// this was a quick and dirty hack to make it compile with the existing
+// 2d only code
+
 #pragma once
 
 #ifndef _GNU_SOURCE
@@ -12,12 +18,12 @@
 #define unlikely(x) __builtin_expect(!!(x),0)
 
 // types
-#define VAR_T   VarInfo<num_t,rand_t>
-#define STATE_T IterState<num_t,rand_t>&
-#define XFORM_T const XForm<num_t,rand_t>&
+#define VAR_T   VarInfo<num_t,2,rand_t>
+#define STATE_T IterState<num_t,2,rand_t>&
+#define XFORM_T const XForm<num_t,2,rand_t>&
 #define JSON_T  const Json&
 #define PARAM_T std::vector<num_t>&
-#define VEC_T   Point2D<num_t>
+#define VEC_T   Point<num_t,2>
 
 // macros for variation functions
 //#define VAR_FUNC  [](STATE_T S, num_t W, const num_t *P)
@@ -25,8 +31,8 @@
 #define VAR_PARSE [](XFORM_T xform, JSON_T json, num_t weight, PARAM_T varp)
 #define VAR_RET(ret) state.v += (ret)
 #define VEC(x,y) VEC_T(x,y)
-#define TX state.t.x
-#define TY state.t.y
+#define TX state.t.x()
+#define TY state.t.y()
 #define TP state.t
 #define EPS eps<num_t>::value
 
@@ -43,11 +49,8 @@ namespace tkoz
 namespace flame
 {
 
-// iterator state used by variation functions, defined with renderer
-template <typename num_t, typename rand_t> struct IterState;
-
 // variation info for parsing variations
-template <typename num_t, typename rand_t> struct VarInfo
+template <typename num_t, size_t dims, typename rand_t> struct VarInfo
 {
     const std::function<void(STATE_T,const num_t*)> func;
     u32 pc_flags;
@@ -58,7 +61,7 @@ template <typename num_t, typename rand_t> struct VarInfo
 };
 
 // struct containing hardcoded information of available variations
-template <typename num_t, typename rand_t> struct vars
+template <typename num_t, size_t dims, typename rand_t> struct vars
 {
     static const std::unordered_map<std::string,VAR_T> data;
 };
@@ -99,9 +102,9 @@ Variations using extra parameters have another function to create them
 TODO precomputed variables based on S.t for each iteration
 */
 
-template <typename num_t, typename rand_t>
+template <typename num_t, size_t dims, typename rand_t>
 const std::unordered_map<std::string,VAR_T>
-vars<num_t,rand_t>::data =
+vars<num_t,dims,rand_t>::data =
 {
     {"linear", VAR_T(
         VAR_FUNC
@@ -286,12 +289,16 @@ vars<num_t,rand_t>::data =
         // store: weight,dx2,dy2,b,e
         VAR_PARSE
         {
-            const Affine2D<num_t>& aff = xform.getPreAffine();
+            const Affine<num_t,2>& aff = xform.getPreAffine();
             varp.push_back(weight);
-            varp.push_back(1.0 / (aff.c*aff.c + EPS));
-            varp.push_back(1.0 / (aff.f*aff.f + EPS));
-            varp.push_back(aff.b);
-            varp.push_back(aff.e);
+            num_t c = aff.getB()[0];
+            num_t f = aff.getB()[1];
+            varp.push_back(1.0 / (c*c + EPS));
+            varp.push_back(1.0 / (f*f + EPS));
+            num_t b = aff.getA()[0][1];
+            num_t e = aff.getA()[1][1];
+            varp.push_back(b);
+            varp.push_back(e);
         }
     )},
     {"fisheye", VAR_T(
@@ -323,8 +330,10 @@ vars<num_t,rand_t>::data =
         VAR_PARSE
         {
             varp.push_back(weight);
-            varp.push_back(xform.getPreAffine().c);
-            varp.push_back(xform.getPreAffine().f);
+            num_t c = xform.getPreAffine().getB()[0];
+            num_t f = xform.getPreAffine().getB()[1];
+            varp.push_back(c);
+            varp.push_back(f);
         }
     )},
     {"exponential", VAR_T(
@@ -374,9 +383,10 @@ vars<num_t,rand_t>::data =
         // store: weight,dx
         VAR_PARSE
         {
-            const Affine2D<num_t>& aff = xform.getPreAffine();
+            const Affine<num_t,2>& aff = xform.getPreAffine();
             varp.push_back(weight);
-            varp.push_back(aff.c*aff.c + eps<num_t>::value);
+            num_t c = aff.getB()[0];
+            varp.push_back(c*c + eps<num_t>::value);
         }
     )},
     {"fan", VAR_T(
@@ -399,10 +409,12 @@ vars<num_t,rand_t>::data =
         // store: weight,dx,dy
         VAR_PARSE
         {
-            const Affine2D<num_t>& aff = xform.getPreAffine();
+            const Affine<num_t,2>& aff = xform.getPreAffine();
             varp.push_back(weight);
-            varp.push_back(M_PI*(aff.c*aff.c + EPS));
-            varp.push_back(aff.f);
+            num_t c = aff.getB()[0];
+            num_t f = aff.getB()[1];
+            varp.push_back(M_PI*(c*c + EPS));
+            varp.push_back(f);
         }
     )},
     {"blob", VAR_T(

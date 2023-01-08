@@ -94,146 +94,268 @@ template <typename T> inline bool bad_value(T n)
     return fabs(n) > bad_value_threshold<T>::value || isnan(n);
 }
 
-template <typename T> struct rgb_t
-{
-    T r, g, b;
-    rgb_t(): r(0),g(0),b(0) {}
-    rgb_t(T r, T g, T b): r(r),g(g),b(b) {}
-};
+template <typename T, size_t N> struct Affine;
+template <typename T, size_t N> struct Point;
 
-template <typename T> struct rgba_t
+// point in N dimension space, using number type T
+template <typename T, size_t N>
+class Point
 {
-    T r, g, b, a;
-    rgba_t(): r(0),g(0),b(b),a(0) {}
-    rgba_t(T r, T g, T b, T a): r(r),g(g),b(b),a(a) {}
-};
-
-template <typename T> struct Affine2D;
-template <typename T> struct Affine3D;
-
-// point in 2d space
-template <typename T> struct Point2D
-{
-    T x, y;
-    Point2D(): x(0),y(0) {}
-    Point2D(T x, T y): x(x),y(y) {}
-    inline Point2D& operator+=(const Point2D& p)
-    { x += p.x; y += p.y; return *this; }
-    inline Point2D& operator-=(const Point2D& p)
-    { x -= p.x; y -= p.y; return *this; }
-    inline Point2D& operator*=(T k)
-    { x *= k; y *= k; return *this; }
-    inline Point2D& operator/=(T k)
-    { x /= k; y /= k; return *this; }
-    inline T r() const { return hypot(x,y); }
-    inline T r2() const { return x*x + y*y; }
-    inline T atanxy() const { return atan2(x,y); }
-    inline T atanyx() const { return atan2(y,x); }
-    // modify this point by an affine transformation
-    inline void transform(const Affine2D<T>& t)
+    static_assert(N > 0 && N < 100);
+private:
+    T vec[N];
+public:
+    Point()
     {
-        T xnew = t.a*x+t.b*y+t.c;
-        T ynew = t.d*x+t.e*y+t.f;
-        x = xnew;
-        y = ynew;
+        memset(vec,0,sizeof(vec));
     }
-    friend inline Point2D<T> operator+(Point2D<T> a, Point2D<T> b)
-    { Point2D<T> ret = a; ret += b; return ret; }
-    friend inline Point2D<T> operator-(Point2D<T> a, Point2D<T> b)
-    { Point2D<T> ret = a; ret -= b; return ret; }
-    friend inline Point2D<T> operator*(Point2D<T> a, T k)
-    { Point2D<T> ret = a; ret *= k; return ret; }
-    friend inline Point2D<T> operator*(T k, Point2D<T> a)
-    { return a*k; }
-    friend inline Point2D<T> operator/(Point2D<T> a, T k)
-    { Point2D<T> ret = a; ret /= k; return ret; }
-};
-
-template <typename T> struct Point3D
-{
-    T x, y, z;
-    Point3D(): x(0),y(0),z(0) {}
-    Point3D(T x, T y, T z): x(x),y(y),z(z) {}
-    inline Point3D& operator+=(const Point3D& p)
-    { x += p.x; y += p.y; z += p.z; return *this; }
-    inline Point3D& operator-=(const Point3D& p)
-    { x -= p.x; y -= p.y; z -= p.z; return *this; }
-    inline Point3D& operator*=(T k)
-    { x *= k; y *= k; z *= k; return *this; }
-    inline Point3D& operator/=(T k)
-    { x /= k; y /= k; z /= k; return *this; }
-    inline T r() const { return sqrt(x*x+y*y+z*z); }
-    inline T r2() const { return x*x+y*y+z*z; }
-    inline void transform(const Affine3D<T>& t)
+    Point(const T *x_) // from length N array
     {
-        T xnew = t.a*x+t.b*y+t.c*z+t.d;
-        T ynew = t.e*x+t.f*y+t.g*z+t.h;
-        T znew = t.i*x+t.j*y+t.k*z+t.l;
-        x = xnew;
-        y = ynew;
-        z = znew;
+        memcpy(vec,x_,sizeof(vec));
     }
-    friend inline Point3D<T> operator+(Point3D<T> a, Point3D<T> b)
-    { Point3D<T> ret = a; ret += b; return ret; }
-    friend inline Point3D<T> operator-(Point3D<T> a, Point3D<T> b)
-    { Point3D<T> ret = a; ret -= b; return ret; }
-    friend inline Point3D<T> operator*(Point3D<T> a, T k)
-    { Point3D<T> ret = a; ret *= k; return ret; }
-    friend inline Point3D<T> operator*(T k, Point3D<T> a)
-    { return a*k; }
-    friend inline Point3D<T> operator/(Point3D<T> a, T k)
-    { Point3D<T> ret = a; ret /= k; return ret; }
+    // TODO remove, temporary to make variations.hpp compile
+    Point(T x, T y) { vec[0] = x; vec[1] = y; }
+    inline T r() { return hypot(vec[0],vec[1]); }
+    inline T r2() { return vec[0]*vec[0] + vec[1]*vec[1]; }
+    inline T atanxy() { return atan2(vec[0],vec[1]); }
+    inline T atanyx() { return atan2(vec[1],vec[0]); }
+    Point(const Json& j)
+    {
+        JsonArray a = j.arrayValue();
+        if (a.size() != N)
+            throw std::runtime_error("point: incorrect size");
+        for (size_t i = 0; i < N; ++i)
+        {
+            if (a[i].isInt())
+                vec[i] = (T) a[i].intValue();
+            else if (a[i].isFloat())
+                vec[i] = (T) a[i].floatValue();
+            else
+                throw std::runtime_error("point: not a number");
+        }
+    }
+    // TODO constructor taking N args of type T
+    Point(const Point<T,N>& p)
+    {
+        memcpy(vec,p.vec,sizeof(vec));
+    }
+    inline Point<T,N>& operator=(const Point<T,N>& p)
+    {
+        memcpy(vec,p.vec,sizeof(vec));
+        return *this;
+    }
+    inline Point<T,N>& operator+=(const Point<T,N>& p)
+    {
+        for (size_t i = 0; i < N; ++i)
+            vec[i] += p.vec[i];
+        return *this;
+    }
+    inline Point<T,N>& operator-=(const Point<T,N>& p)
+    {
+        for (size_t i = 0; i < N; ++i)
+            vec[i] -= p.vec[i];
+        return *this;
+    }
+    inline Point<T,N>& operator*=(T k)
+    {
+        for (size_t i = 0; i < N; ++i)
+            vec[i] *= k;
+        return *this;
+    }
+    inline Point<T,N>& operator/=(T k)
+    {
+        return *this *= (1/k);
+    }
+    inline T operator[](size_t i) const
+    {
+        return vec[i];
+    }
+    inline T& operator[](size_t i)
+    {
+        return vec[i];
+    }
+    inline T x() const
+    {
+        return vec[0];
+    }
+    inline T y() const
+    {
+        return vec[1];
+    }
+    inline T z() const
+    {
+        return vec[2];
+    }
+    friend inline Point<T,N> operator+(const Point<T,N>& a,
+                                       const Point<T,N>& b)
+    {
+        Point<T,N> ret = a;
+        ret -= b;
+        return ret;
+    }
+    friend inline Point<T,N> operator-(const Point<T,N>& a,
+                                       const Point<T,N>& b)
+    {
+        Point<T,N> ret = a;
+        ret -= b;
+        return ret;
+    }
+    friend inline Point<T,N> operator*(const Point<T,N>& a, T k)
+    {
+        Point<T,N> ret = a;
+        ret *= k;
+        return ret;
+    }
+    friend inline Point<T,N> operator*(T k, const Point<T,N>& a)
+    {
+        return a*k;
+    }
+    // dot product
+    friend inline T operator*(const Point<T,N>& a, const Point<T,N>& b)
+    {
+        T ret = 0;
+        for (size_t i = 0; i < N; ++i)
+            ret += a[i] * b[i];
+        return ret;
+    }
+    friend inline Point<T,N> operator/(const Point<T,N>& a, T k)
+    {
+        Point<T,N> ret = a;
+        ret /= k;
+        return ret;
+    }
+    friend inline Point<T,N> operator/(T k, const Point<T,N>& a)
+    {
+        return a/k;
+    }
+    // 2-norm, TODO hypot for N=2
+    inline T norm2() const
+    {
+        return sqrt(norm2sq());
+    }
+    // 2-norm squared, TODO ensure loop is unrolled for small N
+    inline T norm2sq() const
+    {
+        T ret = 0;
+        for (size_t i = 0; i < N; ++i)
+            ret += vec[i]*vec[i];
+        return ret;
+    }
+    // 1-norm, TODO ensure optimized for small N
+    inline T norm1() const
+    {
+        T ret = 0;
+        for (size_t i = 0; i < N; ++i)
+            ret += vec[i];
+        return ret;
+    }
+    // inf-norm, TODO ensure optimized for small N
+    inline T norminf() const
+    {
+        T ret = 0;
+        for (size_t i = 0; i < N; ++i)
+            ret = std::max(ret,vec[i]);
+        return ret;
+    }
 };
 
-template <typename T>
-std::ostream& operator<<(std::ostream& os, const Point2D<T>& p)
+// affine transformation in N dimensions
+template <typename T, size_t N>
+class Affine
 {
-    os << "(" << p.x << "," << p.y << ")";
+    static_assert(N > 0 && N < 100);
+private:
+    Point<T,N> A[N]; // linear transformation A*x + b
+    Point<T,N> b;    // A as array of its rows
+public:
+    Affine(): A(), b()
+    {
+        for (size_t i = 0; i < N; ++i)
+            A[i][i] = 1;
+    }
+    Affine(const T *A_, const T *b_) // from length N*N and N arrays
+    {
+        b = Point<T,N>(b_);
+        for (size_t i = 0; i < N; ++i)
+            A[i] = Point<T,N>(A_+(N*i));
+    }
+    Affine(const Json& j) // {"A": [2d array], "b": [1d array]}}
+    {
+        JsonObject jo = j.objectValue();
+        if (jo.find("A") == jo.end()) // use identity matrix
+        {
+            for (size_t i = 0; i < N; ++i)
+            {
+                A[i] = Point<T,N>();
+                A[i][i] = 1;
+            }
+        }
+        else
+        {
+            JsonArray ja = jo["A"].arrayValue();
+            if (ja.size() != N)
+                throw std::runtime_error("affine: incorrect size");
+            for (size_t i = 0; i < N; ++i)
+                A[i] = Point<T,N>(ja[i]);
+        }
+        if (jo.find("b") == jo.end()) // use 0
+            b = Point<T,N>();
+        else
+            b = Point<T,N>(jo["b"]);
+    }
+    inline const Point<T,N>& operator[](size_t i) const
+    {
+        return A[i];
+    }
+    inline const Point<T,N>* getA() const
+    {
+        return A;
+    }
+    inline const Point<T,N>& getB() const
+    {
+        return b;
+    }
+    // TODO ensure loop is unrolled for small N
+    inline Point<T,N> apply_to(const Point<T,N>& x) const
+    {
+        Point<T,N> ret(b);
+        for (size_t i = 0; i < N; ++i)
+            ret[i] += A[i] * x;
+        return ret;
+    }
+};
+
+template <typename T, size_t N>
+std::ostream& operator<<(std::ostream& os, const Point<T,N>& p)
+{
+    os << "(" << p[0];
+    for (size_t i = 1; i < N; ++i)
+        os << "," << p[i];
+    os << ")";
     return os;
 }
 
-template <typename T>
-std::ostream& operator<<(std::ostream& os, const Point3D<T>& p)
+template <typename T, size_t N>
+std::ostream& operator<<(std::ostream& os, const Affine<T,N>& a)
 {
-    os << "(" << p.x << "," << p.y << "," << p.z << ")";
+    os << "{A=[" << a[0];
+    for (size_t i = 1; i < N; ++i)
+        os << "," << a[i];
+    os << "],b=" << a.getB() << "}";
     return os;
 }
-
-// parameters for affine transformation (x,y) -> (a*x+b*y+c,d*x+e*y+f)
-template <typename T> struct Affine2D
-{
-    T a, b, c, d, e, f;
-    // default to (x,y) -> (x,y)
-    Affine2D(): a(1.0),b(0.0),c(0.0),
-                d(0.0),e(1.0),f(0.0) {}
-    // take 6 arguments
-    Affine2D(T a, T b, T c, T d, T e, T f):
-        a(a),b(b),c(c),d(d),e(e),f(f) {}
-    inline Point2D<T> apply_to(Point2D<T> p) const
-    { return Point2D<T>(a*p.x + b*p.y + c,
-                        d*p.x + e*p.y + f); }
-};
-
-template <typename T> struct Affine3D
-{
-    T a, b, c, d, e, f, g, h, i, j, k, l;
-    Affine3D(): a(1.0),b(0.0),c(0.0),d(0.0),
-                e(0.0),f(1.0),g(0.0),h(0.0),
-                i(0.0),j(0.0),k(1.0),l(0.0) {}
-    Affine3D(T a, T b, T c, T d, T e, T f, T g, T h, T i, T j, T k, T l):
-        a(a),b(b),c(c),d(d),e(e),f(f),g(g),h(h),i(i),j(j),k(k),l(l) {}
-    inline Point3D<T> apply_to(Point3D<T> p) const
-    { return Point3D<T>(a*p.x + b*p.y + c*p.z + d,
-                        e*p.x + f*p.y + g*p.z + h,
-                        i*p.x + j*p.y + k*p.z + l); }
-};
 
 // forward declarations for renderer.hpp
-template <typename num_t, typename rand_t> struct XFormVar;
-template <typename num_t, typename rand_t> class XForm;
-template <typename num_t, typename rand_t> class Flame;
+template <typename num_t, size_t dims, typename rand_t> struct XFormVar;
+template <typename num_t, size_t dims, typename rand_t> class XForm;
+template <typename num_t, size_t dims, typename rand_t> class Flame;
 template <typename num_t, typename hist_t, typename rand_t>
 class RendererBasic;
+
+// iterator state used by variation functions, defined with renderer
+template <typename num_t,
+          size_t dims = 2,
+          typename rand_t = Isaac<u32,4>> struct IterState;
 
 // precalc flags for renderer and variations
 /*
