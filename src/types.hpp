@@ -114,11 +114,13 @@ public:
         memcpy(vec,x_,sizeof(vec));
     }
     // TODO remove, temporary to make variations.hpp compile
+    /*
     Point(T x, T y) { vec[0] = x; vec[1] = y; }
     inline T r() { return hypot(vec[0],vec[1]); }
     inline T r2() { return vec[0]*vec[0] + vec[1]*vec[1]; }
     inline T atanxy() { return atan2(vec[0],vec[1]); }
     inline T atanyx() { return atan2(vec[1],vec[0]); }
+    */
     Point(const Json& j)
     {
         JsonArray a = j.arrayValue();
@@ -227,6 +229,14 @@ public:
     friend inline Point<T,N> operator/(T k, const Point<T,N>& a)
     {
         return a/k;
+    }
+    // map each coordinate under the same function
+    inline Point<T,N> map(std::function<T(T)> func) const
+    {
+        Point<T,N> ret;
+        for (size_t i = 0; i < N; ++i)
+            ret[i] = func(vec[i]);
+        return ret;
     }
     // 2-norm, TODO hypot for N=2
     inline T norm2() const

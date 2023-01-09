@@ -119,20 +119,19 @@ public:
         {
             XFormVar<num_t,dims,rand_t> var;
             std::string name = varj["name"].stringValue();
-            auto fitr = flame::vars<num_t,dims,rand_t>::data.find(name);
-            if (fitr == flame::vars<num_t,dims,rand_t>::data.end())
-                throw std::runtime_error("unknown variation");
-            var.func = fitr->second.func;
+            const VarInfo<num_t,dims,rand_t>& varinfo =
+                Variations<num_t,dims,rand_t>::get(name);
+            var.func = varinfo.func;
             var.index = varp.size();
             num_t weight = varj["weight"].floatValue();
             if (weight == 0.0)
                 continue; // skip zero weight variations
             vars.push_back(var);
-            if (fitr->second.params) // store other parameters
-                fitr->second.params(*this,varj,weight,varp);
+            if (varinfo.params) // store other parameters
+                varinfo.params(*this,varj,weight,varp);
             else // store just the weight by default
                 varp.push_back(weight);
-            pc_flags |= fitr->second.pc_flags;
+            pc_flags |= varinfo.pc_flags;
         }
     }
     // optimize xform
