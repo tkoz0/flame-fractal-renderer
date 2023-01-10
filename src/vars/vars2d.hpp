@@ -48,8 +48,7 @@ const VarData<num_t,2,rand_t> vars2d<num_t,rand_t>::data = {
             num_t sr,cr;
             sincosg(state.t.norm2sq(),&sr,&cr);
             num_t x = state.t.x(), y = state.t.y();
-            // TODO FIXME need n-arg constructor
-            //state.v += weight * Point<num_t,2>(sr*x-cr*y,cr*x+sr*y);
+            state.v += weight * Point<num_t,2>(sr*x-cr*y,cr*x+sr*y);
         }
     )},
     {"horseshoe",VarInfo<num_t,2,rand_t>(
@@ -58,8 +57,7 @@ const VarData<num_t,2,rand_t> vars2d<num_t,rand_t>::data = {
             num_t weight = params[0];
             num_t r = weight / (state.t.norm2() + eps<num_t>::value);
             num_t x = state.t.x(), y = state.t.y();
-            // TODO FIXME need n-arg constructor
-            //state.v += r * Point<num_t,2>((x-y)*(x+y),2.0*x*y);
+            state.v += r * Point<num_t,2>((x-y)*(x+y),2.0*x*y);
         }
     )}
 };

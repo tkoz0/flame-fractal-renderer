@@ -97,30 +97,36 @@ template <typename T> inline bool bad_value(T n)
 template <typename T, size_t N> struct Affine;
 template <typename T, size_t N> struct Point;
 
+// variadic template all same type
+// https://www.fluentcpp.com/2019/01/25/variadic-number-function-parameters-type/
+template <bool...> struct bool_pack{};
+template <typename...Ts>
+using vconj = std::is_same<bool_pack<true,Ts::value...>,
+                           bool_pack<Ts::value...,true>>;
+// all of Ts same as T
+template <typename T, typename...Ts>
+using vallsame = vconj<std::is_same<T,Ts>...>;
+// all of Ts convertible to T
+template <typename T, typename...Ts>
+using vallconv = vconj<std::is_convertible<T,Ts>...>;
+
 // point in N dimension space, using number type T
 template <typename T, size_t N>
 class Point
 {
     static_assert(N > 0 && N < 100);
 private:
-    T vec[N];
+    std::array<T,N> vec;
 public:
     Point()
     {
-        memset(vec,0,sizeof(vec));
+        vec = std::array<T,N>();
     }
-    Point(const T *x_) // from length N array
+    Point(const T x_[N]) // from length N array
     {
-        memcpy(vec,x_,sizeof(vec));
+        for (size_t i = 0; i < N; ++i)
+            vec[i] = x_[i];
     }
-    // TODO remove, temporary to make variations.hpp compile
-    /*
-    Point(T x, T y) { vec[0] = x; vec[1] = y; }
-    inline T r() { return hypot(vec[0],vec[1]); }
-    inline T r2() { return vec[0]*vec[0] + vec[1]*vec[1]; }
-    inline T atanxy() { return atan2(vec[0],vec[1]); }
-    inline T atanyx() { return atan2(vec[1],vec[0]); }
-    */
     Point(const Json& j)
     {
         JsonArray a = j.arrayValue();
@@ -136,14 +142,29 @@ public:
                 throw std::runtime_error("point: not a number");
         }
     }
-    // TODO constructor taking N args of type T
+    Point(const std::array<T,N>& x_): vec(x_) {}
+    // Variadic templated constructor with N arguments
+    // U,Us... to require >= 1 argument so no ambiguity results
+    // argumuent types can be anything that can be casted to type T
+    // using dummy argumuent for SFINAE
+    // - U (1) + Us (N-1) == length N
+    // - U and Us... are convertible to T
+    template <typename U, typename...Us, typename std::enable_if<
+        sizeof...(Us) == N-1
+        && std::is_convertible<U,T>::value
+        && vallconv<T,Us...>::value, size_t>::type = 0>
+    Point(U u, Us... us)
+    {
+        // explicitly cast all to type T for initializer list
+        vec = {(T) u, (T) us...};
+    }
     Point(const Point<T,N>& p)
     {
-        memcpy(vec,p.vec,sizeof(vec));
+        vec = p.vec;
     }
     inline Point<T,N>& operator=(const Point<T,N>& p)
     {
-        memcpy(vec,p.vec,sizeof(vec));
+        vec = p.vec;
         return *this;
     }
     inline Point<T,N>& operator+=(const Point<T,N>& p)
