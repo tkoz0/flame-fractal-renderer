@@ -87,6 +87,40 @@ private:
         num_t r1 = weight / r;
         state.v += r1 * Point<num_t,2>(ca+sr,sa-cr);
     }
+    // from flam3, angle modified
+    static void hyperbolic(IterState<num_t,2,rand_t>& state, const num_t *params)
+    {
+        num_t weight = params[0];
+        num_t r = state.t.norm2() + eps<num_t>::value;
+        num_t a = atan2(state.t.y(),state.t.x());
+        num_t sa,ca;
+        sincosg(a,&sa,&ca);
+        state.v += weight * Point<num_t,2>(sa/r,ca*r);
+    }
+    // from flam3, angle modified
+    static void diamond(IterState<num_t,2,rand_t>& state, const num_t *params)
+    {
+        num_t weight = params[0];
+        num_t a = atan2(state.t.y(),state.t.x());
+        num_t sa,ca;
+        sincosg(a,&sa,&ca);
+        num_t r = state.t.norm2();
+        num_t sr,cr;
+        sincosg(r,&sr,&cr);
+        state.v += weight * Point<num_t,2>(sa*cr,ca*sr);
+    }
+    // from flam3, angle modified
+    static void ex(IterState<num_t,2,rand_t>& state, const num_t *params)
+    {
+        num_t weight = params[0];
+        num_t a = atan2(state.t.y(),state.t.x());
+        num_t r = state.t.norm2();
+        num_t n0 = sin(a+r);
+        num_t n1 = cos(a-r);
+        num_t m0 = n0*n0*n0 * r;
+        num_t m1 = n1*n1*n1 * r;
+        state.v += weight * Point<num_t,2>(m0+m1,m0-m1);
+    }
 public:
     static const VarData<num_t,2,rand_t> make_data()
     {
@@ -98,6 +132,9 @@ public:
         vardata["heart"] = VarInfo<num_t,2,rand_t>(heart);
         vardata["disc"] = VarInfo<num_t,2,rand_t>(disc);
         vardata["spiral"] = VarInfo<num_t,2,rand_t>(spiral);
+        vardata["hyperbolic"] = VarInfo<num_t,2,rand_t>(hyperbolic);
+        vardata["diamond"] = VarInfo<num_t,2,rand_t>(diamond);
+        vardata["ex"] = VarInfo<num_t,2,rand_t>(ex);
         return vardata;
     }
 };
