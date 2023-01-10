@@ -33,6 +33,8 @@ planned options (not available yet):
 #include "variations.hpp"
 #include "utils.hpp"
 
+const std::string VERSION = "unspecified";
+
 namespace bpo = boost::program_options;
 typedef float num_t; // can also be double (slower)
 typedef Isaac<u32,4> rand_t; // can also be JavaRandom (about same speed)
@@ -138,7 +140,11 @@ int main(int argc, char **argv)
             return 1;
         }
     }
+    std::cerr << "=== FFBUF version " << VERSION << " ===" << std::endl;
+    std::cerr << "2d variations: "
+        << tkoz::flame::Variations<num_t,2,rand_t>::size() << std::endl;
     // print options
+    std::cerr << "command line arguments:" << std::endl;
     std::cerr << "ffbuf" << std::endl;
     std::cerr << "--flame: " << arg_flame << std::endl;
     std::cerr << "--input: " << arg_input << std::endl;

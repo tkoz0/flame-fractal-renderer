@@ -70,7 +70,8 @@ struct IterState<num_t,dims,Isaac<word_t,rparam>>
     }
 };
 
-template <typename num_t, size_t dims, typename rand_t> struct XFormVar
+template <typename num_t, size_t dims, typename rand_t>
+struct XFormVar
 {
     // function pointer
     std::function<void(IterState<num_t,dims,rand_t>&,const num_t*)> func;
@@ -80,7 +81,8 @@ template <typename num_t, size_t dims, typename rand_t> struct XFormVar
 };
 
 // xform (including final xform)
-template <typename num_t, size_t dims, typename rand_t> class XForm
+template <typename num_t, size_t dims, typename rand_t>
+class XForm
 {
 private:
     num_t weight; // xform probability weight, not applicable for final xform
@@ -120,18 +122,19 @@ public:
             XFormVar<num_t,dims,rand_t> var;
             std::string name = varj["name"].stringValue();
             const VarInfo<num_t,dims,rand_t>& varinfo =
+                //vars2d<num_t,rand_t>::data.at(name);
                 Variations<num_t,dims,rand_t>::get(name);
-            var.func = varinfo.func;
+            var.func = varinfo.getFPtr();
             var.index = varp.size();
             num_t weight = varj["weight"].floatValue();
             if (weight == 0.0)
                 continue; // skip zero weight variations
             vars.push_back(var);
-            if (varinfo.params) // store other parameters
-                varinfo.params(*this,varj,weight,varp);
+            if (varinfo.getPPtr()) // store other parameters
+                varinfo.getPPtr()(*this,varj,weight,varp);
             else // store just the weight by default
                 varp.push_back(weight);
-            pc_flags |= varinfo.pc_flags;
+            pc_flags |= varinfo.getPCFlags();
         }
     }
     // optimize xform
@@ -161,7 +164,8 @@ public:
 };
 
 // flame fractal
-template <typename num_t, size_t dims, typename rand_t> class Flame
+template <typename num_t, size_t dims, typename rand_t>
+class Flame
 {
 private:
     size_t size_x,size_y; // dimensions
