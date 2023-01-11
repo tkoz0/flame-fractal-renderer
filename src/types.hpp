@@ -15,6 +15,10 @@ Types for flame fractal renderer. In templates, num_t is float or double.
 #include "jrand.hpp"
 #include "json_small.hpp"
 
+// macros for using SFINAE
+#define ENABLE_IF(COND,RET) template <typename RET2 = RET> \
+    typename std::enable_if<(COND),RET2>::type
+
 namespace tkoz
 {
 namespace flame
@@ -110,6 +114,17 @@ using vallsame = vconj<std::is_same<T,Ts>...>;
 template <typename T, typename...Ts>
 using vallconv = vconj<std::is_convertible<T,Ts>...>;
 
+#define ARR2 std::array<T,2>
+#define ARR3 std::array<T,3>
+
+// similar to std::enable_if but for > 2 cases of function specialization
+template <size_t N1, size_t N2, typename T = void>
+struct enable_if_eq {};
+template <size_t N, typename T>
+struct enable_if_eq<N,N,T> { typedef T type; };
+#define ENABLE_IFEQ(N1,N2,RET) template <typename RET2 = RET> \
+    typename enable_if_eq<N1,N2,RET2>::type
+
 // point in N dimension space, using number type T
 template <typename T, size_t N>
 class Point
@@ -197,17 +212,30 @@ public:
     {
         return vec[i];
     }
-    inline T x() const
+    // x value (1st component)
+    ENABLE_IF(N>=1,T) inline x() const
     {
         return vec[0];
     }
-    inline T y() const
+    // y value (2nd component) (requires 2D)
+    ENABLE_IF(N>=2,T) inline y() const
     {
         return vec[1];
     }
-    inline T z() const
+    // z value (3rd component) (requires 3D)
+    ENABLE_IF(N>=3,T) inline z() const
     {
         return vec[2];
+    }
+    ENABLE_IF(N>=2,void) inline getXY(T& x_, T& y_) const
+    {
+        x_ = x();
+        y_ = y();
+    }
+    ENABLE_IF(N>=3,void) inline getXYZ(T& x_, T& y_, T& z_) const
+    {
+        getXY(x_,y_);
+        z_ = z();
     }
     friend inline Point<T,N> operator+(const Point<T,N>& a,
                                        const Point<T,N>& b)
@@ -259,11 +287,24 @@ public:
             ret[i] = func(vec[i]);
         return ret;
     }
-    // 2-norm, TODO hypot for N=2
-    inline T norm2() const
+    // fold left
+    inline T foldl(std::function<T(T,T)> func, T init = 0) const
     {
-        return sqrt(norm2sq());
+        for (size_t i = 0; i < N; ++i)
+            init = func(init,vec[i]);
+        return init;
     }
+    // fold right
+    inline T foldr(std::function<T(T,T)> func, T init = 0) const
+    {
+        for (size_t i = N-1; i--;)
+            init = func(vec[i],init);
+        return init;
+    }
+    // 2-norm functions
+    ENABLE_IFEQ(N,1,T) inline norm2() const { return abs(x()); }
+    ENABLE_IFEQ(N,2,T) inline norm2() const { return hypot(x(),y()); }
+    ENABLE_IFEQ(N,3,T) inline norm2() const { return sqrt(norm2sq()); }
     // 2-norm squared, TODO ensure loop is unrolled for small N
     inline T norm2sq() const
     {
@@ -277,7 +318,7 @@ public:
     {
         T ret = 0;
         for (size_t i = 0; i < N; ++i)
-            ret += vec[i];
+            ret += abs(vec[i]);
         return ret;
     }
     // inf-norm, TODO ensure optimized for small N
@@ -285,10 +326,49 @@ public:
     {
         T ret = 0;
         for (size_t i = 0; i < N; ++i)
-            ret = std::max(ret,vec[i]);
+            ret = std::max(ret,abs(vec[i]));
         return ret;
     }
+    // angle in xy plane
+    ENABLE_IF(N==2||N==3,T) inline angle() const
+    {
+        return atan2(y(),x());
+    }
+    // angle of inclination (with +z axis) in 3d sphereical coordinates
+    ENABLE_IF(N==3,T) inline inclination() const
+    {
+        return acos(z()/norm2());
+    }
+    // polar coordinates
+    ENABLE_IF(N==2,void) inline polar(T& radius, T& theta) const
+    {
+        radius = norm2();
+        theta = angle();
+    }
+    // spherical coordinates
+    ENABLE_IF(N==3,void) inline spherical(T& radius, T& theta, T& phi) const
+    {
+        radius = norm2();
+        theta = inclination();
+        phi = angle();
+    }
+    // get radius and sin,cos of angle
+    ENABLE_IF(N==2,void) inline getRadiusSinCos(T& r, T& s, T& c) const
+    {
+        r = norm2();
+        s = y() / r;
+        c = x() / r;
+    }
+    // get sin,cos of angle
+    ENABLE_IF(N==2,void) inline getSinCos(T& s, T& c) const
+    {
+        T r;
+        getRadiusSinCos(r,s,c);
+    }
 };
+
+#undef ARR2
+#undef ARR3
 
 // affine transformation in N dimensions
 template <typename T, size_t N>
@@ -401,3 +481,5 @@ unused code from previous C version
 
 }
 }
+
+#undef ENABLE_IF

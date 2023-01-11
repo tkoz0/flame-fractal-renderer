@@ -19,9 +19,8 @@ namespace flame
 
 // specialization for 2d
 template <typename num_t, typename rand_t>
-class VariationsSpecific<num_t,2,rand_t>
+struct VariationsSpecific<num_t,2,rand_t>
 {
-private:
     // from flam3
     static void swirl(IterState<num_t,2,rand_t>& state, const num_t *params)
     {
@@ -43,14 +42,14 @@ private:
     static void polar(IterState<num_t,2,rand_t>& state, const num_t *params)
     {
         num_t weight = params[0];
-        num_t a = atan2(state.t.y(),state.t.x());
+        num_t a = state.t.angle();
         state.v += weight * Point<num_t,2>(a*M_1_PI,state.t.norm2()-1.0);
     }
     // from flam3, angle modified
     static void handkerchief(IterState<num_t,2,rand_t>& state, const num_t *params)
     {
         num_t weight = params[0];
-        num_t a = atan2(state.t.y(),state.t.x());
+        num_t a = state.t.angle();
         num_t r = state.t.norm2();
         state.v += weight * r * Point<num_t,2>(sin(a+r),cos(a-r));
     }
@@ -59,7 +58,7 @@ private:
     {
         num_t weight = params[0];
         num_t r = state.t.norm2();
-        num_t a = atan2(state.t.y(),state.t.x());
+        num_t a = state.t.angle();
         num_t sa,ca;
         sincosg(r*a,&sa,&ca);
         state.v += weight * r * Point<num_t,2>(sa,-ca);
@@ -68,7 +67,7 @@ private:
     static void disc(IterState<num_t,2,rand_t>& state, const num_t *params)
     {
         num_t weight = params[0] * M_1_PI; // TODO optimize
-        num_t a = atan2(state.t.y(),state.t.x()) * weight;
+        num_t a = state.t.angle() * weight;
         num_t r = state.t.norm2();
         num_t sr,cr;
         sincosg(M_PI*r,&sr,&cr);
@@ -78,7 +77,7 @@ private:
     static void spiral(IterState<num_t,2,rand_t>& state, const num_t *params)
     {
         num_t weight = params[0];
-        num_t a = atan2(state.t.y(),state.t.x());
+        num_t a = state.t.angle();
         num_t sa,ca;
         sincosg(a,&sa,&ca);
         num_t r = state.t.norm2() + eps<num_t>::value;
@@ -92,7 +91,7 @@ private:
     {
         num_t weight = params[0];
         num_t r = state.t.norm2() + eps<num_t>::value;
-        num_t a = atan2(state.t.y(),state.t.x());
+        num_t a = state.t.angle();
         num_t sa,ca;
         sincosg(a,&sa,&ca);
         state.v += weight * Point<num_t,2>(sa/r,ca*r);
@@ -101,7 +100,7 @@ private:
     static void diamond(IterState<num_t,2,rand_t>& state, const num_t *params)
     {
         num_t weight = params[0];
-        num_t a = atan2(state.t.y(),state.t.x());
+        num_t a = state.t.angle();
         num_t sa,ca;
         sincosg(a,&sa,&ca);
         num_t r = state.t.norm2();
@@ -113,7 +112,7 @@ private:
     static void ex(IterState<num_t,2,rand_t>& state, const num_t *params)
     {
         num_t weight = params[0];
-        num_t a = atan2(state.t.y(),state.t.x());
+        num_t a = state.t.angle();
         num_t r = state.t.norm2();
         num_t n0 = sin(a+r);
         num_t n1 = cos(a-r);
@@ -121,7 +120,6 @@ private:
         num_t m1 = n1*n1*n1 * r;
         state.v += weight * Point<num_t,2>(m0+m1,m0-m1);
     }
-public:
     static const VarData<num_t,2,rand_t> make_data()
     {
         VarData<num_t,2,rand_t> vardata;

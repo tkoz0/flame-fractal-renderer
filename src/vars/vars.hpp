@@ -53,11 +53,9 @@ template <typename num_t, size_t dims, typename rand_t>
 using VarData = std::unordered_map<std::string,VarInfo<num_t,dims,rand_t>>;
 
 template <typename num_t, size_t dims, typename rand_t>
-class Variations
+struct Variations
 {
-private:
     static const VarData<num_t,dims,rand_t> vars;
-public:
     static const VarInfo<num_t,dims,rand_t>& get(const std::string& s)
     {
         try
@@ -77,9 +75,8 @@ public:
 
 // dimension generic variations
 template <typename num_t, size_t dims, typename rand_t>
-class VariationsGeneric
+struct VariationsGeneric
 {
-private:
     static void linear(IterState<num_t,dims,rand_t>& state, const num_t *params)
     {
         num_t weight = params[0];
@@ -96,7 +93,6 @@ private:
         num_t r = weight / (state.t.norm2sq() + eps<num_t>::value);
         state.v += r * state.t;
     }
-public:
     static const VarData<num_t,dims,rand_t> make_data()
     {
         VarData<num_t,dims,rand_t> vardata;
@@ -110,7 +106,7 @@ public:
 // dimension specific variations
 // specialize this class in separate files per dimension
 template <typename num_t, size_t dims, typename rand_t>
-class VariationsSpecific;
+struct VariationsSpecific;
 
 // combine dimension generic and dimension specific variations
 template <typename K, typename V, typename ...Maps>
