@@ -114,9 +114,6 @@ using vallsame = vconj<std::is_same<T,Ts>...>;
 template <typename T, typename...Ts>
 using vallconv = vconj<std::is_convertible<T,Ts>...>;
 
-#define ARR2 std::array<T,2>
-#define ARR3 std::array<T,3>
-
 // similar to std::enable_if but for > 2 cases of function specialization
 template <size_t N1, size_t N2, typename T = void>
 struct enable_if_eq {};
@@ -133,16 +130,17 @@ class Point
 private:
     std::array<T,N> vec;
 public:
-    Point()
+    inline Point()
     {
-        vec = std::array<T,N>();
+        for (size_t i = 0; i < N; ++i)
+            vec[i] = 0;
     }
-    Point(const T x_[N]) // from length N array
+    inline Point(const T x_[N]) // from length N array
     {
         for (size_t i = 0; i < N; ++i)
             vec[i] = x_[i];
     }
-    Point(const Json& j)
+    inline Point(const Json& j)
     {
         JsonArray a = j.arrayValue();
         if (a.size() != N)
@@ -157,7 +155,7 @@ public:
                 throw std::runtime_error("point: not a number");
         }
     }
-    Point(const std::array<T,N>& x_): vec(x_) {}
+    inline Point(const std::array<T,N>& x_): vec(x_) {}
     // Variadic templated constructor with N arguments
     // U,Us... to require >= 1 argument so no ambiguity results
     // argumuent types can be anything that can be casted to type T
@@ -168,18 +166,20 @@ public:
         sizeof...(Us) == N-1
         && std::is_convertible<U,T>::value
         && vallconv<T,Us...>::value, size_t>::type = 0>
-    Point(U u, Us... us)
+    inline Point(U u, Us... us)
     {
         // explicitly cast all to type T for initializer list
         vec = {(T) u, (T) us...};
     }
-    Point(const Point<T,N>& p)
+    inline Point(const Point<T,N>& p)
     {
-        vec = p.vec;
+        for (size_t i = 0; i < N; ++i)
+            vec[i] = p.vec[i];
     }
     inline Point<T,N>& operator=(const Point<T,N>& p)
     {
-        vec = p.vec;
+        for (size_t i = 0; i < N; ++i)
+            vec[i] = p.vec[i];
         return *this;
     }
     inline Point<T,N>& operator+=(const Point<T,N>& p)
@@ -367,17 +367,14 @@ public:
     }
 };
 
-#undef ARR2
-#undef ARR3
-
 // affine transformation in N dimensions
 template <typename T, size_t N>
 class Affine
 {
     static_assert(N > 0 && N < 100);
 private:
-    Point<T,N> A[N]; // linear transformation A*x + b
-    Point<T,N> b;    // A as array of its rows
+    std::array<Point<T,N>,N> A; // linear transformation A*x + b
+    Point<T,N> b;               // A as array of its rows
 public:
     Affine(): A(), b()
     {
@@ -418,7 +415,7 @@ public:
     {
         return A[i];
     }
-    inline const Point<T,N>* getA() const
+    inline const std::array<Point<T,N>,N>& getA() const
     {
         return A;
     }

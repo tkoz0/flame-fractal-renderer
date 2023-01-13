@@ -77,28 +77,56 @@ struct Variations
 template <typename num_t, size_t dims, typename rand_t>
 struct VariationsGeneric
 {
-    static void linear(IterState<num_t,dims,rand_t>& state, const num_t *params)
+    // typedefs for convenience
+    typedef IterState<num_t,dims,rand_t> state_t;
+    typedef const num_t* params_t;
+    typedef VarInfo<num_t,dims,rand_t> info_t;
+    typedef const XForm<num_t,dims,rand_t> xform_t;
+    // from flam3
+    static void linear(state_t& state, params_t params)
     {
         num_t weight = params[0];
         state.v += weight * state.t;
     }
-    static void sinusoidal(IterState<num_t,dims,rand_t>& state, const num_t *params)
+    // from flam3
+    static void sinusoidal(state_t& state, params_t params)
     {
         num_t weight = params[0];
         state.v += weight * state.t.map([](num_t x){ return sin(x); });
     }
-    static void spherical(IterState<num_t,dims,rand_t>& state, const num_t *params)
+    // from flam3
+    static void spherical(state_t& state, params_t params)
     {
         num_t weight = params[0];
         num_t r = weight / (state.t.norm2sq() + eps<num_t>::value);
         state.v += r * state.t;
     }
+    // based on bent2 from flam3
+    static void bent(state_t& state, params_t params)
+    {
+        num_t weight = params[0];
+        ++params;
+        Point<num_t,dims> vec = state.t;
+        for (size_t i = 0; i < dims; ++i)
+            if (vec[i] < 0)
+                vec[i] *= params[i];
+        state.v += weight * vec;
+    }
+    static void bent_parser(xform_t& xform, const Json& json, num_t weight,
+            std::vector<num_t>& params)
+    {
+        params.push_back(weight);
+        Point<num_t,dims> vec(json["params"]);
+        for (size_t i = 0; i < dims; ++i)
+            params.push_back(vec[i]);
+    }
     static const VarData<num_t,dims,rand_t> make_data()
     {
         VarData<num_t,dims,rand_t> vardata;
-        vardata["linear"] = VarInfo<num_t,dims,rand_t>(linear);
-        vardata["sinusoidal"] = VarInfo<num_t,dims,rand_t>(sinusoidal);
-        vardata["spherical"] = VarInfo<num_t,dims,rand_t>(spherical);
+        vardata["linear"] = info_t(linear);
+        vardata["sinusoidal"] = info_t(sinusoidal);
+        vardata["spherical"] = info_t(spherical);
+        vardata["bent"] = info_t(bent,bent_parser);
         return vardata;
     }
 };

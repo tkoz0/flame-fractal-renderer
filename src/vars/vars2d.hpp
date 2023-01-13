@@ -21,32 +21,37 @@ namespace flame
 template <typename num_t, typename rand_t>
 struct VariationsSpecific<num_t,2,rand_t>
 {
+    typedef IterState<num_t,2,rand_t> state_t;
+    typedef const num_t* params_t;
+    typedef VarInfo<num_t,2,rand_t> info_t;
     // from flam3
-    static void swirl(IterState<num_t,2,rand_t>& state, const num_t *params)
+    static void swirl(state_t& state, params_t params)
     {
         num_t weight = params[0];
         num_t sr,cr;
         sincosg(state.t.norm2sq(),&sr,&cr);
-        num_t x = state.t.x(), y = state.t.y();
+        num_t x,y;
+        state.t.getXY(x,y);
         state.v += weight * Point<num_t,2>(sr*x-cr*y,cr*x+sr*y);
     }
     // from flam3
-    static void horseshoe(IterState<num_t,2,rand_t>& state, const num_t *params)
+    static void horseshoe(state_t& state, params_t params)
     {
         num_t weight = params[0];
         num_t r = weight / (state.t.norm2() + eps<num_t>::value);
-        num_t x = state.t.x(), y = state.t.y();
+        num_t x,y;
+        state.t.getXY(x,y);
         state.v += r * Point<num_t,2>((x-y)*(x+y),2.0*x*y);
     }
     // from flam3, angle modified
-    static void polar(IterState<num_t,2,rand_t>& state, const num_t *params)
+    static void polar(state_t& state, params_t params)
     {
         num_t weight = params[0];
         num_t a = state.t.angle();
         state.v += weight * Point<num_t,2>(a*M_1_PI,state.t.norm2()-1.0);
     }
     // from flam3, angle modified
-    static void handkerchief(IterState<num_t,2,rand_t>& state, const num_t *params)
+    static void handkerchief(state_t& state, params_t params)
     {
         num_t weight = params[0];
         num_t a = state.t.angle();
@@ -54,7 +59,7 @@ struct VariationsSpecific<num_t,2,rand_t>
         state.v += weight * r * Point<num_t,2>(sin(a+r),cos(a-r));
     }
     // from flam3, angle modified
-    static void heart(IterState<num_t,2,rand_t>& state, const num_t *params)
+    static void heart(state_t& state, params_t params)
     {
         num_t weight = params[0];
         num_t r = state.t.norm2();
@@ -64,7 +69,7 @@ struct VariationsSpecific<num_t,2,rand_t>
         state.v += weight * r * Point<num_t,2>(sa,-ca);
     }
     // from flam3, angle modified
-    static void disc(IterState<num_t,2,rand_t>& state, const num_t *params)
+    static void disc(state_t& state, params_t params)
     {
         num_t weight = params[0] * M_1_PI; // TODO optimize
         num_t a = state.t.angle() * weight;
@@ -74,42 +79,38 @@ struct VariationsSpecific<num_t,2,rand_t>
         state.v += a * Point<num_t,2>(sr,cr);
     }
     // from flam3, angle modified
-    static void spiral(IterState<num_t,2,rand_t>& state, const num_t *params)
+    static void spiral(state_t& state, params_t params)
     {
         num_t weight = params[0];
-        num_t a = state.t.angle();
-        num_t sa,ca;
-        sincosg(a,&sa,&ca);
-        num_t r = state.t.norm2() + eps<num_t>::value;
+        num_t r,sa,ca;
+        state.t.getRadiusSinCos(r,sa,ca);
+        r += eps<num_t>::value;
         num_t sr,cr;
         sincosg(r,&sr,&cr);
         num_t r1 = weight / r;
         state.v += r1 * Point<num_t,2>(ca+sr,sa-cr);
     }
     // from flam3, angle modified
-    static void hyperbolic(IterState<num_t,2,rand_t>& state, const num_t *params)
+    static void hyperbolic(state_t& state, params_t params)
     {
         num_t weight = params[0];
-        num_t r = state.t.norm2() + eps<num_t>::value;
-        num_t a = state.t.angle();
-        num_t sa,ca;
-        sincosg(a,&sa,&ca);
+        num_t r,sa,ca;
+        state.t.getRadiusSinCos(r,sa,ca);
+        r += eps<num_t>::value;
         state.v += weight * Point<num_t,2>(sa/r,ca*r);
     }
     // from flam3, angle modified
-    static void diamond(IterState<num_t,2,rand_t>& state, const num_t *params)
+    static void diamond(state_t& state, params_t params)
     {
         num_t weight = params[0];
-        num_t a = state.t.angle();
-        num_t sa,ca;
-        sincosg(a,&sa,&ca);
-        num_t r = state.t.norm2();
+        num_t r,sa,ca;
+        state.t.getRadiusSinCos(r,sa,ca);
         num_t sr,cr;
         sincosg(r,&sr,&cr);
         state.v += weight * Point<num_t,2>(sa*cr,ca*sr);
     }
     // from flam3, angle modified
-    static void ex(IterState<num_t,2,rand_t>& state, const num_t *params)
+    static void ex(state_t& state, params_t params)
     {
         num_t weight = params[0];
         num_t a = state.t.angle();
@@ -123,16 +124,16 @@ struct VariationsSpecific<num_t,2,rand_t>
     static const VarData<num_t,2,rand_t> make_data()
     {
         VarData<num_t,2,rand_t> vardata;
-        vardata["swirl"] = VarInfo<num_t,2,rand_t>(swirl);
-        vardata["horseshoe"] = VarInfo<num_t,2,rand_t>(horseshoe);
-        vardata["polar"] = VarInfo<num_t,2,rand_t>(polar);
-        vardata["handkerchief"] = VarInfo<num_t,2,rand_t>(handkerchief);
-        vardata["heart"] = VarInfo<num_t,2,rand_t>(heart);
-        vardata["disc"] = VarInfo<num_t,2,rand_t>(disc);
-        vardata["spiral"] = VarInfo<num_t,2,rand_t>(spiral);
-        vardata["hyperbolic"] = VarInfo<num_t,2,rand_t>(hyperbolic);
-        vardata["diamond"] = VarInfo<num_t,2,rand_t>(diamond);
-        vardata["ex"] = VarInfo<num_t,2,rand_t>(ex);
+        vardata["swirl"] = info_t(swirl);
+        vardata["horseshoe"] = info_t(horseshoe);
+        vardata["polar"] = info_t(polar);
+        vardata["handkerchief"] = info_t(handkerchief);
+        vardata["heart"] = info_t(heart);
+        vardata["disc"] = info_t(disc);
+        vardata["spiral"] = info_t(spiral);
+        vardata["hyperbolic"] = info_t(hyperbolic);
+        vardata["diamond"] = info_t(diamond);
+        vardata["ex"] = info_t(ex);
         return vardata;
     }
 };

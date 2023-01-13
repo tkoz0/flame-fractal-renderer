@@ -37,7 +37,7 @@ const std::string VERSION = "unspecified";
 
 namespace bpo = boost::program_options;
 typedef float num_t; // can also be double (slower)
-typedef Isaac<u32,4> rand_t; // can also be JavaRandom (about same speed)
+typedef Isaac<u32,6> rand_t; // can also be JavaRandom (about same speed)
 
 int main(int argc, char **argv)
 {
@@ -58,8 +58,8 @@ int main(int argc, char **argv)
             "bit depth for png or pgm output (8 or 16) (default 8)")
         ("threads,T",bpo::value<size_t>()->default_value(1),
             "number of threads to use (default 1)")
-        ("batch_size,z",bpo::value<size_t>()->default_value(250000),
-            "multithreading batch size (default 250000)")
+        ("batch_size,z",bpo::value<size_t>()->default_value(65536),
+            "multithreading batch size (default 65536)")
         ("bad_values,B",bpo::value<size_t>()->default_value(10),
             "bad value limit for terminating render (default 10)")
         ("scaler,m",bpo::value<std::string>()->default_value("log"),
@@ -111,9 +111,9 @@ int main(int argc, char **argv)
         std::cerr << "error: must use between 1 and 128 threads" << std::endl;
         return 1;
     }
-    if (arg_batch_size < (1<<12) || arg_batch_size > (1<<30))
+    if (arg_batch_size < (1<<8) || arg_batch_size > (1<<30))
     {
-        std::cerr << "error: batch size < 2^12 or > 2^30" << std::endl;
+        std::cerr << "error: batch size < 2^8 or > 2^30" << std::endl;
         return 1;
     }
     if (arg_bad_values < 1)
@@ -209,24 +209,29 @@ int main(int argc, char **argv)
     if (arg_samples)
     {
         std::cerr << "render start" << std::endl;
+        std::cerr << "rendering...";
         struct timespec t1,t2;
         clock_gettime(CLOCK_MONOTONIC,&t1);
-        size_t prev_percent = 0;
+        i32 prev_percent = -1;
+        size_t prev_tsec = t1.tv_sec;
         //renderer.renderBuffer(arg_samples,rng);
         renderer.renderBufferParallel(arg_samples,arg_threads,
             arg_batch_size,arg_bad_values,
-            [&prev_percent,&t1,&t2](float p)
+            [&prev_percent,&prev_tsec,&t1,&t2](float p)
             {
                 clock_gettime(CLOCK_MONOTONIC,&t2);
                 size_t nsecs = 1000000000uLL*(t2.tv_sec-t1.tv_sec)
                     +(t2.tv_nsec-t1.tv_nsec);
                 size_t secs = nsecs/1000000000;
-                size_t percent = (size_t)(100.0*p);
-                if (percent > prev_percent) // only output when it changes
+                i32 percent = (i32)(100.0*p);
+                size_t tsec = t2.tv_sec;
+                // output when % changes or every second
+                if (percent > prev_percent || tsec > prev_tsec)
                 {
                     std::cerr << '\r' << "rendering... " << percent << "% ("
                         << secs << " sec elapsed)";
                     prev_percent = percent;
+                    prev_tsec = tsec;
                 }
             },
             [](std::thread& thread, size_t index)
