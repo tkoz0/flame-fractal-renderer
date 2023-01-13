@@ -82,6 +82,9 @@ struct VariationsGeneric
     typedef const num_t* params_t;
     typedef VarInfo<num_t,dims,rand_t> info_t;
     typedef const XForm<num_t,dims,rand_t> xform_t;
+    typedef VarData<num_t,dims,rand_t> data_t;
+    typedef Point<num_t,dims> vec_t;
+    static constexpr num_t eps = tkoz::flame::eps<num_t>::value;
     // from flam3
     static void linear(state_t& state, params_t params)
     {
@@ -98,7 +101,7 @@ struct VariationsGeneric
     static void spherical(state_t& state, params_t params)
     {
         num_t weight = params[0];
-        num_t r = weight / (state.t.norm2sq() + eps<num_t>::value);
+        num_t r = weight / (state.t.norm2sq() + eps);
         state.v += r * state.t;
     }
     // based on bent2 from flam3
@@ -106,7 +109,7 @@ struct VariationsGeneric
     {
         num_t weight = params[0];
         ++params;
-        Point<num_t,dims> vec = state.t;
+        vec_t vec = state.t;
         for (size_t i = 0; i < dims; ++i)
             if (vec[i] < 0)
                 vec[i] *= params[i];
@@ -115,14 +118,15 @@ struct VariationsGeneric
     static void bent_parser(xform_t& xform, const Json& json, num_t weight,
             std::vector<num_t>& params)
     {
+        (void)xform;
         params.push_back(weight);
-        Point<num_t,dims> vec(json["params"]);
+        vec_t vec(json["params"]);
         for (size_t i = 0; i < dims; ++i)
             params.push_back(vec[i]);
     }
-    static const VarData<num_t,dims,rand_t> make_data()
+    static const data_t make_data()
     {
-        VarData<num_t,dims,rand_t> vardata;
+        data_t vardata;
         vardata["linear"] = info_t(linear);
         vardata["sinusoidal"] = info_t(sinusoidal);
         vardata["spherical"] = info_t(spherical);

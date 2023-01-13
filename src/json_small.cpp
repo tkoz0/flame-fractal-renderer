@@ -4,13 +4,18 @@ Json::Json()
 {
 }
 
+Json::Json(const Json& json):
+    nlohmann::json(static_cast<const nlohmann::json&>(json))
+{
+}
+
 Json::Json(std::istream& input):
-        nlohmann::json(nlohmann::json::parse(input,nullptr,true,true))
+    nlohmann::json(nlohmann::json::parse(input,nullptr,true,true))
 {
 }
 
 Json::Json(const std::string& input):
-        nlohmann::json(nlohmann::json::parse(input,nullptr,true,true))
+    nlohmann::json(nlohmann::json::parse(input,nullptr,true,true))
 {
 }
 

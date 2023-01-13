@@ -28,6 +28,8 @@ public:
     // create json object from input stream or string
     // create empty JSON
     Json();
+    // copy constructor
+    Json(const Json& json);
     // create JSON from input stream
     Json(std::istream& input);
     // create JSON from string

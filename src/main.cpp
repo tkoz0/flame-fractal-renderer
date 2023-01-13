@@ -209,7 +209,6 @@ int main(int argc, char **argv)
     if (arg_samples)
     {
         std::cerr << "render start" << std::endl;
-        std::cerr << "rendering...";
         struct timespec t1,t2;
         clock_gettime(CLOCK_MONOTONIC,&t1);
         i32 prev_percent = -1;
@@ -228,7 +227,7 @@ int main(int argc, char **argv)
                 // output when % changes or every second
                 if (percent > prev_percent || tsec > prev_tsec)
                 {
-                    std::cerr << '\r' << "rendering... " << percent << "% ("
+                    std::cerr << "\r" << "rendering... " << percent << "% ("
                         << secs << " sec elapsed)";
                     prev_percent = percent;
                     prev_tsec = tsec;
@@ -237,9 +236,9 @@ int main(int argc, char **argv)
             [](std::thread& thread, size_t index)
             {
                 std::cerr << "starting thread " << index << " ("
-                    << thread.get_id() << ')' << std::endl;
+                    << thread.get_id() << ")" << std::endl;
             });
-        std::cerr << '\r' << "rendering... 100%" << std::endl;
+        std::cerr << "\r" << "rendering... 100%" << std::endl;
         clock_gettime(CLOCK_MONOTONIC,&t2);
         size_t nsecs = 1000000000uLL*(t2.tv_sec-t1.tv_sec)
             +(t2.tv_nsec-t1.tv_nsec);
