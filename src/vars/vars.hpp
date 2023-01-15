@@ -21,7 +21,11 @@ namespace flame
 
 // base case, 0 arguments
 template <typename num_t>
-void getParams_helper(const num_t *params, size_t n) { (void)params; (void)n; }
+void getParams_helper(const num_t *params, size_t n)
+{
+    (void)params;
+    (void)n;
+}
 
 // helper with argument for array index, >=1 arguments
 template <typename num_t, typename T, typename...Ts>
@@ -36,6 +40,33 @@ template <typename num_t, typename...Ts>
 void getParams(const num_t *params, Ts&... ps)
 {
     getParams_helper(params,0,ps...);
+}
+
+// push_back multiple values to the params vector
+template <typename num_t>
+void storeParams(std::vector<num_t>& params)
+{
+    (void)params;
+}
+
+template <typename num_t, typename T, typename...Ts>
+void storeParams(std::vector<num_t>& params, T p, Ts... ps)
+{
+    params.push_back(p);
+    storeParams(params,ps...);
+}
+
+// extract values from json to store in referencesk
+void getParamsJson(const Json& j)
+{
+    (void)j;
+}
+
+template <typename K, typename V, typename...Ts>
+void getParamsJson(const Json& j, const K& k, V& v, Ts&... ts)
+{
+    v = j[k].floatValue();
+    getParamsJson(j,ts...);
 }
 
 template <typename num_t, size_t dims, typename rand_t>
@@ -145,11 +176,20 @@ struct VariationsGeneric
         for (size_t i = 0; i < dims; ++i)
             params.push_back(vec[i]);
     }
-    // fisheye based on flam3 with order corrected
+    // fisheye based on flam3 with order corrected, constant changed
     static void fisheye(state_t& state, params_t params)
     {
-        num_t weight = params[0]; // TODO store 2*weight
-        num_t r = 2.0 * weight / (state.t.norm2() + 1.0);
+        num_t weight = params[0];
+        // TODO support changing the 1.0 constant
+        num_t r = weight / (state.t.norm2() + 1.0);
+        state.v += r * state.t;
+    }
+    // bubble based on flam3, constant changed
+    static void bubble(state_t& state, params_t params)
+    {
+        num_t weight = params[0];
+        // TODO support changing the 4.0 constant
+        num_t r = weight / (state.t.norm2sq() + 4.0);
         state.v += r * state.t;
     }
     static const data_t make_data()
@@ -160,6 +200,7 @@ struct VariationsGeneric
         vardata["spherical"] = info_t(spherical);
         vardata["bent"] = info_t(bent,bent_parser);
         vardata["fisheye"] = info_t(fisheye);
+        vardata["bubble"] = info_t(bubble);
         return vardata;
     }
 };

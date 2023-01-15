@@ -184,18 +184,51 @@ struct VariationsSpecific<num_t,DIMS,rand_t>
             std::vector<num_t>& params)
     {
         (void)xform;
-        params.push_back(weight);
-        num_t low = json["low"].floatValue();
-        num_t high = json["high"].floatValue();
-        num_t waves = json["waves"].floatValue();
-        params.push_back((low+high)/2.0); // mid
-        params.push_back((high-low)/2.0); // dif/2
-        params.push_back(waves);
+        num_t low,high,waves;
+        getParamsJson(json,"low",low,"high",high,"waves",waves);
+        // store middle point and amplitude
+        storeParams(params,weight,(low+high)/2.0,(high-low)/2.0,waves);
     }
     // from flam3
     static void pdj(state_t& state, params_t params)
     {
+        num_t weight,a,b,c,d;
+        getParams(params,weight,a,b,c,d);
+        num_t nx1 = cos(b*state.t.x());
+        num_t nx2 = sin(c*state.t.x());
+        num_t ny1 = sin(a*state.t.y());
+        num_t ny2 = cos(d*state.t.y());
+        state.v += weight * vec_t(ny1-nx1,nx2-ny2);
+    }
+    static void pdj_parser(xform_t& xform, const Json& json, num_t weight,
+            std::vector<num_t>& params)
+    {
+        (void)xform;
+        num_t a,b,c,d;
+        getParamsJson(json,"a",a,"b",b,"c",c,"d",d);
+        storeParams(params,weight,a,b,c,d);
+    }
+    // from flam3
+    static void cylinder(state_t& state, params_t params)
+    {
         num_t weight = params[0];
+        state.v += weight * vec_t(sin(state.t.x()),state.t.y());
+    }
+    // from flam3
+    static void perspective(state_t& state, params_t params)
+    {
+        num_t weight,dist,vsin,vfcos;
+        getParams(params,weight,dist,vsin,vfcos);
+        num_t wt = weight / (dist - state.t.y()*vsin);
+        state.v += wt * vec_t(dist*state.t.x(),vfcos*state.t.y());
+    }
+    static void perspective_parser(xform_t& xform, const Json& json,
+            num_t weight, std::vector<num_t>& params)
+    {
+        (void)xform;
+        num_t dist,angle;
+        getParamsJson(json,"distance",dist,"angle",angle);
+        storeParams(params,weight,dist,sin(angle),dist*cos(angle));
     }
     static const data_t make_data()
     {
@@ -215,6 +248,9 @@ struct VariationsSpecific<num_t,DIMS,rand_t>
         vardata["power"] = info_t(power);
         vardata["cosine"] = info_t(cosine);
         vardata["blob"] = info_t(blob,blob_parser);
+        vardata["pdj"] = info_t(pdj,pdj_parser);
+        vardata["cylinder"] = info_t(cylinder);
+        vardata["perspective"] = info_t(perspective,perspective_parser);
         return vardata;
     }
 };
