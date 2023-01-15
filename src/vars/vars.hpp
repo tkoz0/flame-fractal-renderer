@@ -17,6 +17,27 @@ namespace tkoz
 namespace flame
 {
 
+// define getParams function for getting numbers from params pointer
+
+// base case, 0 arguments
+template <typename num_t>
+void getParams_helper(const num_t *params, size_t n) { (void)params; (void)n; }
+
+// helper with argument for array index, >=1 arguments
+template <typename num_t, typename T, typename...Ts>
+void getParams_helper(const num_t *params, size_t n, T& p, Ts&... ps)
+{
+    p = params[n]; // write current parameter
+    getParams_helper(params,n+1,ps...); // increment index, write the rest
+}
+
+// put params[0],params[1],... into references (variable length)
+template <typename num_t, typename...Ts>
+void getParams(const num_t *params, Ts&... ps)
+{
+    getParams_helper(params,0,ps...);
+}
+
 template <typename num_t, size_t dims, typename rand_t>
 using VarFunc = std::function<void(IterState<num_t,dims,rand_t>&,
                               const num_t*)>;
@@ -124,6 +145,13 @@ struct VariationsGeneric
         for (size_t i = 0; i < dims; ++i)
             params.push_back(vec[i]);
     }
+    // fisheye based on flam3 with order corrected
+    static void fisheye(state_t& state, params_t params)
+    {
+        num_t weight = params[0]; // TODO store 2*weight
+        num_t r = 2.0 * weight / (state.t.norm2() + 1.0);
+        state.v += r * state.t;
+    }
     static const data_t make_data()
     {
         data_t vardata;
@@ -131,6 +159,7 @@ struct VariationsGeneric
         vardata["sinusoidal"] = info_t(sinusoidal);
         vardata["spherical"] = info_t(spherical);
         vardata["bent"] = info_t(bent,bent_parser);
+        vardata["fisheye"] = info_t(fisheye);
         return vardata;
     }
 };

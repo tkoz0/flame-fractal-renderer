@@ -77,7 +77,7 @@ struct VariationsSpecific<num_t,DIMS,rand_t>
     // from flam3, angle modified
     static void disc(state_t& state, params_t params)
     {
-        num_t weight = params[0] * M_1_PI; // TODO optimize
+        num_t weight = params[0] * M_1_PI; // TODO optimize, store weight/pi
         num_t a = state.t.angle() * weight;
         num_t r = state.t.norm2();
         num_t sr,cr;
@@ -127,6 +127,76 @@ struct VariationsSpecific<num_t,DIMS,rand_t>
         num_t m1 = n1*n1*n1 * r;
         state.v += weight * vec_t(m0+m1,m0-m1);
     }
+    // from flam3, angle modified
+    static void julia(state_t& state, params_t params)
+    {
+        num_t weight = params[0];
+        static const num_t table[2] = {0.0,M_PI};
+        num_t a = 0.5*state.t.angle() + table[state.randBool()];
+        num_t sa,ca;
+        sincosg(a,&sa,&ca);
+        state.v += state.t.norm2() * weight * vec_t(ca,sa);
+    }
+    // from flam3
+    static void exponential(state_t& state, params_t params)
+    {
+        num_t weight = params[0];
+        num_t dx = weight * exp(state.t.x() - 1.0);
+        num_t sdy,cdy;
+        sincosg(M_PI*state.t.y(),&sdy,&cdy);
+        state.v += dx * vec_t(cdy,sdy);
+    }
+    // from flam3, angle modified
+    static void power(state_t& state, params_t params)
+    {
+        num_t weight = params[0];
+        num_t r,sa,ca;
+        state.t.getRadiusSinCos(r,sa,ca);
+        r = weight * pow(r,sa);
+        state.v += r * vec_t(ca,sa);
+    }
+    // from flam3
+    static void cosine(state_t& state, params_t params)
+    {
+        num_t weight = params[0];
+        num_t x,y;
+        state.t.getXY(x,y);
+        num_t sa,ca;
+        sincosg(x*M_PI,&sa,&ca);
+        state.v += weight * vec_t(ca*cosh(y),-sa*sinh(y));
+    }
+    // from flam3, angle modified
+    static void blob(state_t& state, params_t params)
+    {
+        num_t weight,mid,amp,waves;
+        getParams(params,weight,mid,amp,waves);
+        //num_t weight = params[0];
+        //num_t mid = params[1];
+        //num_t amp = params[2];
+        //num_t waves = params[3];
+        num_t r,sa,ca;
+        state.t.getRadiusSinCos(r,sa,ca);
+        num_t a = state.t.angle();
+        r *= (mid + amp*sin(waves*a));
+        state.v += weight * r * vec_t(sa,ca);
+    }
+    static void blob_parser(xform_t& xform, const Json& json, num_t weight,
+            std::vector<num_t>& params)
+    {
+        (void)xform;
+        params.push_back(weight);
+        num_t low = json["low"].floatValue();
+        num_t high = json["high"].floatValue();
+        num_t waves = json["waves"].floatValue();
+        params.push_back((low+high)/2.0); // mid
+        params.push_back((high-low)/2.0); // dif/2
+        params.push_back(waves);
+    }
+    // from flam3
+    static void pdj(state_t& state, params_t params)
+    {
+        num_t weight = params[0];
+    }
     static const data_t make_data()
     {
         data_t vardata;
@@ -140,6 +210,11 @@ struct VariationsSpecific<num_t,DIMS,rand_t>
         vardata["hyperbolic"] = info_t(hyperbolic);
         vardata["diamond"] = info_t(diamond);
         vardata["ex"] = info_t(ex);
+        vardata["julia"] = info_t(julia);
+        vardata["exponential"] = info_t(exponential);
+        vardata["power"] = info_t(power);
+        vardata["cosine"] = info_t(cosine);
+        vardata["blob"] = info_t(blob,blob_parser);
         return vardata;
     }
 };

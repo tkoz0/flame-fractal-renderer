@@ -411,10 +411,6 @@ public:
         else
             b = Point<T,N>(jo["b"]);
     }
-    inline const Point<T,N>& operator[](size_t i) const
-    {
-        return A[i];
-    }
     inline const std::array<Point<T,N>,N>& getA() const
     {
         return A;
