@@ -12,6 +12,11 @@
 #define likely(x)   __builtin_expect(!!(x),1)
 #define unlikely(x) __builtin_expect(!!(x),0)
 
+#define ENABLE_IF(COND,RET) template <typename RET2 = RET> \
+    typename std::enable_if<(COND),RET2>::type
+#define ENABLE_IFEQ(N1,N2,RET) template <typename RET2 = RET> \
+    typename tkoz::flame::enable_if_eq<N1,N2,RET2>::type
+
 namespace tkoz
 {
 namespace flame
@@ -192,6 +197,23 @@ struct VariationsGeneric
         num_t r = weight / (state.t.norm2sq() + 4.0);
         state.v += r * state.t;
     }
+    // noise from flam3
+    ENABLE_IF(dims==2,void) static noise(state_t& state, params_t params)
+    {
+        num_t weight = params[0];
+        num_t r = weight * state.randNum();
+        num_t a = (2.0*M_PI) * state.randNum();
+        num_t sa,ca;
+        sincosg(a,&sa,&ca);
+        state.v += r * multComponents(state.t,vec_t(ca,sa));
+    }
+    ENABLE_IF(dims>2,void) static noise(state_t& state, params_t params)
+    {
+        num_t weight = params[0];
+        num_t r = weight * state.randNum();
+        Point<num_t,dims> a = state.randAngle();
+        state.v += r * multComponents(state.t,a);
+    }
     static const data_t make_data()
     {
         data_t vardata;
@@ -233,3 +255,6 @@ const VarData<num_t,dims,rand_t> Variations<num_t,dims,rand_t>::vars =
 
 #undef likely
 #undef unlikely
+
+#undef ENABLE_IF
+#undef ENABLE_IFEQ

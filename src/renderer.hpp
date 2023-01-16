@@ -32,11 +32,18 @@ struct IterState<num_t,dims,Isaac<word_t,rparam>>
     num_t *cw;
     IterState(Isaac<word_t,rparam>& rng):
         p(),t(),v(),rng(rng),xf(nullptr) {}
-    inline bool randBool() { return rng.next() & 1; }
+    inline bool randBool()
+    {
+        return rng.next() & 1;
+    }
     FUNC_ENABLE_IFSAME2(num_t,float,word_t,u32,num_t) inline randNum()
-    { return (rng.next() >> 8) / (float)(1 << 24); }
+    {
+        return (rng.next() >> 8) / (float)(1 << 24);
+    }
     FUNC_ENABLE_IFSAME2(num_t,float,word_t,u64,num_t) inline randNum()
-    { return (rng.next() >> 40) / (float)(1 << 24); }
+    {
+        return (rng.next() >> 40) / (float)(1 << 24);
+    }
     FUNC_ENABLE_IFSAME2(num_t,double,word_t,u32,num_t) inline randNum()
     {
         u32 hi = rng.next() >> 6;
@@ -44,9 +51,33 @@ struct IterState<num_t,dims,Isaac<word_t,rparam>>
         return (((u64)hi << 27) + lo) / (double)(1LL << 53);
     }
     FUNC_ENABLE_IFSAME2(num_t,double,word_t,u64,num_t) inline randNum()
-    { return (rng.next() >> 11) / (double)(1LL << 53); }
-    // slightly non-uniform distribution when mod is not a power of 2
-    inline u32 randInt(u32 mod) { return (u32)(rng.next()) % mod; }
+    {
+        return (rng.next() >> 11) / (double)(1LL << 53);
+    }
+    inline void randGaussianPair(num_t& z1, num_t& z2)
+    {
+#if 0 // box muller transform
+        num_t u1 = randNum();
+        num_t u2 = (2.0*M_PI)*randNum();
+        num_t r = sqrt(-2.0*log(u1));
+        num_t s,c;
+        sincosg(u2,&s,&c);
+        z1 = r*c;
+        z2 = r*s;
+#else // marsaglia polar method
+        num_t v1,v2,s,r;
+        do
+        {
+            v1 = 2.0*randNum() - 1.0;
+            v2 = 2.0*randNum() - 1.0;
+            s = v1*v1 + v2*v2;
+        }
+        while (s >= 1.0);
+        r = sqrt(-2.0*log(s)/s);
+        z1 = v1*r;
+        z2 = v2*r;
+#endif
+    }
     // random point in the biunit square/cube/hypercube
     inline Point<num_t,dims> randPoint()
     {
@@ -55,10 +86,26 @@ struct IterState<num_t,dims,Isaac<word_t,rparam>>
             x[i] = 2.0*randNum() - 1.0;
         return Point<num_t,dims>(x);
     }
+    // random point on the unit circle/sphere/hypersphere surface
+    inline Point<num_t,dims> randAngle()
+    {
+        num_t x[dims];
+        num_t dummy;
+        for (size_t i = 0; i < dims; i += 2)
+            randGaussianPair(x[i],x[i+1]);
+        if (dims % 2)
+            randGaussianPair(x[dims-1],dummy);
+        Point<num_t,dims> p(x);
+        return p/p.norm2();
+    }
     inline const Affine<num_t,2>& getPreAffine() const
-    { return xf->getPreAffine(); }
+    {
+        return xf->getPreAffine();
+    }
     inline const Affine<num_t,2>& getPostAffine() const
-    { return xf->getPostAffine(); }
+    {
+        return xf->getPostAffine();
+    }
     // use cumulative weights to select xform
     inline u32 randXFormIndex()
     {
