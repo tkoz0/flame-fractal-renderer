@@ -12,7 +12,6 @@ Types for flame fractal renderer. In templates, num_t is float or double.
 #include <vector>
 
 #include "isaac.hpp"
-#include "jrand.hpp"
 #include "json_small.hpp"
 
 // macros for using SFINAE
