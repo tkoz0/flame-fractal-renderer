@@ -198,7 +198,7 @@ struct VariationsGeneric
         state.v += r * state.t;
     }
     // noise from flam3
-    ENABLE_IF(dims==2,void) static noise(state_t& state, params_t params)
+    ENABLE_IFEQ(dims,2,void) static noise(state_t& state, params_t params)
     {
         num_t weight = params[0];
         num_t r = weight * state.randNum();
@@ -207,7 +207,21 @@ struct VariationsGeneric
         sincosg(a,&sa,&ca);
         state.v += r * multComponents(state.t,vec_t(ca,sa));
     }
-    ENABLE_IF(dims>2,void) static noise(state_t& state, params_t params)
+    // noise extended to 3d
+    ENABLE_IFEQ(dims,3,void) noise(state_t& state, params_t params)
+    {
+        num_t weight = params[0];
+        num_t r = weight * state.randNum();
+        num_t p = acos(2.0*state.randNum()-1.0);
+        num_t t = (2.0*M_PI) * state.randNum();
+        // coordinates on unit sphere
+        num_t x = sin(t)*cos(p);
+        num_t y = sin(t)*sin(p);
+        num_t z = cos(t);
+        state.v += r * multComponents(state.t,vec_t(x,y,z));
+    }
+    // noise extended to higher dimensions
+    ENABLE_IF(dims>3,void) static noise(state_t& state, params_t params)
     {
         num_t weight = params[0];
         num_t r = weight * state.randNum();
