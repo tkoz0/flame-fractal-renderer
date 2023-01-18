@@ -163,7 +163,7 @@ int main(int argc, char **argv)
     else
         json_flame = Json(read_text_file(arg_flame));
     std::cerr << "flame json (comments removed): " << json_flame << std::endl;
-    tkoz::flame::RendererBasic<num_t,u32,rand_t> renderer(json_flame);
+    tkoz::flame::RendererBasic<num_t,u32,u8,rand_t> renderer(json_flame);
     const tkoz::flame::Flame<num_t,2,rand_t>& flame = renderer.getFlame();
     std::cerr << "x size: " << flame.getSizeX() << std::endl;
     std::cerr << "y size: " << flame.getSizeY() << std::endl;

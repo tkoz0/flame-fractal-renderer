@@ -52,7 +52,7 @@ static inline void sincosg(float a, float *s, float *c) { sincosf(a,s,c); }
 static inline void sincosg(double a, double *s, double *c) { sincos(a,s,c); }
 
 // some limits for flame parameters
-static const size_t max_dim = 64000;
+static const size_t max_dim = 65535;
 template <typename T> struct max_rect {};
 template <> struct max_rect<float> { static constexpr float value = 1e5F; };
 template <> struct max_rect<double> { static constexpr double value = 1e10; };
@@ -91,6 +91,13 @@ template <> struct pix_scale<u8,double>
 { static constexpr double value = 256.0 * scale_adjust<double>::value; };
 template <> struct pix_scale<u16,double>
 { static constexpr double value = 65536.0 * scale_adjust<double>::value; };
+
+// max integer value stored in another integer type
+template <typename T, typename U> struct max_int_as
+{
+    static_assert(sizeof(T) < sizeof(U));
+    static constexpr U value = 1uLL << (8*sizeof(T));
+};
 
 template <typename T> inline bool bad_value(T n)
 {
@@ -543,7 +550,7 @@ std::ostream& operator<<(std::ostream& os, const Affine<T,N>& a)
 template <typename num_t, size_t dims, typename rand_t> struct XFormVar;
 template <typename num_t, size_t dims, typename rand_t> class XForm;
 template <typename num_t, size_t dims, typename rand_t> class Flame;
-template <typename num_t, typename hist_t, typename rand_t>
+template <typename num_t, typename hist_t, typename cache_t, typename rand_t>
 class RendererBasic;
 
 // iterator state used by variation functions, defined with renderer

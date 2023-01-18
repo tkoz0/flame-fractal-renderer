@@ -285,12 +285,17 @@ public:
 };
 
 // render histogram only (count of samples in each pixel)
-template <typename num_t, typename hist_t, typename rand_t>
+template <typename num_t, typename hist_t, typename cache_t, typename rand_t>
 class RendererBasic
 {
+    static_assert(sizeof(hist_t) > sizeof(cache_t));
 private:
+    static constexpr hist_t cache_max = max_int_as<cache_t,hist_t>::value;
     Flame<num_t,2,rand_t> flame;
     hist_t *histogram;
+    // main write location for renderer threads (smaller fits in cache better)
+    // on overflow, add to histogram
+    cache_t *bufcache;
     bool hist_alloc; // is histogram allocated by this instance
     num_t *cw; // cumulative weights for xform probability selection
     RendererBasic(){}
@@ -319,6 +324,7 @@ public:
             histogram = new hist_t[X*Y]();
         else
             histogram = buf;
+        bufcache = new cache_t[X*Y]();
         xfdist = new hist_t[flame.getXForms().size()]();
         // compute normalized xform weights
         std::vector<num_t> weights;
@@ -414,8 +420,14 @@ public:
             // increment in histogram
             size_t x = (state.t.x() - flame.getXMin()) * xmul;
             size_t y = (state.t.y() - flame.getYMin()) * ymul;
+            size_t index = flame_x*y + x;
             //++histogram[flame_x*y + x];
-            __atomic_fetch_add(histogram+(flame_x*y + x),1,__ATOMIC_RELAXED);
+            //__atomic_fetch_add(histogram+(flame_x*y + x),1,__ATOMIC_RELAXED);
+            // increment in cache, if overflow then add to histogram
+            if (unlikely(!__atomic_add_fetch(bufcache+index,1,
+                    __ATOMIC_RELAXED)))
+                __atomic_fetch_add(histogram+index,cache_max,
+                    __ATOMIC_RELAXED);
             ++samples_plotted_local;
         }
         mutex.lock();
@@ -469,6 +481,12 @@ public:
         batch_mutex.unlock();
         for (size_t i = 0; i < threads; ++i)
             thread_list[i].join();
+        // add from cache to histogram
+        for (size_t i = 0; i < getHistogramSize(); ++i)
+        {
+            histogram[i] += bufcache[i];
+            bufcache[i] = 0;
+        }
     }
     template <typename pix_t>
     pix_t *renderImage(std::function<num_t(hist_t)> scale, pix_t *buf = nullptr)
