@@ -17,6 +17,8 @@
 #define FUNC_ENABLE_IFSAME2(T1,T2,U1,U2,RET) template <typename dummy = T1> \
     typename std::enable_if<std::is_same<dummy,T2>::value \
         && std::is_same<U1,U2>::value,RET>::type
+#define ENABLE_IF(COND,RET) template <typename RET2 = RET> \
+    typename std::enable_if<(COND),RET2>::type
 
 namespace tkoz
 {
@@ -189,23 +191,49 @@ public:
     {
         // zero weight variations are excluded in constructor
     }
-    inline num_t getWeight() const { return weight; }
-    inline const Affine<num_t,dims>& getPreAffine() const { return pre; }
-    inline const Affine<num_t,dims>& getPostAffine() const { return post; }
-    inline const std::vector<XFormVar<num_t,dims,rand_t>>& getVariations() const
-    { return vars; }
-    inline const std::vector<num_t>& getVariationParams() const
-    { return varp; }
-    // iterate a state for the rendering process
-    inline void applyIteration(IterState<num_t,dims,rand_t>& state) const
+    inline num_t getWeight() const
     {
+        return weight;
+    }
+    inline const Affine<num_t,dims>& getPreAffine() const
+    {
+        return pre;
+    }
+    inline const Affine<num_t,dims>& getPostAffine() const
+    {
+        return post;
+    }
+    inline const std::vector<XFormVar<num_t,dims,rand_t>>& getVariations() const
+    {
+        return vars;
+    }
+    inline const std::vector<num_t>& getVariationParams() const
+    {
+        return varp;
+    }
+    // iterate a state for the rendering process
+    ENABLE_IF(dims<=2,void) inline applyIteration(
+            IterState<num_t,dims,rand_t>& state) const
+    {
+        // for 2d, faster to apply identity affine than to branch
         state.xf = this;
-        //if (has_pre)
+        state.t = pre.apply_to(state.p);
+        state.v = Point<num_t,dims>();
+        for (XFormVar<num_t,dims,rand_t> v : vars)
+            v.func(state,varp.data()+v.index);
+        state.p = post.apply_to(state.v);
+    }
+    ENABLE_IF(dims>2,void) inline applyIteration(
+            IterState<num_t,dims,rand_t>& state) const
+    {
+        // for 3d, probably faster to skip identity affine
+        state.xf = this;
+        if (has_pre)
             state.t = pre.apply_to(state.p);
         state.v = Point<num_t,dims>();
         for (XFormVar<num_t,dims,rand_t> v : vars)
             v.func(state,varp.data()+v.index);
-        //if (has_post)
+        if (has_post)
             state.p = post.apply_to(state.v);
     }
 };
@@ -215,41 +243,42 @@ template <typename num_t, size_t dims, typename rand_t>
 class Flame
 {
 private:
-    size_t size_x,size_y; // dimensions
-    num_t xmin,xmax,ymin,ymax; // rectangle bounds
+    std::array<size_t,dims> size;
+    std::array<std::pair<num_t,num_t>,dims> bounds;
     std::vector<XForm<num_t,dims,rand_t>> xforms;
     XForm<num_t,dims,rand_t> final_xform;
     bool has_final_xform;
-    Flame(){}
 public:
+    Flame(){}
     // construct from JSON data
     // throws error if something goes wrong
     Flame(const Json& input)
     {
-        // top level entries
-        size_x = input["size_x"].intValue();
-        size_y = input["size_y"].intValue();
-        xmin = input["xmin"].floatValue();
-        xmax = input["xmax"].floatValue();
-        ymin = input["ymin"].floatValue();
-        ymax = input["ymax"].floatValue();
-        if (size_x == 0 || size_x > max_dim)
-            throw std::runtime_error("size_x out of bounds");
-        if (size_y == 0 || size_y > max_dim)
-            throw std::runtime_error("size_y out of bounds");
+        if (input["dimensions"].intValue() != dims)
+            throw std::runtime_error("flame: dimension mismatch");
+        JsonArray sizej = input["size"].arrayValue();
+        JsonArray boundsj = input["bounds"].arrayValue();
+        if (sizej.size() != dims)
+            throw std::runtime_error("flame: incorrect size length");
+        if (boundsj.size() != dims)
+            throw std::runtime_error("flame: incorrect bounds length");
         num_t M = max_rect<num_t>::value;
-        if (xmin < -M || xmin > M)
-            throw std::runtime_error("xmin out of bounds");
-        if (xmax < -M || xmax > M)
-            throw std::runtime_error("xmax out of bounds");
-        if (ymin < -M || ymax > M)
-            throw std::runtime_error("ymin out of bounds");
-        if (ymax < -M || ymax > M)
-            throw std::runtime_error("ymax out of bounds");
-        if (xmin >= xmax)
-            throw std::runtime_error("xmin >= xmax");
-        if (ymin >= ymax)
-            throw std::runtime_error("ymin >= ymax");
+        for (size_t i = 0; i < dims; ++i)
+        {
+            size[i] = sizej[i].floatValue();
+            if (size[i] == 0 || size[i] > max_dim)
+                throw std::runtime_error("flame: size not in [1,65535]");
+            JsonArray boundj = boundsj[i].arrayValue();
+            if (boundj.size() != 2)
+                throw std::runtime_error("flame: incorrect bound format");
+            num_t lo = boundj[0].floatValue();
+            num_t hi = boundj[1].floatValue();
+            bounds[i] = std::make_pair(lo,hi);
+            if (lo < -M || lo > M || hi < -M || hi > M)
+                throw std::runtime_error("flame: bound out of range");
+            if (lo >= hi)
+                throw std::runtime_error("flame: bound low >= bound high");
+        }
         // xforms loop
         for (Json xf : input["xforms"].arrayValue())
         {
@@ -272,16 +301,26 @@ public:
         std::for_each(xforms.begin(),xforms.end(),
             [](XForm<num_t,dims,rand_t>& xf) { xf.optimize(); });
     }
-    inline size_t getSizeX() const { return size_x; }
-    inline size_t getSizeY() const { return size_y; }
-    inline num_t getXMin() const { return xmin; }
-    inline num_t getXMax() const { return xmax; }
-    inline num_t getYMin() const { return ymin; }
-    inline num_t getYMax() const { return ymax; }
+    inline const std::array<size_t,dims>& getSize() const
+    {
+        return size;
+    }
+    inline const std::array<std::pair<num_t,num_t>,dims>& getBounds() const
+    {
+        return bounds;
+    }
     inline const std::vector<XForm<num_t,dims,rand_t>>& getXForms() const
-    { return xforms; }
-    inline bool hasFinalXForm() const { return has_final_xform; }
-    const XForm<num_t,dims,rand_t>& getFinalXForm() const { return final_xform; }
+    {
+        return xforms;
+    }
+    inline bool hasFinalXForm() const
+    {
+        return has_final_xform;
+    }
+    inline const XForm<num_t,dims,rand_t>& getFinalXForm() const
+    {
+        return final_xform;
+    }
 };
 
 // render histogram only (count of samples in each pixel)
@@ -308,18 +347,18 @@ private:
     // extreme coordinates during render, not handled atomically
     // only guaranteed to be correct with 1 thread
     num_t xmin,ymin,xmax,ymax;
+    size_t X,Y;
 public:
     // construct a renderer object from a flame, optionally an existing buffer
     // buf != null to use existing buffer, maybe loaded from a file
     RendererBasic(const Flame<num_t,2,rand_t>& flame, hist_t *buf = nullptr):
         flame(flame),samples_iterated(0),samples_plotted(0),
         xmin(INFINITY),ymin(INFINITY),
-        xmax(-INFINITY),ymax(-INFINITY)
+        xmax(-INFINITY),ymax(-INFINITY),
+        X(flame.getSize()[0]),Y(flame.getSize()[1])
     {
         this->flame.optimize();
         hist_alloc = buf == nullptr;
-        size_t X = flame.getSizeX();
-        size_t Y = flame.getSizeY();
         if (!buf)
             histogram = new hist_t[X*Y]();
         else
@@ -363,12 +402,12 @@ public:
         state.cw = cw;
         state.p = state.randPoint();
         const std::vector<XForm<num_t,2,rand_t>>& xfs = flame.getXForms();
-        size_t flame_x = flame.getSizeX();
-        size_t flame_y = flame.getSizeY();
         bool has_final_xform = flame.hasFinalXForm();
         // multipliers for calculating coordinates in histogram
-        num_t xmul = (num_t)flame_x / (flame.getXMax() - flame.getXMin());
-        num_t ymul = (num_t)flame_y / (flame.getYMax() - flame.getYMin());
+        std::pair<num_t,num_t> xb = flame.getBounds()[0];
+        std::pair<num_t,num_t> yb = flame.getBounds()[1];
+        num_t xmul = (num_t)X / (xb.second - xb.first);
+        num_t ymul = (num_t)Y / (yb.second - yb.first);
         // correction to ensure indexing in bounds
         xmul *= scale_adjust<num_t>::value;
         ymul *= scale_adjust<num_t>::value;
@@ -413,14 +452,14 @@ public:
             else
                 state.t = state.p;
             // skip plotting if out of bounds
-            if (state.t.x() < flame.getXMin() || state.t.x() > flame.getXMax())
+            if (state.t.x() < xb.first || state.t.x() > xb.second)
                 continue;
-            if (state.t.y() < flame.getYMin() || state.t.y() > flame.getYMax())
+            if (state.t.y() < yb.first || state.t.y() > yb.second)
                 continue;
             // increment in histogram
-            size_t x = (state.t.x() - flame.getXMin()) * xmul;
-            size_t y = (state.t.y() - flame.getYMin()) * ymul;
-            size_t index = flame_x*y + x;
+            size_t x = (state.t.x() - xb.first) * xmul;
+            size_t y = (state.t.y() - yb.first) * ymul;
+            size_t index = X*y + x;
             //++histogram[flame_x*y + x];
             //__atomic_fetch_add(histogram+(flame_x*y + x),1,__ATOMIC_RELAXED);
             // increment in cache, if overflow then add to histogram
@@ -502,44 +541,88 @@ public:
             buf = new pix_t[sizeof(pix_t)*getHistogramSize()];
         num_t scale_min = INFINITY;
         num_t scale_max = -INFINITY;
-        for (size_t r = flame.getSizeY(); r--;)
-            for (size_t c = 0; c < flame.getSizeX(); ++c)
+        for (size_t r = Y; r--;)
+            for (size_t c = 0; c < X; ++c)
             {
-                hist_t buf_val = histogram[flame.getSizeX()*r + c];
+                hist_t buf_val = histogram[X*r + c];
                 num_t scale_val = scale(buf_val);
                 scale_min = std::min(scale_min,scale_val);
                 scale_max = std::max(scale_max,scale_val);
             }
         pix_t *img_ptr = buf;
         num_t mult = pix_scale<pix_t,num_t>::value / scale_max;
-        for (size_t r = flame.getSizeY(); r--;)
-            for (size_t c = 0; c < flame.getSizeX(); ++c)
+        for (size_t r = Y; r--;)
+            for (size_t c = 0; c < X; ++c)
             {
-                hist_t buf_val = histogram[flame.getSizeX()*r + c];
+                hist_t buf_val = histogram[X*r + c];
                 *(img_ptr++) = (pix_t)(scale(buf_val)*mult);
             }
         return buf;
     }
-    inline const Flame<num_t,2,rand_t>& getFlame() const { return flame; }
-    inline const hist_t *getHistogram() const { return histogram; }
-    inline hist_t *getHistogram() { return histogram; }
+    inline const Flame<num_t,2,rand_t>& getFlame() const
+    {
+        return flame;
+    }
+    inline const hist_t *getHistogram() const
+    {
+        return histogram;
+    }
+    inline hist_t *getHistogram()
+    {
+        return histogram;
+    }
     size_t getHistogramSizeBytes() const
-    { return sizeof(hist_t)*flame.getSizeX()*flame.getSizeY(); };
+    {
+        return sizeof(hist_t)*X*Y;
+    };
     size_t getHistogramSize() const
-    { return flame.getSizeX()*flame.getSizeY(); }
-    inline size_t getXFormsLength() const { return flame.getXForms().size(); }
-    inline const hist_t *getXFormDistribution() const { return xfdist; }
-    inline size_t getBadValueCount() const { return bad_value_xforms.size(); }
-    inline size_t getSamplesPlotted() const { return samples_plotted; }
-    inline size_t getSamplesIterated() const { return samples_iterated; }
+    {
+        return X*Y;
+    }
+    inline size_t getXFormsLength() const
+    {
+        return flame.getXForms().size();
+    }
+    inline const hist_t *getXFormDistribution() const
+    {
+        return xfdist;
+    }
+    inline size_t getBadValueCount() const
+    {
+        return bad_value_xforms.size();
+    }
+    inline size_t getSamplesPlotted() const
+    {
+        return samples_plotted;
+    }
+    inline size_t getSamplesIterated() const
+    {
+        return samples_iterated;
+    }
     inline const std::vector<u32>& getBadValueXForms() const
-    { return bad_value_xforms; }
+    {
+        return bad_value_xforms;
+    }
     inline const std::vector<Point<num_t,2>>& getBadValuePoints() const
-    { return bad_value_points; }
-    inline num_t getXMin() const { return xmin; }
-    inline num_t getXMax() const { return xmax; }
-    inline num_t getYMin() const { return ymin; }
-    inline num_t getYMax() const { return ymax; }
+    {
+        return bad_value_points;
+    }
+    inline num_t getXMin() const
+    {
+        return xmin;
+    }
+    inline num_t getXMax() const
+    {
+        return xmax;
+    }
+    inline num_t getYMin() const
+    {
+        return ymin;
+    }
+    inline num_t getYMax() const
+    {
+        return ymax;
+    }
 };
 
 }
@@ -547,5 +630,6 @@ public:
 
 #undef FUNC_ENABLE_IF
 #undef FUNC_ENABLE_IF2
+#undef ENABLE_IF
 #undef likely
 #undef unlikely

@@ -259,6 +259,11 @@ public:
     {
         return vec[i];
     }
+    // return interval array
+    inline const std::array<T,N>& getArray() const
+    {
+        return vec;
+    }
     /* === arithmetic operators === */
     friend inline Point<T,N> operator+(const Point<T,N>& a,
                                        const Point<T,N>& b)

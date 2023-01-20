@@ -165,13 +165,15 @@ int main(int argc, char **argv)
     std::cerr << "flame json (comments removed): " << json_flame << std::endl;
     tkoz::flame::RendererBasic<num_t,u32,u8,rand_t> renderer(json_flame);
     const tkoz::flame::Flame<num_t,2,rand_t>& flame = renderer.getFlame();
-    std::cerr << "x size: " << flame.getSizeX() << std::endl;
-    std::cerr << "y size: " << flame.getSizeY() << std::endl;
-    num_t xdiff = flame.getXMax() - flame.getXMin();
-    num_t ydiff = flame.getYMax() - flame.getYMin();
+    std::cerr << "x size: " << flame.getSize()[0] << std::endl;
+    std::cerr << "y size: " << flame.getSize()[1] << std::endl;
+    std::pair<num_t,num_t> xb = flame.getBounds()[0];
+    std::pair<num_t,num_t> yb = flame.getBounds()[1];
+    num_t xdiff = xb.second - xb.first;
+    num_t ydiff = yb.second - yb.first;
     fprintf(stderr,"rect ratio (render bounds): %f\n",(float)ydiff/xdiff);
     fprintf(stderr,"size ratio (buffer): %f\n",
-        (float)flame.getSizeY()/flame.getSizeX());
+        (float)flame.getSize()[1]/flame.getSize()[0]);
     u32 *buf = renderer.getHistogram(); // buffer to overwrite
     // load buffer if specified
     if (arg_input != "")
@@ -317,8 +319,8 @@ int main(int argc, char **argv)
     std::ostream& os = arg_output != "-" ? ofs : std::cout;
     u8 *img8 = nullptr;
     u16 *img16 = nullptr;
-    size_t X = renderer.getFlame().getSizeX();
-    size_t Y = renderer.getFlame().getSizeY();
+    size_t X = renderer.getFlame().getSize()[0];
+    size_t Y = renderer.getFlame().getSize()[1];
     std::function<num_t(u32)> scale;
     if (arg_scaler == "binary")
         scale = [](u32 n) { return n ? 1.0 : 0.0; };
