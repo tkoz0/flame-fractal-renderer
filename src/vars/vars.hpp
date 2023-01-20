@@ -197,36 +197,24 @@ struct VariationsGeneric
         num_t r = weight / (state.t.norm2sq() + 4.0);
         state.v += r * state.t;
     }
-    // noise from flam3
-    ENABLE_IFEQ(dims,2,void) static noise(state_t& state, params_t params)
+    // noise from flam3 extended to higher dimensions
+    static void noise(state_t& state, params_t params)
     {
         num_t weight = params[0];
         num_t r = weight * state.randNum();
-        num_t a = (2.0*M_PI) * state.randNum();
-        num_t sa,ca;
-        sincosg(a,&sa,&ca);
-        state.v += r * multComponents(state.t,vec_t(ca,sa));
+        state.v += r * multComponents(state.t,state.randDirection());
     }
-    // noise extended to 3d
-    ENABLE_IFEQ(dims,3,void) noise(state_t& state, params_t params)
+    // blur from flam3 extended to higher dimensions
+    static void blur(state_t& state, params_t params)
     {
         num_t weight = params[0];
-        num_t r = weight * state.randNum();
-        num_t p = acos(2.0*state.randNum()-1.0);
-        num_t t = (2.0*M_PI) * state.randNum();
-        // coordinates on unit sphere
-        num_t x = sin(t)*cos(p);
-        num_t y = sin(t)*sin(p);
-        num_t z = cos(t);
-        state.v += r * multComponents(state.t,vec_t(x,y,z));
+        state.v += weight * state.randNum() * state.randDirection();
     }
-    // noise extended to higher dimensions
-    ENABLE_IF(dims>3,void) static noise(state_t& state, params_t params)
+    // gaussian blur from flam3 extended to higher dimensions
+    static void gaussian_blur(state_t& state, params_t params)
     {
         num_t weight = params[0];
-        num_t r = weight * state.randNum();
-        Point<num_t,dims> a = state.randAngle();
-        state.v += r * multComponents(state.t,a);
+        state.v += weight * state.randGaussian() * state.randDirection();
     }
     static const data_t make_data()
     {
@@ -237,6 +225,9 @@ struct VariationsGeneric
         vardata["bent"] = info_t(bent,bent_parser);
         vardata["fisheye"] = info_t(fisheye);
         vardata["bubble"] = info_t(bubble);
+        vardata["noise"] = info_t(noise);
+        vardata["blur"] = info_t(blur);
+        vardata["gaussian_blur"] = info_t(gaussian_blur);
         return vardata;
     }
 };

@@ -230,6 +230,47 @@ struct VariationsSpecific<num_t,DIMS,rand_t>
         getParamsJson(json,"distance",dist,"angle",angle);
         storeParams(params,weight,dist,sin(angle),dist*cos(angle));
     }
+    // from flam3
+    static void julian(state_t& state, params_t params)
+    {
+        num_t weight,abspower,invpower,cn;
+        getParams(params,weight,abspower,invpower,cn);
+        i32 t = trunc(abspower*state.randNum());
+        num_t a = (state.t.angle() + (2.0*M_PI)*t) * invpower;
+        num_t r = weight * pow(state.t.norm2sq(),cn);
+        num_t sa,ca;
+        sincosg(a,&sa,&ca);
+        state.v += r * vec_t(ca,sa);
+    }
+    static void julian_parser(xform_t& xform, const Json& json,
+            num_t weight, std::vector<num_t>& params)
+    {
+        (void)xform;
+        num_t power,dist;
+        getParamsJson(json,"power",power,"distance",dist);
+        storeParams(params,weight,fabs(power),1.0/power,dist/(2.0*power));
+    }
+    // from flam3
+    static void juliascope(state_t& state, params_t params)
+    {
+        num_t weight,abspower,invpower,cn;
+        getParams(params,weight,abspower,invpower,cn);
+        i32 t = trunc(abspower*state.randNum());
+        static const num_t sign[2] = {-1.0,1.0};
+        num_t a = ((2.0*M_PI)*t + sign[t&1]*state.t.angle()) * invpower;
+        num_t r = weight * pow(state.t.norm2sq(),cn);
+        num_t sa,ca;
+        sincosg(a,&sa,&ca);
+        state.v += r * vec_t(ca,sa);
+    }
+    static void juliascope_parser(xform_t& xform, const Json& json,
+            num_t weight, std::vector<num_t>& params)
+    {
+        (void)xform;
+        num_t power,dist;
+        getParamsJson(json,"power",power,"distance",dist);
+        storeParams(params,weight,fabs(power),1.0/power,dist/(2.0*power));
+    }
     static const data_t make_data()
     {
         data_t vardata;
@@ -251,6 +292,8 @@ struct VariationsSpecific<num_t,DIMS,rand_t>
         vardata["pdj"] = info_t(pdj,pdj_parser);
         vardata["cylinder"] = info_t(cylinder);
         vardata["perspective"] = info_t(perspective,perspective_parser);
+        vardata["julian"] = info_t(julian,julian_parser);
+        vardata["juliascope"] = info_t(juliascope,juliascope_parser);
         return vardata;
     }
 };

@@ -19,6 +19,8 @@
         && std::is_same<U1,U2>::value,RET>::type
 #define ENABLE_IF(COND,RET) template <typename RET2 = RET> \
     typename std::enable_if<(COND),RET2>::type
+#define ENABLE_IFEQ(N1,N2,RET) template <typename RET2 = RET> \
+    typename enable_if_eq<N1,N2,RET2>::type
 
 namespace tkoz
 {
@@ -28,7 +30,8 @@ namespace flame
 template <typename num_t, typename word_t, size_t rparam, size_t dims>
 struct IterState<num_t,dims,Isaac<word_t,rparam>>
 {
-    Point<num_t,dims> p, t, v;
+    typedef Point<num_t,dims> point_t;
+    point_t p, t, v;
     Isaac<word_t,rparam>& rng;
     const XForm<num_t,2,Isaac<word_t,rparam>> *xf;
     num_t *cw;
@@ -80,24 +83,51 @@ struct IterState<num_t,dims,Isaac<word_t,rparam>>
         z2 = v2*r;
 #endif
     }
+    inline num_t randGaussian()
+    {
+        num_t z1,z2;
+        randGaussianPair(z1,z2);
+        return z1;
+    }
     // random point in the biunit square/cube/hypercube
-    inline Point<num_t,dims> randPoint()
+    inline point_t randPoint()
     {
         num_t x[dims];
         for (size_t i = 0; i < dims; ++i)
             x[i] = 2.0*randNum() - 1.0;
-        return Point<num_t,dims>(x);
+        return point_t(x);
     }
     // random point on the unit circle/sphere/hypersphere surface
-    inline Point<num_t,dims> randAngle()
+    ENABLE_IFEQ(dims,1,point_t) inline randDirection()
+    {
+        static const num_t table[2] = {-1.0,1.0};
+        return point_t(table[randBool()]);
+    }
+    ENABLE_IFEQ(dims,2,point_t) inline randDirection()
+    {
+        num_t a = (2.0*M_PI) * randNum();
+        num_t sa,ca;
+        sincosg(a,&sa,&ca);
+        return point_t(ca,sa);
+    }
+    ENABLE_IFEQ(dims,3,point_t) inline randDirection()
+    {
+        num_t p = acos(2.0*randNum()-1.0);
+        num_t t = (2.0*M_PI) * randNum();
+        num_t x = sin(t)*cos(p);
+        num_t y = sin(t)*sin(p);
+        num_t z = cos(t);
+        return point_t(x,y,z);
+    }
+    ENABLE_IF(dims>3,point_t) inline randDirection()
     {
         num_t x[dims];
         num_t dummy;
-        for (size_t i = 0; i < dims; i += 2)
+        for (size_t i = 0; i+1 < dims; i += 2)
             randGaussianPair(x[i],x[i+1]);
         if (dims % 2)
-            randGaussianPair(x[dims-1],dummy);
-        Point<num_t,dims> p(x);
+            x[dims-1] = randGaussian();
+        point_t p(x);
         return p/p.norm2();
     }
     inline const Affine<num_t,2>& getPreAffine() const
@@ -631,5 +661,6 @@ public:
 #undef FUNC_ENABLE_IF
 #undef FUNC_ENABLE_IF2
 #undef ENABLE_IF
+#undef ENABLE_IFEQ
 #undef likely
 #undef unlikely
