@@ -172,8 +172,33 @@ struct VariationsGeneric
                 vec[i] *= params[i];
         state.v += weight * vec;
     }
-    static void bent_parser(xform_t& xform, const Json& json, num_t weight,
-            std::vector<num_t>& params)
+    static void bent_parser(xform_t& xform, const Json& json,
+            num_t weight, std::vector<num_t>& params)
+    {
+        (void)xform;
+        params.push_back(weight);
+        vec_t vec(json["params"]);
+        for (size_t i = 0; i < dims; ++i)
+            params.push_back(vec[i]);
+    }
+    // based on rectangles from flam3
+    static void rectangles(state_t& state, params_t params)
+    {
+        num_t weight = params[0];
+        ++params;
+        vec_t vec;
+        for (size_t i = 0; i < dims; ++i)
+        {
+            num_t p = params[i], x = state.t[i];
+            if (p == 0.0)
+                vec[i] = x;
+            else
+                vec[i] = (2.0*floor(x/p) + 1.0)*p - x;
+        }
+        state.v += weight * vec;
+    }
+    static void rectangles_parser(xform_t& xform, const Json& json,
+            num_t weight, std::vector<num_t>& params)
     {
         (void)xform;
         params.push_back(weight);
@@ -210,11 +235,17 @@ struct VariationsGeneric
         num_t weight = params[0];
         state.v += weight * state.randNum() * state.randDirection();
     }
-    // gaussian blur from flam3 extended to higher dimensions
+    // gaussian blur based on flam3 extended to higher dimensions
     static void gaussian_blur(state_t& state, params_t params)
     {
         num_t weight = params[0];
         state.v += weight * state.randGaussian() * state.randDirection();
+    }
+    // square from flam3
+    static void square(state_t& state, params_t params)
+    {
+        num_t weight = params[0];
+        state.v += weight * state.randPoint2();
     }
     static const data_t make_data()
     {
@@ -223,11 +254,13 @@ struct VariationsGeneric
         vardata["sinusoidal"] = info_t(sinusoidal);
         vardata["spherical"] = info_t(spherical);
         vardata["bent"] = info_t(bent,bent_parser);
+        vardata["rectangles"] = info_t(rectangles,rectangles_parser);
         vardata["fisheye"] = info_t(fisheye);
         vardata["bubble"] = info_t(bubble);
         vardata["noise"] = info_t(noise);
         vardata["blur"] = info_t(blur);
         vardata["gaussian_blur"] = info_t(gaussian_blur);
+        vardata["square"] = info_t(square);
         return vardata;
     }
 };

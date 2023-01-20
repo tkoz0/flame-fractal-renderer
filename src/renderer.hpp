@@ -97,6 +97,14 @@ struct IterState<num_t,dims,Isaac<word_t,rparam>>
             x[i] = 2.0*randNum() - 1.0;
         return point_t(x);
     }
+    // random point in unit square/cube/hypercube
+    inline point_t randPoint2()
+    {
+        num_t x[dims];
+        for (size_t i = 0; i < dims; ++i)
+            x[i] = randNum() - 0.5;
+        return point_t(x);
+    }
     // random point on the unit circle/sphere/hypersphere surface
     ENABLE_IFEQ(dims,1,point_t) inline randDirection()
     {
