@@ -47,13 +47,13 @@ void getParams(const num_t *params, Ts&... ps)
     getParams_helper(params,0,ps...);
 }
 
-// push_back multiple values to the params vector
 template <typename num_t>
 void storeParams(std::vector<num_t>& params)
 {
     (void)params;
 }
 
+// put parameters into the end of the parameters vector
 template <typename num_t, typename T, typename...Ts>
 void storeParams(std::vector<num_t>& params, T p, Ts... ps)
 {
@@ -61,12 +61,12 @@ void storeParams(std::vector<num_t>& params, T p, Ts... ps)
     storeParams(params,ps...);
 }
 
-// extract values from json to store in referencesk
 void getParamsJson(const Json& j)
 {
     (void)j;
 }
 
+// from JSON object, store values into references given the keys
 template <typename K, typename V, typename...Ts>
 void getParamsJson(const Json& j, const K& k, V& v, Ts&... ts)
 {
@@ -129,6 +129,11 @@ struct Variations
         return vars.size();
     }
 };
+
+// dimension specific variations
+// specialize this class in separate files per dimension
+template <typename num_t, size_t dims, typename rand_t>
+struct VariationsSpecific;
 
 // dimension generic variations
 template <typename num_t, size_t dims, typename rand_t>
@@ -264,11 +269,6 @@ struct VariationsGeneric
         return vardata;
     }
 };
-
-// dimension specific variations
-// specialize this class in separate files per dimension
-template <typename num_t, size_t dims, typename rand_t>
-struct VariationsSpecific;
 
 // combine dimension generic and dimension specific variations
 template <typename K, typename V, typename ...Maps>

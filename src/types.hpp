@@ -386,15 +386,13 @@ public:
     inline T norm2sq() const { return normsum<2>(); }
     /* === coordinate systems === */
     // angle in a plane [0,2pi)
-    template <size_t d1 = 0, size_t d2 = 1> inline T angle() const
+    inline T angle(size_t d1 = 0, size_t d2 = 1) const
     {
-        static_assert(d1 < N && d2 < N && d1 != d2);
         return atan2(vec[d2],vec[d1]);
     }
     // alternative angle in a plane [-pi,pi]
-    template <size_t d1 = 0, size_t d2 = 1> inline T angle2() const
+    inline T angle2(size_t d1 = 0, size_t d2 = 1) const
     {
-        static_assert(d1 < N && d2 < N && d1 != d2);
         bool sign = std::signbit(vec[d2]);
         static const T signtable[2] = {1,-1};
         return signtable[sign] * acos(vec[d1]/hypot(vec[d1],vec[d2]));
