@@ -1,34 +1,232 @@
+/*
+Variation functions
+*/
 
 #pragma once
 
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
+
 #include <ctgmath>
 #include <unordered_map>
 
-#include "vars.hpp"
+#include "../types.hpp"
 
 #define likely(x)   __builtin_expect(!!(x),1)
 #define unlikely(x) __builtin_expect(!!(x),0)
-#define DIMS 2
 
 namespace tkoz
 {
 namespace flame
 {
+namespace vars
+{
+
+/*
+Linear - generalized from flam3
+parameters: weight
+*/
+template <typename num_t, size_t dims, typename rand_t>
+void linear(IterState<num_t,dims,rand_t>& state, const num_t *params)
+{
+    num_t weight = params[0];
+    state.v += weight * state.t;
+}
+
+/*
+Sinusoidal - generalized from flam3
+parameters: weight
+*/
+template <typename num_t, size_t dims, typename rand_t>
+void sinusoidal(IterState<num_t,dims,rand_t>& state, const num_t *params)
+{
+    num_t weight = params[0];
+    state.v += weight * state.t.map([](num_t x){ return sin(x); });
+}
+
+/*
+Spherical - generalized from flam3
+parameters: weight
+*/
+template <typename num_t, size_t dims, typename rand_t>
+void spherical(IterState<num_t,dims,rand_t>& state, const num_t *params)
+{
+    num_t weight = params[0];
+    num_t r = weight / (state.t.norm2sq() + eps<num_t>::value);
+    state.v += r * state.t;
+}
+
+
+
+
+
+/*
+
+// dimension generic variations
+template <typename num_t, size_t dims, typename rand_t>
+struct VariationsGeneric
+{
+    // typedefs for convenience
+    typedef IterState<num_t,dims,rand_t> state_t;
+    typedef const num_t* params_t;
+    typedef VarInfo<num_t,dims,rand_t> info_t;
+    typedef const XForm<num_t,dims,rand_t> xform_t;
+    typedef VarData<num_t,dims,rand_t> data_t;
+    typedef Point<num_t,dims> vec_t;
+    static constexpr num_t eps = tkoz::flame::eps<num_t>::value;
+    // from flam3
+    static void linear(state_t& state, params_t params)
+    {
+        num_t weight = params[0];
+        state.v += weight * state.t;
+    }
+    // from flam3
+    static void sinusoidal(state_t& state, params_t params)
+    {
+        num_t weight = params[0];
+        state.v += weight * state.t.map([](num_t x){ return sin(x); });
+    }
+    // from flam3
+    static void spherical(state_t& state, params_t params)
+    {
+        num_t weight = params[0];
+        num_t r = weight / (state.t.norm2sq() + eps);
+        state.v += r * state.t;
+    }
+    // based on bent2 from flam3
+    static void bent(state_t& state, params_t params)
+    {
+        num_t weight = params[0];
+        ++params;
+        vec_t vec = state.t;
+        for (size_t i = 0; i < dims; ++i)
+            if (vec[i] < 0)
+                vec[i] *= params[i];
+        state.v += weight * vec;
+    }
+    static void bent_parser(xform_t& xform, const Json& json,
+            num_t weight, std::vector<num_t>& params)
+    {
+        (void)xform;
+        params.push_back(weight);
+        vec_t vec(json["params"]);
+        for (size_t i = 0; i < dims; ++i)
+            params.push_back(vec[i]);
+    }
+    // based on rectangles from flam3
+    static void rectangles(state_t& state, params_t params)
+    {
+        num_t weight = params[0];
+        ++params;
+        vec_t vec;
+        for (size_t i = 0; i < dims; ++i)
+        {
+            num_t p = params[i], x = state.t[i];
+            if (p == 0.0)
+                vec[i] = x;
+            else
+                vec[i] = (2.0*floor(x/p) + 1.0)*p - x;
+        }
+        state.v += weight * vec;
+    }
+    static void rectangles_parser(xform_t& xform, const Json& json,
+            num_t weight, std::vector<num_t>& params)
+    {
+        (void)xform;
+        params.push_back(weight);
+        vec_t vec(json["params"]);
+        for (size_t i = 0; i < dims; ++i)
+            params.push_back(vec[i]);
+    }
+    // fisheye based on flam3 with order corrected, constant changed
+    static void fisheye(state_t& state, params_t params)
+    {
+        num_t weight = params[0];
+        // TODO support changing the 1.0 constant
+        num_t r = weight / (state.t.norm2() + 1.0);
+        state.v += r * state.t;
+    }
+    // bubble based on flam3, constant changed
+    static void bubble(state_t& state, params_t params)
+    {
+        num_t weight = params[0];
+        // TODO support changing the 4.0 constant
+        num_t r = weight / (state.t.norm2sq() + 4.0);
+        state.v += r * state.t;
+    }
+    // noise from flam3 extended to higher dimensions
+    static void noise(state_t& state, params_t params)
+    {
+        num_t weight = params[0];
+        num_t r = weight * state.randNum();
+        state.v += r * multComponents(state.t,state.randDirection());
+    }
+    // blur from flam3 extended to higher dimensions
+    static void blur(state_t& state, params_t params)
+    {
+        num_t weight = params[0];
+        state.v += weight * state.randNum() * state.randDirection();
+    }
+    // gaussian blur based on flam3 extended to higher dimensions
+    static void gaussian_blur(state_t& state, params_t params)
+    {
+        num_t weight = params[0];
+        state.v += weight * state.randGaussian() * state.randDirection();
+    }
+    // square from flam3
+    static void square(state_t& state, params_t params)
+    {
+        num_t weight = params[0];
+        state.v += weight * state.randPoint2();
+    }
+    static const data_t make_data()
+    {
+        data_t vardata;
+        vardata["linear"] = info_t(linear);
+        vardata["sinusoidal"] = info_t(sinusoidal);
+        vardata["spherical"] = info_t(spherical);
+        vardata["bent"] = info_t(bent,bent_parser);
+        vardata["rectangles"] = info_t(rectangles,rectangles_parser);
+        vardata["fisheye"] = info_t(fisheye);
+        vardata["bubble"] = info_t(bubble);
+        vardata["noise"] = info_t(noise);
+        vardata["blur"] = info_t(blur);
+        vardata["gaussian_blur"] = info_t(gaussian_blur);
+        vardata["square"] = info_t(square);
+        return vardata;
+    }
+};
+
+// combine dimension generic and dimension specific variations
+template <typename K, typename V, typename ...Maps>
+std::unordered_map<K,V> combine_maps(const Maps&... maps)
+{
+    std::unordered_map<K,V> ret;
+    for (auto map : {maps...})
+        for (auto itr : map)
+            ret.insert(itr);
+    return ret;
+}
+
+template <typename num_t, size_t dims, typename rand_t>
+const VarData<num_t,dims,rand_t> Variations<num_t,dims,rand_t>::vars =
+    combine_maps<std::string,VarInfo<num_t,dims,rand_t>,
+            VarData<num_t,dims,rand_t>>(
+        VariationsGeneric<num_t,dims,rand_t>::make_data(),
+        VariationsSpecific<num_t,dims,rand_t>::make_data());
 
 // specialization for 2d
 template <typename num_t, typename rand_t>
-struct VariationsSpecific<num_t,DIMS,rand_t>
+struct VariationsSpecific<num_t,2,rand_t>
 {
     // typedefs for convenience
-    typedef IterState<num_t,DIMS,rand_t> state_t;
+    typedef IterState<num_t,2,rand_t> state_t;
     typedef const num_t* params_t;
-    typedef VarInfo<num_t,DIMS,rand_t> info_t;
-    typedef const XForm<num_t,DIMS,rand_t> xform_t;
-    typedef VarData<num_t,DIMS,rand_t> data_t;
-    typedef Point<num_t,DIMS> vec_t;
+    typedef VarInfo<num_t,2,rand_t> info_t;
+    typedef const XForm<num_t,2,rand_t> xform_t;
+    typedef VarData<num_t,2,rand_t> data_t;
+    typedef Point<num_t,2> vec_t;
     static constexpr num_t eps = tkoz::flame::eps<num_t>::value;
     // from flam3
     static void swirl(state_t& state, params_t params)
@@ -298,9 +496,11 @@ struct VariationsSpecific<num_t,DIMS,rand_t>
     }
 };
 
+*/
+
+}
 }
 }
 
 #undef likely
 #undef unlikely
-#undef DIMS

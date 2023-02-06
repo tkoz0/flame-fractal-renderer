@@ -352,6 +352,10 @@ public:
             return pow(normsum<p>(),1/p);
         }
     }
+    inline T norm(T p) const
+    {
+        return pow(normsum(p),1/p);
+    }
     // vector p-norms before taking the root (p != 0)
     template <u32 p> inline T normsum() const
     {
@@ -375,6 +379,13 @@ public:
                 ret += pow(abs(vec[i]),(T)p);
             return ret;
         }
+    }
+    inline T normsum(T p) const
+    {
+        T ret = pow(abs(x()),p);
+        for (size_t i = 1; i < N; ++i)
+            ret += pow(abs(vec[i]),p);
+        return ret;
     }
     // 1-norm
     inline T norm1() const { return norm<1>(); }
