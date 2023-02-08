@@ -359,7 +359,6 @@ public:
     // vector p-norms before taking the root (p != 0)
     template <u32 p> inline T normsum() const
     {
-        static_assert(p > 0);
         T ret;
         switch (p)
         {
@@ -393,6 +392,7 @@ public:
     inline T norm2() const { return norm<2>(); }
     // infinity-norm
     inline T norminf() const { return norm<0>(); }
+    inline T normmax() const { return norm<0>(); }
     // 2-norm squared
     inline T norm2sq() const { return normsum<2>(); }
     /* === coordinate systems === */

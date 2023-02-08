@@ -20,58 +20,6 @@ namespace tkoz
 namespace flame
 {
 
-// define getParams function for getting numbers from params pointer
-
-// base case, 0 arguments
-template <typename num_t>
-void getParams_helper(const num_t *params, size_t n)
-{
-    (void)params;
-    (void)n;
-}
-
-// helper with argument for array index, >=1 arguments
-template <typename num_t, typename T, typename...Ts>
-void getParams_helper(const num_t *params, size_t n, T& p, Ts&... ps)
-{
-    p = params[n]; // write current parameter
-    getParams_helper(params,n+1,ps...); // increment index, write the rest
-}
-
-// put params[0],params[1],... into references (variable length)
-template <typename num_t, typename...Ts>
-void getParams(const num_t *params, Ts&... ps)
-{
-    getParams_helper(params,0,ps...);
-}
-
-template <typename num_t>
-void storeParams(std::vector<num_t>& params)
-{
-    (void)params;
-}
-
-// put parameters into the end of the parameters vector
-template <typename num_t, typename T, typename...Ts>
-void storeParams(std::vector<num_t>& params, T p, Ts... ps)
-{
-    params.push_back(p);
-    storeParams(params,ps...);
-}
-
-void getParamsJson(const Json& j)
-{
-    (void)j;
-}
-
-// from JSON object, store values into references given the keys
-template <typename K, typename V, typename...Ts>
-void getParamsJson(const Json& j, const K& k, V& v, Ts&... ts)
-{
-    v = j[k].floatValue();
-    getParamsJson(j,ts...);
-}
-
 template <typename num_t, size_t dims, typename rand_t>
 using VarFunc = std::function<void(IterState<num_t,dims,rand_t>&,
                               const num_t*)>;
@@ -124,16 +72,32 @@ struct Variations
     {
         VarData<num_t,dims,rand_t> data;
         data["linear"] = info_t(
-            &vars::linear<num_t,dims,rand_t>,
-            &parsers::weight_only<num_t>
+            vars::linear<num_t,dims,rand_t>,
+            parsers::weight_only<num_t>
         );
         data["sinusoidal"] = info_t(
-            &vars::sinusoidal<num_t,dims,rand_t>,
-            &parsers::weight_only<num_t>
+            vars::sinusoidal<num_t,dims,rand_t>,
+            parsers::weight_only<num_t>
         );
         data["spherical"] = info_t(
-            &vars::spherical<num_t,dims,rand_t>,
-            &parsers::weight_only<num_t>
+            vars::spherical<num_t,dims,rand_t>,
+            parsers::weight_only<num_t>
+        );
+        data["spherical_p"] = info_t(
+            vars::spherical_p<num_t,dims,rand_t>,
+            parsers::spherical_p<num_t>
+        );
+        data["unit_cube"] = info_t(
+            vars::unit_cube<num_t,dims,rand_t>,
+            parsers::weight_only<num_t>
+        );
+        data["unit_sphere"] = info_t(
+            vars::unit_sphere<num_t,dims,rand_t>,
+            parsers::weight_only<num_t>
+        );
+        data["unit_sphere_p"] = info_t(
+            vars::unit_sphere_p<num_t,dims,rand_t>,
+            parsers::spherical_p<num_t>
         );
         return data;
     }

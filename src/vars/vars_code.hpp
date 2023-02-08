@@ -12,6 +12,7 @@ Variation functions
 #include <unordered_map>
 
 #include "../types.hpp"
+#include "vars_util.hpp"
 
 #define likely(x)   __builtin_expect(!!(x),1)
 #define unlikely(x) __builtin_expect(!!(x),0)
@@ -25,6 +26,7 @@ namespace vars
 
 /*
 Linear - generalized from flam3
+- use the pre-affine transformed point as is (scaled by weight)
 parameters: weight
 */
 template <typename num_t, size_t dims, typename rand_t>
@@ -36,6 +38,7 @@ void linear(IterState<num_t,dims,rand_t>& state, const num_t *params)
 
 /*
 Sinusoidal - generalized from flam3
+- map each component to its sine
 parameters: weight
 */
 template <typename num_t, size_t dims, typename rand_t>
@@ -47,6 +50,7 @@ void sinusoidal(IterState<num_t,dims,rand_t>& state, const num_t *params)
 
 /*
 Spherical - generalized from flam3
+- divide by squared magnitude (in 2-norm)
 parameters: weight
 */
 template <typename num_t, size_t dims, typename rand_t>
@@ -57,11 +61,66 @@ void spherical(IterState<num_t,dims,rand_t>& state, const num_t *params)
     state.v += r * state.t;
 }
 
+/*
+Spherical P - by TKoz, generalized further from spherical
+- picks a p-norm (p > 0), spherical uses p=2
+- divide by the p-th power of distance (the norm before taking the root)
+parameters: weight, norm
+*/
+template <typename num_t, size_t dims, typename rand_t>
+void spherical_p(IterState<num_t,dims,rand_t>& state, const num_t *params)
+{
+    num_t weight,norm;
+    getParams(params,weight,norm);
+    num_t r = weight / (state.t.normsum(norm) + eps<num_t>::value);
+    state.v += r * state.t;
+}
 
+/*
+Unit Cube - by TKoz
+- project point onto unit cube (scale using max norm)
+parameters: weight
+*/
+template <typename num_t, size_t dims, typename rand_t>
+void unit_cube(IterState<num_t,dims,rand_t>& state, const num_t *params)
+{
+    num_t weight = params[0];
+    num_t r = weight / (state.t.norminf() + eps<num_t>::value);
+    state.v += r * state.t;
+}
+
+/*
+Unit Sphere - by TKoz
+- project point onto unit sphere (unit vector in same direction)
+parameters: weight
+*/
+template <typename num_t, size_t dims, typename rand_t>
+void unit_sphere(IterState<num_t,dims,rand_t>& state, const num_t *params)
+{
+    num_t weight = params[0];
+    num_t r = weight / (state.t.norm2() + eps<num_t>::value);
+    state.v += r * state.t;
+}
+
+/*
+Unit Sphere P - by TKoz
+- project point onto unit vector in p norms
+parameters: weight, norm
+*/
+template <typename num_t, size_t dims, typename rand_t>
+void unit_sphere_p(IterState<num_t,dims,rand_t>& state, const num_t *params)
+{
+    num_t weight,norm;
+    getParams(params,weight,norm);
+    num_t r = weight / (state.t.norm(norm) + eps<num_t>::value);
+    state.v += r * state.t;
+}
 
 
 
 /*
+
+TODO REMOVE ALL THIS CODE AFTER REWRITING
 
 // dimension generic variations
 template <typename num_t, size_t dims, typename rand_t>

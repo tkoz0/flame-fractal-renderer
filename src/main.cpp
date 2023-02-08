@@ -37,7 +37,8 @@ const std::string VERSION = "unspecified";
 
 namespace bpo = boost::program_options;
 typedef float num_t; // can also be double (slower)
-typedef Isaac<u32,6> rand_t; // can also be JavaRandom (about same speed)
+// Isaac RNG, 4 recommended for simulations, 8 recommended for cryptography
+typedef Isaac<u32,4> rand_t;
 
 int main(int argc, char **argv)
 {
