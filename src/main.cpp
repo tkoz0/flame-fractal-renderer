@@ -29,16 +29,17 @@ planned options (not available yet):
 
 #include "json_small.hpp"
 #include "renderer.hpp"
-#include "types.hpp"
-#include "variations.hpp"
-#include "utils.hpp"
+#include "types/types.hpp"
+#include "utils/image.hpp"
+#include "utils/misc.hpp"
 
 const std::string VERSION = "unspecified";
 
 namespace bpo = boost::program_options;
 typedef float num_t; // can also be double (slower)
 // Isaac RNG, 4 recommended for simulations, 8 recommended for cryptography
-typedef Isaac<u32,4> rand_t;
+typedef u32 isaac_word_t;
+size_t isaac_rparam = 4;
 
 int main(int argc, char **argv)
 {
@@ -143,7 +144,7 @@ int main(int argc, char **argv)
     }
     std::cerr << "=== FFBUF version " << VERSION << " ===" << std::endl;
     std::cerr << "2d variations: "
-        << tkoz::flame::Variations<num_t,2,rand_t>::size() << std::endl;
+        << tkoz::flame::Variations<num_t,2>::size() << std::endl;
     // print options
     std::cerr << "command line arguments:" << std::endl;
     std::cerr << "ffbuf" << std::endl;
@@ -164,8 +165,8 @@ int main(int argc, char **argv)
     else
         json_flame = Json(read_text_file(arg_flame));
     std::cerr << "flame json (comments removed): " << json_flame << std::endl;
-    tkoz::flame::RendererBasic<num_t,u32,u8,rand_t> renderer(json_flame);
-    const tkoz::flame::Flame<num_t,2,rand_t>& flame = renderer.getFlame();
+    tkoz::flame::RendererBasic<num_t,u32> renderer(json_flame);
+    const tkoz::flame::Flame<num_t,2>& flame = renderer.getFlame();
     std::cerr << "x size: " << flame.getSize()[0] << std::endl;
     std::cerr << "y size: " << flame.getSize()[1] << std::endl;
     std::pair<num_t,num_t> xb = flame.getBounds()[0];

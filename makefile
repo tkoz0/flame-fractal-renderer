@@ -4,7 +4,7 @@ LIBS=-lm -lpng -lboost_program_options -lpthread
 
 all: nlohmann/json.hpp
 	mkdir -p bin
-	g++ -Wall -Werror -Wextra -std=gnu++11 -O3 -o bin/ffbuf src/*.cpp $(LIBS)
+	g++ -Wall -Werror -Wextra -std=gnu++11 -O3 -o bin/ffbuf src/*.cpp src/utils/*.cpp $(LIBS)
 
 nlohmann/json.hpp:
 	mkdir -p nlohmann

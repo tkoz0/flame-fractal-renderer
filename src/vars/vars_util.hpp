@@ -10,7 +10,7 @@ Helper functions for dealing with variations
 
 #include <ctgmath>
 
-#include "../types.hpp"
+#include "../types/types.hpp"
 
 namespace tkoz
 {

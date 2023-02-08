@@ -11,7 +11,8 @@ Variation functions
 #include <ctgmath>
 #include <unordered_map>
 
-#include "../types.hpp"
+#include "../types/iter_state.hpp"
+#include "../types/constants.hpp"
 #include "vars_util.hpp"
 
 #define likely(x)   __builtin_expect(!!(x),1)
@@ -29,8 +30,8 @@ Linear - generalized from flam3
 - use the pre-affine transformed point as is (scaled by weight)
 parameters: weight
 */
-template <typename num_t, size_t dims, typename rand_t>
-void linear(IterState<num_t,dims,rand_t>& state, const num_t *params)
+template <typename num_t, size_t dims>
+void linear(IterState<num_t,dims>& state, const num_t *params)
 {
     num_t weight = params[0];
     state.v += weight * state.t;
@@ -41,8 +42,8 @@ Sinusoidal - generalized from flam3
 - map each component to its sine
 parameters: weight
 */
-template <typename num_t, size_t dims, typename rand_t>
-void sinusoidal(IterState<num_t,dims,rand_t>& state, const num_t *params)
+template <typename num_t, size_t dims>
+void sinusoidal(IterState<num_t,dims>& state, const num_t *params)
 {
     num_t weight = params[0];
     state.v += weight * state.t.map([](num_t x){ return sin(x); });
@@ -53,8 +54,8 @@ Spherical - generalized from flam3
 - divide by squared magnitude (in 2-norm)
 parameters: weight
 */
-template <typename num_t, size_t dims, typename rand_t>
-void spherical(IterState<num_t,dims,rand_t>& state, const num_t *params)
+template <typename num_t, size_t dims>
+void spherical(IterState<num_t,dims>& state, const num_t *params)
 {
     num_t weight = params[0];
     num_t r = weight / (state.t.norm2sq() + eps<num_t>::value);
@@ -67,8 +68,8 @@ Spherical P - by TKoz, generalized further from spherical
 - divide by the p-th power of distance (the norm before taking the root)
 parameters: weight, norm
 */
-template <typename num_t, size_t dims, typename rand_t>
-void spherical_p(IterState<num_t,dims,rand_t>& state, const num_t *params)
+template <typename num_t, size_t dims>
+void spherical_p(IterState<num_t,dims>& state, const num_t *params)
 {
     num_t weight,norm;
     getParams(params,weight,norm);
@@ -81,8 +82,8 @@ Unit Cube - by TKoz
 - project point onto unit cube (scale using max norm)
 parameters: weight
 */
-template <typename num_t, size_t dims, typename rand_t>
-void unit_cube(IterState<num_t,dims,rand_t>& state, const num_t *params)
+template <typename num_t, size_t dims>
+void unit_cube(IterState<num_t,dims>& state, const num_t *params)
 {
     num_t weight = params[0];
     num_t r = weight / (state.t.norminf() + eps<num_t>::value);
@@ -94,8 +95,8 @@ Unit Sphere - by TKoz
 - project point onto unit sphere (unit vector in same direction)
 parameters: weight
 */
-template <typename num_t, size_t dims, typename rand_t>
-void unit_sphere(IterState<num_t,dims,rand_t>& state, const num_t *params)
+template <typename num_t, size_t dims>
+void unit_sphere(IterState<num_t,dims>& state, const num_t *params)
 {
     num_t weight = params[0];
     num_t r = weight / (state.t.norm2() + eps<num_t>::value);
@@ -107,8 +108,8 @@ Unit Sphere P - by TKoz
 - project point onto unit vector in p norms
 parameters: weight, norm
 */
-template <typename num_t, size_t dims, typename rand_t>
-void unit_sphere_p(IterState<num_t,dims,rand_t>& state, const num_t *params)
+template <typename num_t, size_t dims>
+void unit_sphere_p(IterState<num_t,dims>& state, const num_t *params)
 {
     num_t weight,norm;
     getParams(params,weight,norm);

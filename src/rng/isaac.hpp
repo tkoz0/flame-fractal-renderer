@@ -1,3 +1,8 @@
+/*
+Isaac random number generator
+See https://www.burtleburtle.net/bob/rand/isaacafa.html
+*/
+
 #pragma once
 
 #include <cstdint>
@@ -7,7 +12,7 @@
 #include <tuple>
 #include <type_traits>
 
-#include "utils.hpp"
+#include "../utils/clock.hpp"
 
 #define likely(x)   __builtin_expect(!!(x),1)
 #define unlikely(x) __builtin_expect(!!(x),0)

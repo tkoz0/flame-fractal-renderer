@@ -1,9 +1,13 @@
+/*
+MT19937 Mersenne twister implementation
+*/
+
 #pragma once
 
 #include <array>
 #include <cstdint>
 
-#include "utils.hpp"
+#include "../utils/clock.hpp"
 
 #define likely(x)   __builtin_expect(!!(x),1)
 #define unlikely(x) __builtin_expect(!!(x),0)

@@ -10,7 +10,7 @@ Functions for parsing variation parameters
 
 #include <ctgmath>
 
-#include "../types.hpp"
+#include "../types/types.hpp"
 #include "vars_util.hpp"
 
 namespace tkoz

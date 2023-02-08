@@ -5,8 +5,10 @@
 #include <thread>
 #include <vector>
 
-#include "types.hpp"
-#include "variations.hpp"
+#include "types/types.hpp"
+#include "types/flame.hpp"
+#include "vars/vars_data.hpp"
+#include "utils/flame.hpp"
 
 #define likely(x)   __builtin_expect(!!(x),1)
 #define unlikely(x) __builtin_expect(!!(x),0)
@@ -27,316 +29,17 @@ namespace tkoz
 namespace flame
 {
 
-template <typename num_t, typename word_t, size_t rparam, size_t dims>
-struct IterState<num_t,dims,Isaac<word_t,rparam>>
-{
-    typedef Point<num_t,dims> point_t;
-    point_t p, t, v;
-    Isaac<word_t,rparam>& rng;
-    num_t *cw;
-    IterState(Isaac<word_t,rparam>& rng): p(),t(),v(),rng(rng) {}
-    inline bool randBool()
-    {
-        return rng.next() & 1;
-    }
-    FUNC_ENABLE_IFSAME2(num_t,float,word_t,u32,num_t) inline randNum()
-    {
-        return (rng.next() >> 8) / (float)(1 << 24);
-    }
-    FUNC_ENABLE_IFSAME2(num_t,float,word_t,u64,num_t) inline randNum()
-    {
-        return (rng.next() >> 40) / (float)(1 << 24);
-    }
-    FUNC_ENABLE_IFSAME2(num_t,double,word_t,u32,num_t) inline randNum()
-    {
-        u32 hi = rng.next() >> 6;
-        u32 lo = rng.next() >> 5;
-        return (((u64)hi << 27) + lo) / (double)(1LL << 53);
-    }
-    FUNC_ENABLE_IFSAME2(num_t,double,word_t,u64,num_t) inline randNum()
-    {
-        return (rng.next() >> 11) / (double)(1LL << 53);
-    }
-    inline void randGaussianPair(num_t& z1, num_t& z2)
-    {
-#if 0 // box muller transform
-        num_t u1 = randNum();
-        num_t u2 = (2.0*M_PI)*randNum();
-        num_t r = sqrt(-2.0*log(u1));
-        num_t s,c;
-        sincosg(u2,&s,&c);
-        z1 = r*c;
-        z2 = r*s;
-#else // marsaglia polar method
-        num_t v1,v2,s,r;
-        do
-        {
-            v1 = 2.0*randNum() - 1.0;
-            v2 = 2.0*randNum() - 1.0;
-            s = v1*v1 + v2*v2;
-        }
-        while (s >= 1.0);
-        r = sqrt(-2.0*log(s)/s);
-        z1 = v1*r;
-        z2 = v2*r;
-#endif
-    }
-    inline num_t randGaussian()
-    {
-        num_t z1,z2;
-        randGaussianPair(z1,z2);
-        return z1;
-    }
-    // random point in the biunit square/cube/hypercube
-    inline point_t randPoint()
-    {
-        num_t x[dims];
-        for (size_t i = 0; i < dims; ++i)
-            x[i] = 2.0*randNum() - 1.0;
-        return point_t(x);
-    }
-    // random point in unit square/cube/hypercube
-    inline point_t randPoint2()
-    {
-        num_t x[dims];
-        for (size_t i = 0; i < dims; ++i)
-            x[i] = randNum() - 0.5;
-        return point_t(x);
-    }
-    // random point on the unit circle/sphere/hypersphere surface
-    inline point_t randDirection()
-    {
-        if (dims == 1)
-            return point_t(copysign(1.0,randNum()-0.5));
-        else if (dims == 2)
-        {
-            num_t a = (2.0*M_PI) * randNum();
-            num_t sa,ca;
-            sincosg(a,&sa,&ca);
-            return point_t(ca,sa);
-        }
-        else if (dims == 3)
-        {
-            num_t p = acos(2.0*randNum()-1.0);
-            num_t t = (2.0*M_PI) * randNum();
-            num_t st,ct,sp,cp;
-            sincosg(p,&sp,&cp);
-            sincosg(t,&st,&ct);
-            return point_t(st*cp,st*sp,ct);
-        }
-        else
-        {
-            num_t x[dims];
-            for (size_t i = 0; i+1 < dims; i += 2)
-                randGaussianPair(x[i],x[i+1]);
-            if (dims % 2)
-                x[dims-1] = randGaussian();
-            point_t p(x);
-            return p/p.norm2();
-        }
-    }
-    // use cumulative weights to select xform
-    inline u32 randXFormIndex()
-    {
-        u32 ret = 0;
-        num_t r = randNum();
-        while (cw[ret] < r)
-            ++ret;
-        return ret;
-    }
-};
-
-template <typename num_t, size_t dims, typename rand_t>
-struct XFormVar
-{
-    // function pointer
-    std::function<void(IterState<num_t,dims,rand_t>&,const num_t*)> func;
-    size_t index; // index of first variation parameter in varp (XForm class)
-    // parameters are taken in order starting from index
-    // the varp vector keeps the parameters compactly in memory
-};
-
-// xform (including final xform)
-template <typename num_t, size_t dims, typename rand_t>
-class XForm
-{
-private:
-    num_t weight; // xform probability weight, not applicable for final xform
-    std::vector<XFormVar<num_t,dims,rand_t>> vars; // variations
-    std::vector<num_t> varp; // variation parameters
-    Affine<num_t,dims> pre; // pre affine transformation
-    Affine<num_t,dims> post; // post affine transformation
-    bool has_pre,has_post;
-public:
-    XForm(){}
-    // construct from JSON data
-    // throws error if something goes wrong
-    XForm(const Json& input, bool is_final = false)
-    {
-        if (!is_final)
-            weight = input["weight"].floatValue();
-        else
-            weight = 1.0; // unused
-        if (weight <= 0.0)
-            throw std::runtime_error("weights must be positive");
-        Json affine;
-        has_pre = input.valueAt("pre_affine",affine);
-        if (has_pre)
-            pre = Affine<num_t,dims>(affine);
-        else
-            pre = Affine<num_t,dims>();
-        has_post = input.valueAt("post_affine",affine);
-        if (has_post)
-            post = Affine<num_t,dims>(affine);
-        else
-            post = Affine<num_t,2>();
-        for (Json varj : input["variations"].arrayValue())
-        {
-            XFormVar<num_t,dims,rand_t> var;
-            std::string name = varj["name"].stringValue();
-            const VarInfo<num_t,dims,rand_t>& varinfo =
-                Variations<num_t,dims,rand_t>::get(name);
-            var.func = varinfo.getFPtr();
-            var.index = varp.size();
-            vars.push_back(var);
-            varinfo.getPPtr()(varj,varp);
-        }
-    }
-    // optimize xform
-    void optimize()
-    {
-    }
-    inline num_t getWeight() const
-    {
-        return weight;
-    }
-    inline const Affine<num_t,dims>& getPreAffine() const
-    {
-        return pre;
-    }
-    inline const Affine<num_t,dims>& getPostAffine() const
-    {
-        return post;
-    }
-    inline const std::vector<XFormVar<num_t,dims,rand_t>>& getVariations() const
-    {
-        return vars;
-    }
-    inline const std::vector<num_t>& getVariationParams() const
-    {
-        return varp;
-    }
-    // iterate a state for the rendering process
-    inline void applyIteration(IterState<num_t,dims,rand_t>& state) const
-    {
-        // for 2d, faster to apply identity affine than to branch
-        if (dims < 3 || has_pre)
-            state.t = pre.apply_to(state.p);
-        state.v = Point<num_t,dims>();
-        for (auto v : vars)
-            v.func(state,varp.data()+v.index);
-        if (dims < 3 || has_post)
-            state.p = post.apply_to(state.v);
-    }
-};
-
-// flame fractal
-template <typename num_t, size_t dims, typename rand_t>
-class Flame
-{
-private:
-    std::array<size_t,dims> size;
-    std::array<std::pair<num_t,num_t>,dims> bounds;
-    std::vector<XForm<num_t,dims,rand_t>> xforms;
-    XForm<num_t,dims,rand_t> final_xform;
-    bool has_final_xform;
-public:
-    Flame(){}
-    // construct from JSON data
-    // throws error if something goes wrong
-    Flame(const Json& input)
-    {
-        if (input["dimensions"].intValue() != dims)
-            throw std::runtime_error("flame: dimension mismatch");
-        JsonArray sizej = input["size"].arrayValue();
-        JsonArray boundsj = input["bounds"].arrayValue();
-        if (sizej.size() != dims)
-            throw std::runtime_error("flame: incorrect size length");
-        if (boundsj.size() != dims)
-            throw std::runtime_error("flame: incorrect bounds length");
-        num_t M = max_rect<num_t>::value;
-        for (size_t i = 0; i < dims; ++i)
-        {
-            size[i] = sizej[i].floatValue();
-            if (size[i] == 0 || size[i] > max_dim)
-                throw std::runtime_error("flame: size not in [1,65535]");
-            JsonArray boundj = boundsj[i].arrayValue();
-            if (boundj.size() != 2)
-                throw std::runtime_error("flame: incorrect bound format");
-            num_t lo = boundj[0].floatValue();
-            num_t hi = boundj[1].floatValue();
-            bounds[i] = std::make_pair(lo,hi);
-            if (lo < -M || lo > M || hi < -M || hi > M)
-                throw std::runtime_error("flame: bound out of range");
-            if (lo >= hi)
-                throw std::runtime_error("flame: bound low >= bound high");
-        }
-        // xforms loop
-        for (Json xf : input["xforms"].arrayValue())
-        {
-            if (xf["weight"].floatValue() == 0.0) // ignore 0 weight xforms
-                continue;
-            xforms.push_back(XForm<num_t,dims,rand_t>(xf));
-        }
-        Json xf;
-        has_final_xform = input.valueAt("final_xform",xf);
-        if (has_final_xform)
-            final_xform = XForm<num_t,dims,rand_t>(input["final_xform"],true);
-    }
-    void optimize()
-    {
-        // sort by decreasing weight
-        std::sort(xforms.begin(),xforms.end(),
-            [](XForm<num_t,dims,rand_t>& a, XForm<num_t,dims,rand_t>& b)
-            { return a.getWeight() > b.getWeight(); });
-        // optimize each xform
-        std::for_each(xforms.begin(),xforms.end(),
-            [](XForm<num_t,dims,rand_t>& xf) { xf.optimize(); });
-    }
-    inline const std::array<size_t,dims>& getSize() const
-    {
-        return size;
-    }
-    inline const std::array<std::pair<num_t,num_t>,dims>& getBounds() const
-    {
-        return bounds;
-    }
-    inline const std::vector<XForm<num_t,dims,rand_t>>& getXForms() const
-    {
-        return xforms;
-    }
-    inline bool hasFinalXForm() const
-    {
-        return has_final_xform;
-    }
-    inline const XForm<num_t,dims,rand_t>& getFinalXForm() const
-    {
-        return final_xform;
-    }
-};
-
 // render histogram only (count of samples in each pixel)
-template <typename num_t, typename hist_t, typename cache_t, typename rand_t>
+template <typename num_t, typename hist_t>
 class RendererBasic
 {
-    static_assert(sizeof(hist_t) > sizeof(cache_t));
+    static_assert(sizeof(hist_t) > sizeof(u8));
 private:
-    static constexpr hist_t cache_max = max_int_as<cache_t,hist_t>::value;
-    Flame<num_t,2,rand_t> flame;
+    Flame<num_t,2> flame;
     hist_t *histogram;
     // main write location for renderer threads (smaller fits in cache better)
     // on overflow, add to histogram
-    cache_t *bufcache;
+    u8 *bufcache;
     bool hist_alloc; // is histogram allocated by this instance
     num_t *cw; // cumulative weights for xform probability selection
     RendererBasic(){}
@@ -353,7 +56,7 @@ private:
 public:
     // construct a renderer object from a flame, optionally an existing buffer
     // buf != null to use existing buffer, maybe loaded from a file
-    RendererBasic(const Flame<num_t,2,rand_t>& flame, hist_t *buf = nullptr):
+    RendererBasic(const Flame<num_t,2>& flame, hist_t *buf = nullptr):
         flame(flame),samples_iterated(0),samples_plotted(0),
         xmin(INFINITY),ymin(INFINITY),
         xmax(-INFINITY),ymax(-INFINITY),
@@ -365,7 +68,7 @@ public:
             histogram = new hist_t[X*Y]();
         else
             histogram = buf;
-        bufcache = new cache_t[X*Y]();
+        bufcache = new u8[X*Y]();
         xfdist = new hist_t[flame.getXForms().size()]();
         // compute normalized xform weights
         std::vector<num_t> weights;
@@ -395,15 +98,15 @@ public:
         delete[] xfdist;
         delete[] cw;
     }
-    void renderBuffer(size_t samples, rand_t& rng, size_t bad_value_limit = 10)
+    void renderBuffer(size_t samples, rng_t& rng, size_t bad_value_limit = 10)
     {
         if (bad_value_xforms.size() >= bad_value_limit)
             return;
         // state setup
-        IterState<num_t,2,rand_t> state(rng);
+        IterState<num_t,2> state(rng);
         state.cw = cw;
         state.p = state.randPoint();
-        const std::vector<XForm<num_t,2,rand_t>>& xfs = flame.getXForms();
+        const std::vector<XForm<num_t,2>>& xfs = flame.getXForms();
         bool has_final_xform = flame.hasFinalXForm();
         // multipliers for calculating coordinates in histogram
         std::pair<num_t,num_t> xb = flame.getBounds()[0];
@@ -423,7 +126,7 @@ public:
         {
             ++samples_iterated_local;
             u32 xf_i = state.randXFormIndex();
-            const XForm<num_t,2,rand_t>& xf = xfs[xf_i];
+            const XForm<num_t,2>& xf = xfs[xf_i];
             ++xfdist_local[xf_i];
             xf.applyIteration(state);
             if (unlikely(bad_value(state.p.x()) || bad_value(state.p.y())))
@@ -467,8 +170,7 @@ public:
             // increment in cache, if overflow then add to histogram
             if (unlikely(!__atomic_add_fetch(bufcache+index,1,
                     __ATOMIC_RELAXED)))
-                __atomic_fetch_add(histogram+index,cache_max,
-                    __ATOMIC_RELAXED);
+                __atomic_fetch_add(histogram+index,1<<8,__ATOMIC_RELAXED);
             ++samples_plotted_local;
         }
         mutex.lock();
@@ -491,7 +193,7 @@ public:
         auto thread_function = [this,&samples,&batch_mutex,&samples_progress,
                 &samples_total,&bad_value_limit,&batch_callback,&batch_size]()
         {
-            rand_t rng; // unique random seeded rng for each thread
+            rng_t rng; // unique random seeded rng for each thread
             for (;;)
             {
                 batch_mutex.lock(); // get next unit
@@ -561,7 +263,7 @@ public:
             }
         return buf;
     }
-    inline const Flame<num_t,2,rand_t>& getFlame() const
+    inline const Flame<num_t,2>& getFlame() const
     {
         return flame;
     }
