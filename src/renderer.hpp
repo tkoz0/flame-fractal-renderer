@@ -103,7 +103,8 @@ public:
         if (bad_value_xforms.size() >= bad_value_limit)
             return;
         // state setup
-        IterState<num_t,2> state(rng);
+        IterState<num_t,2> state;
+        state.rng = &rng;
         state.cw = cw;
         state.p = state.randPoint();
         const std::vector<XForm<num_t,2>>& xfs = flame.getXForms();

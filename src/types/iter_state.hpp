@@ -14,6 +14,7 @@ namespace tkoz
 namespace flame
 {
 
+// variables must be initialized manually
 template <typename num_t, size_t dims>
 struct IterState
 {
@@ -24,30 +25,31 @@ struct IterState
     // - p = current point
     // - t = pre-affine transformation applied to p
     // - v = variation sum based on t
-    point_t p, t, v;
+    point_t p,t,v;
     // rng state
-    rng_t& rng;
+    rng_t *rng;
     // cumulative weights for xform selection
     num_t *cw;
-    // set points to 0 and use provided rng
-    IterState(rng_t& rng): p(),t(),v(),rng(rng) {}
     // random true/false
     inline bool randBool()
     {
-        return rng.next() & 1;
+        return rng->next() & 1;
     }
     // random number in [0,1)
     inline num_t randNum()
     {
-        if (sizeof(num_t) == 4) // float
-            return (rng.next() >> 8) / (float)(1 << 24);
+        // code for isaac32
+        static_assert(std::is_same<u32,rng_t::word_type>::value);
+        if (std::is_same<num_t,float>::value) // float
+            return (rng->next() >> 8) / (float)(1 << 24);
         else // double
         {
-            u32 hi = rng.next() >> 6;
-            u32 lo = rng.next() >> 5;
+            u32 hi = rng->next() >> 6;
+            u32 lo = rng->next() >> 5;
             return (((u64)hi << 27) | lo) / (double)(1LL << 53);
         }
         // code for isaac64
+        //static_assert(std::is_same<u64,rng_t::word_type>::value);
         //if (sizeof(num_t) == 4) // float
         //    return (rng.next() >> 40) / (float)(1 << 24);
         //else // double
@@ -56,7 +58,7 @@ struct IterState
     // generates 2 gaussian variables (mean 0, stdev 1)
     inline void randGaussianPair(num_t& z1, num_t& z2)
     {
-#if 0 // box muller transform
+#if 1 // box muller transform
         num_t u1 = randNum();
         num_t u2 = (2.0*M_PI)*randNum();
         num_t r = sqrt(-2.0*log(u1));

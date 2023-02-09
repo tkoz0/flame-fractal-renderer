@@ -60,6 +60,7 @@ public:
     // number of words in the internal state
     static const size_t randsiz = 1 << rparam;
     static const size_t randsizmask = randsiz-1;
+    typedef word_t word_type;
 private:
     size_t randcnt; // number of unused values in randrsl
     word_t randrsl[randsiz]; // generated values
