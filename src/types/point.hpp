@@ -4,14 +4,17 @@ Representation of a point in N dimensional real space.
 
 #pragma once
 
+#include <array>
 #include <cstdlib>
 #include <iostream>
 
-#include "../utils/sfinae.hpp"
+#include "../utils.hpp"
 
 // macros for using SFINAE
 #define ENABLE_IF(COND,RET) template <typename RET2 = RET> \
     typename std::enable_if<(COND),RET2>::type
+#define ENABLE_IFEQ(N1,N2,RET) template <typename RET2 = RET> \
+    typename enable_if_eq<N1,N2,RET2>::type
 
 namespace tkoz
 {

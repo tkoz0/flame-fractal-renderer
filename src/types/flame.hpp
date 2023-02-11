@@ -4,10 +4,12 @@ Representation of a flame fractal
 
 #pragma once
 
+#include <array>
 #include <cstdlib>
+#include <vector>
 
+#include "../utils.hpp"
 #include "xform.hpp"
-#include "constants.hpp"
 
 namespace tkoz
 {
@@ -25,7 +27,6 @@ private:
     XForm<num_t,dims> final_xform;
     bool has_final_xform;
 public:
-    Flame(){}
     // construct from JSON data
     // throws error if something goes wrong
     Flame(const Json& input)
@@ -43,7 +44,7 @@ public:
         {
             size[i] = sizej[i].floatValue();
             if (size[i] == 0 || size[i] > max_dim)
-                throw std::runtime_error("flame: size not in [1,65535]");
+                throw std::runtime_error("flame: size out of range");
             JsonArray boundj = boundsj[i].arrayValue();
             if (boundj.size() != 2)
                 throw std::runtime_error("flame: incorrect bound format");

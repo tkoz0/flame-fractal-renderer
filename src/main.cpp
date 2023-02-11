@@ -27,8 +27,8 @@ planned options (not available yet):
 
 #include <boost/program_options.hpp>
 
-#include "json_small.hpp"
-#include "renderer.hpp"
+#include "utils.hpp"
+#include "renderers/renderer.hpp"
 #include "types/types.hpp"
 #include "utils/image.hpp"
 #include "utils/misc.hpp"
@@ -143,8 +143,6 @@ int main(int argc, char **argv)
         }
     }
     std::cerr << "=== FFBUF version " << VERSION << " ===" << std::endl;
-    std::cerr << "2d variations: "
-        << tkoz::flame::Variations<num_t,2>::size() << std::endl;
     // print options
     std::cerr << "command line arguments:" << std::endl;
     std::cerr << "ffbuf" << std::endl;

@@ -4,9 +4,11 @@ Representation of affine transformation
 
 #pragma once
 
+#include <array>
 #include <cstdlib>
 #include <iostream>
 
+#include "../utils.hpp"
 #include "point.hpp"
 
 namespace tkoz

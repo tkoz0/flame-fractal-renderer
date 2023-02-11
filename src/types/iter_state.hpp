@@ -118,15 +118,25 @@ struct IterState
         }
         else if (dims == 3)
         {
-            num_t p = acos(2.0*randNum()-1.0);
+#if 0 // first method on wolfram mathworld
+            num_t p = acos(2.0*randNum() - 1.0);
             num_t t = (2.0*M_PI) * randNum();
             num_t st,ct,sp,cp;
             sincosg(p,&sp,&cp);
             sincosg(t,&st,&ct);
             return point_t(st*cp,st*sp,ct);
+#else // second method on wolfram mathworld
+            num_t u = 2.0*randNum() - 1.0;
+            num_t t = (2.0*M_PI) * randNum();
+            num_t r = sqrt(1.0 - u*u);
+            num_t st,ct;
+            sincosg(t,&st,&ct);
+            return point_t(r*ct,r*st,u);
+#endif
         }
         else
         {
+            // gaussian distributed points and then normalize
             num_t x[dims];
             for (size_t i = 0; i+1 < dims; i += 2)
                 randGaussianPair(x[i],x[i+1]);

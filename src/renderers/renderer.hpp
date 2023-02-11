@@ -5,10 +5,7 @@
 #include <thread>
 #include <vector>
 
-#include "types/types.hpp"
-#include "types/flame.hpp"
-#include "vars/vars_data.hpp"
-#include "utils/flame.hpp"
+#include "../types.hpp"
 
 #define likely(x)   __builtin_expect(!!(x),1)
 #define unlikely(x) __builtin_expect(!!(x),0)
@@ -97,6 +94,7 @@ public:
             delete[] histogram;
         delete[] xfdist;
         delete[] cw;
+        delete[] bufcache;
     }
     void renderBuffer(size_t samples, rng_t& rng, size_t bad_value_limit = 10)
     {

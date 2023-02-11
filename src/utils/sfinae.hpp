@@ -5,6 +5,7 @@ SFINAE code
 #pragma once
 
 #include <cstdlib>
+#include <type_traits>
 
 // variadic template all same type
 // https://www.fluentcpp.com/2019/01/25/variadic-number-function-parameters-type/
@@ -24,6 +25,4 @@ template <size_t N1, size_t N2, typename T = void>
 struct enable_if_eq {};
 template <size_t N, typename T>
 struct enable_if_eq<N,N,T> { typedef T type; };
-#define ENABLE_IFEQ(N1,N2,RET) template <typename RET2 = RET> \
-    typename enable_if_eq<N1,N2,RET2>::type
 

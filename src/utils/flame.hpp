@@ -4,6 +4,8 @@ Some utility functions for flame fractal renderer
 
 #pragma once
 
+#include "../types/constants.hpp"
+
 namespace tkoz
 {
 namespace flame
