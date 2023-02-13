@@ -30,6 +30,14 @@ Variation<num_t,dims> *Variation<num_t,dims>::parseVariation(const Json& json)
         return new Heart<num_t,dims>(json);
     else if (name == "disc")
         return new Disc<num_t,dims>(json);
+    else if (name == "spiral")
+        return new Spiral<num_t,dims>(json);
+    else if (name == "hyperbolic")
+        return new Hyperbolic<num_t,dims>(json);
+    else if (name == "diamond")
+        return new Diamond<num_t,dims>(json);
+    else if (name == "ex")
+        return new Ex<num_t,dims>(json);
     else
         throw std::runtime_error("unknown variation");
 }

@@ -62,7 +62,7 @@ struct Swirl: public VariationFrom2D<num_t,dims>
         num_t x,y;
         tx.getXY(x,y);
         num_t sr,cr;
-        sincosg(r,&sr,&cr);
+        sincosg(r,sr,cr);
         return Point<num_t,2>(x*sr-y*cr,x*cr+y*sr);
     }
 };
@@ -129,7 +129,7 @@ struct Heart: public VariationFrom2D<num_t,dims>
         num_t a = tx.angle();
         num_t r = tx.norm2();
         num_t sa,ca;
-        sincosg(r*a,&sa,&ca);
+        sincosg(r*a,sa,ca);
         return r * Point<num_t,2>(sa,-ca);
     }
 };
@@ -147,8 +147,81 @@ struct Disc: public VariationFrom2D<num_t,dims>
         num_t a = tx.angle();
         num_t r = tx.norm2();
         num_t sr,cr;
-        sincosg(M_PI*r,&sr,&cr);
+        sincosg(M_PI*r,sr,cr);
         return a * Point<num_t,2>(sr,cr);
+    }
+};
+
+/*
+Spiral - 2d, from flam3
+*/
+template <typename num_t, size_t dims>
+struct Spiral: public VariationFrom2D<num_t,dims>
+{
+    Spiral(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(rng_t& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t r,sa,ca;
+        tx.getRadiusSinCos(r,sa,ca);
+        num_t sr,cr;
+        sincosg(r,sr,cr);
+        num_t r1 = 1.0 / (r + eps<num_t>::value);
+        return r1 * Point<num_t,2>(ca+sr,sa-cr);
+    }
+};
+
+/*
+Hyperbolic - 2d, from flam3
+*/
+template <typename num_t, size_t dims>
+struct Hyperbolic: public VariationFrom2D<num_t,dims>
+{
+    Hyperbolic(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(rng_t& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t r,sa,ca;
+        tx.getRadiusSinCos(r,sa,ca);
+        return Point<num_t,2>(sa/r,ca*(r+eps<num_t>::value));
+    }
+};
+
+/*
+Diamond - 2d, from flam3
+*/
+template <typename num_t, size_t dims>
+struct Diamond: public VariationFrom2D<num_t,dims>
+{
+    Diamond(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(rng_t& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t r,sa,ca;
+        tx.getRadiusSinCos(r,sa,ca);
+        num_t sr,cr;
+        sincosg(r,sr,cr);
+        return Point<num_t,2>(sa*cr,ca*sr);
+    }
+};
+
+/*
+Ex - 2d, from flam3
+*/
+template <typename num_t, size_t dims>
+struct Ex: public VariationFrom2D<num_t,dims>
+{
+    Ex(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(rng_t& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t a = tx.angle();
+        num_t r = tx.norm2();
+        num_t n0 = sin(a+r);
+        num_t n1 = cos(a-r);
+        num_t m0 = n0*n0*n0 * r;
+        num_t m1 = n1*n1*n1 * r;
+        return Point<num_t,2>(m0+m1,m0-m1);
     }
 };
 
