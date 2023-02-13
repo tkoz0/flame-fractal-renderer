@@ -14,9 +14,7 @@ template <typename num_t, size_t dims> class Variation;
 #include "variations/variation_base.hpp"
 
 // individual variations
-#include "variations/linear.hpp"
-#include "variations/sinusoidal.hpp"
-#include "variations/spherical.hpp"
+#include "variations/variations.hpp"
 
 // factory depends on the individual variations
 // so define its implementation at the end
