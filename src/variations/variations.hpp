@@ -225,4 +225,78 @@ struct Ex: public VariationFrom2D<num_t,dims>
     }
 };
 
+/*
+Spherical P - tkoz, generalized from spherical
+*/
+template <typename num_t, size_t dims>
+class SphericalP: public Variation<num_t,dims>
+{
+    num_t norm;
+public:
+    SphericalP(const Json& json): Variation<num_t,dims>(json)
+    {
+        norm = json["norm"].floatValue();
+        if (norm <= 0.0)
+            throw std::runtime_error("norm <= 0");
+    }
+    inline Point<num_t,dims> calc(rng_t& rng, const Point<num_t,dims>& tx) const
+    {
+        (void)rng;
+        num_t r = 1.0 / (tx.normsum(norm) + eps<num_t>::value);
+        return r * tx;
+    }
+};
+
+/*
+Unit Sphere - tkoz
+*/
+template <typename num_t, size_t dims>
+struct UnitSphere: public Variation<num_t,dims>
+{
+    UnitSphere(const Json& json): Variation<num_t,dims>(json) {}
+    inline Point<num_t,dims> calc(rng_t& rng, const Point<num_t,dims>& tx) const
+    {
+        (void)rng;
+        num_t r = 1.0 / (tx.norm2() + eps<num_t>::value);
+        return r * tx;
+    }
+};
+
+/*
+Unit Sphere P - tkoz
+*/
+template <typename num_t, size_t dims>
+class UnitSphereP: public Variation<num_t,dims>
+{
+    num_t norm;
+public:
+    UnitSphereP(const Json& json): Variation<num_t,dims>(json)
+    {
+        norm = json["norm"].floatValue();
+        if (norm <= 0.0)
+            throw std::runtime_error("norm <= 0");
+    }
+    inline Point<num_t,dims> calc(rng_t& rng, const Point<num_t,dims>& tx) const
+    {
+        (void)rng;
+        num_t r = 1.0 / (tx.norm(norm) + eps<num_t>::value);
+        return r * tx;
+    }
+};
+
+/*
+Unit Cube - tkoz
+*/
+template <typename num_t, size_t dims>
+struct UnitCube: public Variation<num_t,dims>
+{
+    UnitCube(const Json& json): Variation<num_t,dims>(json) {}
+    inline Point<num_t,dims> calc(rng_t& rng, const Point<num_t,dims>& tx) const
+    {
+        (void)rng;
+        num_t r = 1.0 / (tx.norminf() + eps<num_t>::value);
+        return r * tx;
+    }
+};
+
 }

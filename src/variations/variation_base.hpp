@@ -22,7 +22,7 @@ public:
         weight = json["weight"].floatValue();
     }
     virtual ~Variation(){}
-    virtual Point<num_t,dims> calc(
+    virtual inline Point<num_t,dims> calc(
         rng_t& rng, const Point<num_t,dims>& tx) const = 0;
     inline num_t getWeight() const { return weight; }
     static Variation<num_t,dims> *parseVariation(const Json& json);
@@ -53,12 +53,11 @@ public:
         axis_y = ay;
     }
     virtual ~VariationFrom2D(){}
-    inline Point<num_t,dims> calc(
-        rng_t& rng, const Point<num_t,dims>& tx) const
+    inline Point<num_t,dims> calc(rng_t& rng, const Point<num_t,dims>& tx) const
     {
         if (dims == 2)
             return calc2d(rng,tx);
-        else
+        else // TODO FIX
             return calc2d(rng,Point<num_t,2>(tx[axis_x],tx[axis_y]));
     }
     virtual inline Point<num_t,2> calc2d(
@@ -94,12 +93,11 @@ public:
         axis_z = az;
     }
     virtual ~VariationFrom3D(){}
-    inline Point<num_t,dims> calc(
-        rng_t& rng, const Point<num_t,dims>& tx) const
+    inline Point<num_t,3> calc(rng_t& rng, const Point<num_t,3>& tx) const
     {
         if (dims == 3)
             return calc3d(rng,tx);
-        else
+        else // TODO FIX
             return calc3d(rng,Point<num_t,3>(tx[axis_x],tx[axis_y],tx[axis_z]));
     }
     virtual inline Point<num_t,3> calc3d(

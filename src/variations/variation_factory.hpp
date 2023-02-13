@@ -14,32 +14,39 @@ Variation<num_t,dims> *Variation<num_t,dims>::parseVariation(const Json& json)
     std::string name = json["name"].stringValue();
     if (name == "linear")
         return new Linear<num_t,dims>(json);
-    else if (name == "sinusoidal")
+    if (name == "sinusoidal")
         return new Sinusoidal<num_t,dims>(json);
-    else if (name == "spherical")
+    if (name == "spherical")
         return new Spherical<num_t,dims>(json);
-    else if (name == "swirl")
+    if (name == "swirl")
         return new Swirl<num_t,dims>(json);
-    else if (name == "horseshoe")
+    if (name == "horseshoe")
         return new Horseshoe<num_t,dims>(json);
-    else if (name == "polar")
+    if (name == "polar")
         return new Polar<num_t,dims>(json);
-    else if (name == "handkerchief")
+    if (name == "handkerchief")
         return new Handkerchief<num_t,dims>(json);
-    else if (name == "heart")
+    if (name == "heart")
         return new Heart<num_t,dims>(json);
-    else if (name == "disc")
+    if (name == "disc")
         return new Disc<num_t,dims>(json);
-    else if (name == "spiral")
+    if (name == "spiral")
         return new Spiral<num_t,dims>(json);
-    else if (name == "hyperbolic")
+    if (name == "hyperbolic")
         return new Hyperbolic<num_t,dims>(json);
-    else if (name == "diamond")
+    if (name == "diamond")
         return new Diamond<num_t,dims>(json);
-    else if (name == "ex")
+    if (name == "ex")
         return new Ex<num_t,dims>(json);
-    else
-        throw std::runtime_error("unknown variation");
+    if (name == "spherical_p")
+        return new SphericalP<num_t,dims>(json);
+    if (name == "unit_sphere")
+        return new UnitSphere<num_t,dims>(json);
+    if (name == "unit_sphere_p")
+        return new UnitSphereP<num_t,dims>(json);
+    if (name == "unit_cube")
+        return new UnitCube<num_t,dims>(json);
+    throw std::runtime_error("unknown variation: "+name);
 }
 
 }
