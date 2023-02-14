@@ -4,16 +4,23 @@ Representation of a flame fractal
 
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <cstdlib>
 #include <vector>
 
-#include "../utils.hpp"
-#include "xform.hpp"
-
-namespace tkoz
+// forward declaration
+namespace tkoz::flame
 {
-namespace flame
+template <typename num_t, size_t dims> class Flame;
+}
+
+#include "../utils/json_small.hpp"
+#include "xform.hpp"
+#include "point.hpp"
+#include "constants.hpp"
+
+namespace tkoz::flame
 {
 
 // flame fractal
@@ -100,5 +107,4 @@ public:
     }
 };
 
-}
 }

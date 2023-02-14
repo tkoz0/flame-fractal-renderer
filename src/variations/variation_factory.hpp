@@ -2,7 +2,7 @@
 
 #include <cstdlib>
 
-#include "../utils.hpp"
+#include "../utils/json_small.hpp"
 #include "variation_base.hpp"
 
 namespace tkoz::flame::vars
@@ -18,6 +18,14 @@ Variation<num_t,dims> *Variation<num_t,dims>::parseVariation(const Json& json)
         return new Sinusoidal<num_t,dims>(json);
     if (name == "spherical")
         return new Spherical<num_t,dims>(json);
+    if (name == "bent")
+        return new Bent<num_t,dims>(json);
+    if (name == "rectangles")
+        return new Rectangles<num_t,dims>(json);
+    if (name == "fisheye")
+        return new Fisheye<num_t,dims>(json);
+    if (name == "bubble")
+        return new Bubble<num_t,dims>(json);
     if (name == "swirl")
         return new Swirl<num_t,dims>(json);
     if (name == "horseshoe")

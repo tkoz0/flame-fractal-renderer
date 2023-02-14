@@ -7,12 +7,18 @@ Representation of an xform
 #include <cstdlib>
 #include <vector>
 
+// forward declaration
+namespace tkoz::flame
+{
+template <typename num_t, size_t dims> class XForm;
+}
+
+#include "point.hpp"
 #include "affine.hpp"
+#include "iter_state.hpp"
 #include "../variations.hpp"
 
-namespace tkoz
-{
-namespace flame
+namespace tkoz::flame
 {
 
 // xform (including final xform)
@@ -86,5 +92,4 @@ public:
     }
 };
 
-}
 }

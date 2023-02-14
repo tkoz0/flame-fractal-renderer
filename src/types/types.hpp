@@ -7,11 +7,9 @@ Types for convenience
 #include <cstdint>
 #include <cstdlib>
 
-#include "../rng/isaac.hpp"
+#include "../rng/flame_rng.hpp"
 
-namespace tkoz
-{
-namespace flame
+namespace tkoz::flame
 {
 
 // integer types
@@ -28,7 +26,7 @@ typedef int64_t  i64;
 // rparam=4 recommended for simulations, rparam=8 recommended for cryptography
 // state size is 2^rparam of word_t
 // word_t can be u32 for isaac32 or u64 for isaac64
-typedef Isaac<u32,4> rng_t;
+template <typename num_t>
+using rng_t = FlameRNG<num_t,u32,4>;
 
-}
 }

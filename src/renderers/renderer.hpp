@@ -5,7 +5,17 @@
 #include <thread>
 #include <vector>
 
-#include "../types.hpp"
+// forward declaration
+namespace tkoz::flame
+{
+template <typename num_t, typename hist_t> class RendererBasic;
+}
+
+#include "../types/flame.hpp"
+#include "../types/point.hpp"
+#include "../types/types.hpp"
+#include "../types/iter_state.hpp"
+#include "../utils/flame.hpp"
 
 #define likely(x)   __builtin_expect(!!(x),1)
 #define unlikely(x) __builtin_expect(!!(x),0)
@@ -21,9 +31,7 @@
 #define ENABLE_IFEQ(N1,N2,RET) template <typename RET2 = RET> \
     typename enable_if_eq<N1,N2,RET2>::type
 
-namespace tkoz
-{
-namespace flame
+namespace tkoz::flame
 {
 
 // render histogram only (count of samples in each pixel)
@@ -96,7 +104,8 @@ public:
         delete[] cw;
         delete[] bufcache;
     }
-    void renderBuffer(size_t samples, rng_t& rng, size_t bad_value_limit = 10)
+    void renderBuffer(size_t samples, rng_t<num_t>& rng,
+        size_t bad_value_limit = 10)
     {
         if (bad_value_xforms.size() >= bad_value_limit)
             return;
@@ -104,7 +113,7 @@ public:
         IterState<num_t,2> state;
         state.rng = &rng;
         state.cw = cw;
-        state.p = state.randPoint();
+        state.p = rng.template randPoint<2>();
         const std::vector<XForm<num_t,2>>& xfs = flame.getXForms();
         bool has_final_xform = flame.hasFinalXForm();
         // multipliers for calculating coordinates in histogram
@@ -117,14 +126,14 @@ public:
         ymul *= scale_adjust<num_t>::value;
         // get the point to converge to the attractor
         for (size_t s = 0; s < settle_iters<num_t>::value; ++s)
-            xfs[state.randXFormIndex()].applyIteration(state);
+            xfs[rng.randXFI(state.cw)].applyIteration(state);
         size_t samples_iterated_local = 0;
         size_t samples_plotted_local = 0;
         hist_t *xfdist_local = new hist_t[flame.getXForms().size()]();
         for (size_t s = 0; s < samples; ++s)
         {
             ++samples_iterated_local;
-            u32 xf_i = state.randXFormIndex();
+            size_t xf_i = rng.randXFI(state.cw);
             const XForm<num_t,2>& xf = xfs[xf_i];
             ++xfdist_local[xf_i];
             xf.applyIteration(state);
@@ -136,9 +145,9 @@ public:
                 mutex.unlock();
                 if (bad_value_xforms.size() >= bad_value_limit)
                     break;
-                state.p = state.randPoint();
+                state.p = rng.template randPoint<2>();
                 for (size_t s = 0; s < settle_iters<num_t>::value; ++s)
-                    xfs[state.randXFormIndex()].applyIteration(state);
+                    xfs[rng.randXFI(state.cw)].applyIteration(state);
                 continue;
             }
             // update extreme coordinates
@@ -192,7 +201,7 @@ public:
         auto thread_function = [this,&samples,&batch_mutex,&samples_progress,
                 &samples_total,&bad_value_limit,&batch_callback,&batch_size]()
         {
-            rng_t rng; // unique random seeded rng for each thread
+            rng_t<num_t> rng; // unique random seeded rng for each thread
             for (;;)
             {
                 batch_mutex.lock(); // get next unit
@@ -328,7 +337,6 @@ public:
     }
 };
 
-}
 }
 
 #undef FUNC_ENABLE_IF

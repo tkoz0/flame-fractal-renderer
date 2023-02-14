@@ -8,7 +8,15 @@ Representation of a point in N dimensional real space.
 #include <cstdlib>
 #include <iostream>
 
-#include "../utils.hpp"
+// forward declaration
+namespace tkoz::flame
+{
+template <typename T, size_t N> class Point;
+}
+
+#include "../utils/json_small.hpp"
+#include "../utils/sfinae.hpp"
+#include "types.hpp"
 
 // macros for using SFINAE
 #define ENABLE_IF(COND,RET) template <typename RET2 = RET> \
@@ -16,9 +24,7 @@ Representation of a point in N dimensional real space.
 #define ENABLE_IFEQ(N1,N2,RET) template <typename RET2 = RET> \
     typename enable_if_eq<N1,N2,RET2>::type
 
-namespace tkoz
-{
-namespace flame
+namespace tkoz::flame
 {
 
 // point in N dimension space, using number type T
@@ -379,5 +385,4 @@ std::ostream& operator<<(std::ostream& os, const Point<T,N>& p)
     return os;
 }
 
-}
 }

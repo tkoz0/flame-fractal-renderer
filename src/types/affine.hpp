@@ -8,12 +8,16 @@ Representation of affine transformation
 #include <cstdlib>
 #include <iostream>
 
-#include "../utils.hpp"
+// forward declaration
+namespace tkoz::flame
+{
+template <typename T, size_t N> class Affine;
+}
+
+#include "../utils/json_small.hpp"
 #include "point.hpp"
 
-namespace tkoz
-{
-namespace flame
+namespace tkoz::flame
 {
 
 // affine transformation in N dimensions
@@ -88,5 +92,4 @@ std::ostream& operator<<(std::ostream& os, const Affine<T,N>& a)
     return os;
 }
 
-}
 }

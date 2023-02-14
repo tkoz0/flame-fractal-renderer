@@ -3,8 +3,11 @@
 #include <cstdlib>
 #include <string>
 
-#include "../utils.hpp"
-#include "../types.hpp"
+#include "../utils/json_small.hpp"
+#include "../utils/math.hpp"
+#include "../types/point.hpp"
+#include "../types/types.hpp"
+#include "../types/constants.hpp"
 
 namespace tkoz::flame::vars
 {
@@ -23,7 +26,7 @@ public:
     }
     virtual ~Variation(){}
     virtual inline Point<num_t,dims> calc(
-        rng_t& rng, const Point<num_t,dims>& tx) const = 0;
+        rng_t<num_t>& rng, const Point<num_t,dims>& tx) const = 0;
     inline num_t getWeight() const { return weight; }
     static Variation<num_t,dims> *parseVariation(const Json& json);
 };
@@ -53,7 +56,8 @@ public:
         axis_y = ay;
     }
     virtual ~VariationFrom2D(){}
-    inline Point<num_t,dims> calc(rng_t& rng, const Point<num_t,dims>& tx) const
+    inline Point<num_t,dims> calc(
+        rng_t<num_t>& rng, const Point<num_t,dims>& tx) const
     {
         if (dims == 2)
             return calc2d(rng,tx);
@@ -61,7 +65,7 @@ public:
             return calc2d(rng,Point<num_t,2>(tx[axis_x],tx[axis_y]));
     }
     virtual inline Point<num_t,2> calc2d(
-        rng_t& rng, const Point<num_t,2>& tx) const = 0;
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const = 0;
 };
 
 // class for generalizing 3d variation to higher dimensions
@@ -93,7 +97,8 @@ public:
         axis_z = az;
     }
     virtual ~VariationFrom3D(){}
-    inline Point<num_t,3> calc(rng_t& rng, const Point<num_t,3>& tx) const
+    inline Point<num_t,3> calc(
+        rng_t<num_t>& rng, const Point<num_t,3>& tx) const
     {
         if (dims == 3)
             return calc3d(rng,tx);
@@ -101,7 +106,7 @@ public:
             return calc3d(rng,Point<num_t,3>(tx[axis_x],tx[axis_y],tx[axis_z]));
     }
     virtual inline Point<num_t,3> calc3d(
-        rng_t& rng, const Point<num_t,3>& tx) const = 0;
+        rng_t<num_t>& rng, const Point<num_t,3>& tx) const = 0;
 };
 
 }

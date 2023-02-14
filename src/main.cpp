@@ -27,9 +27,9 @@ planned options (not available yet):
 
 #include <boost/program_options.hpp>
 
-#include "utils.hpp"
 #include "renderers/renderer.hpp"
 #include "types/types.hpp"
+#include "types/point.hpp"
 #include "utils/image.hpp"
 #include "utils/misc.hpp"
 

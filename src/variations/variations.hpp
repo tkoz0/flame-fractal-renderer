@@ -6,13 +6,18 @@ namespace tkoz::flame::vars
 {
 
 /*
+======= N dimensional variations from flam3 =======
+*/
+
+/*
 Linear - generalized from flam3
 */
 template <typename num_t, size_t dims>
 struct Linear: public Variation<num_t,dims>
 {
     Linear(const Json& json): Variation<num_t,dims>(json) {}
-    inline Point<num_t,dims> calc(rng_t& rng, const Point<num_t,dims>& tx) const
+    inline Point<num_t,dims> calc(
+        rng_t<num_t>& rng, const Point<num_t,dims>& tx) const
     {
         (void)rng;
         return tx;
@@ -26,7 +31,8 @@ template <typename num_t, size_t dims>
 struct Sinusoidal: public Variation<num_t,dims>
 {
     Sinusoidal(const Json& json): Variation<num_t,dims>(json) {}
-    inline Point<num_t,dims> calc(rng_t& rng, const Point<num_t,dims>& tx) const
+    inline Point<num_t,dims> calc(
+        rng_t<num_t>& rng, const Point<num_t,dims>& tx) const
     {
         (void)rng;
         return tx.map([](num_t x){ return sin(x); });
@@ -40,7 +46,8 @@ template <typename num_t, size_t dims>
 struct Spherical: public Variation<num_t,dims>
 {
     Spherical(const Json& json): Variation<num_t,dims>(json) {}
-    inline Point<num_t,dims> calc(rng_t& rng, const Point<num_t,dims>& tx) const
+    inline Point<num_t,dims> calc(
+        rng_t<num_t>& rng, const Point<num_t,dims>& tx) const
     {
         (void)rng;
         num_t r = 1.0 / (tx.norm2sq() + eps<num_t>::value);
@@ -49,13 +56,112 @@ struct Spherical: public Variation<num_t,dims>
 };
 
 /*
+Bent - generalized from bent2 in flam3
+*/
+template <typename num_t, size_t dims>
+class Bent: public Variation<num_t,dims>
+{
+    Point<num_t,dims> scales_neg;
+    Point<num_t,dims> scales_pos;
+public:
+    Bent(const Json& json): Variation<num_t,dims>(json)
+    {
+        scales_neg = Point<num_t,dims>(json["scales_neg"]);
+        scales_pos = Point<num_t,dims>(json["scales_pos"]);
+    }
+    inline Point<num_t,dims> calc(
+        rng_t<num_t>& rng, const Point<num_t,dims>& tx) const
+    {
+        (void)rng;
+        Point<num_t,dims> ret = tx;
+        for (size_t i = 0; i < dims; ++i)
+        {
+            if (ret[i] < 0.0)
+                ret[i] *= scales_neg[i];
+            else
+                ret[i] *= scales_pos[i];
+        }
+        return ret;
+    }
+};
+
+/*
+Rectangles - generalized from flam3
+*/
+template <typename num_t, size_t dims>
+class Rectangles: public Variation<num_t,dims>
+{
+    Point<num_t,dims> params;
+public:
+    Rectangles(const Json& json): Variation<num_t,dims>(json)
+    {
+        params = Point<num_t,dims>(json["params"]);
+    }
+    inline Point<num_t,dims> calc(
+        rng_t<num_t>& rng, const Point<num_t,dims>& tx) const
+    {
+        (void)rng;
+        Point<num_t,dims> ret;
+        for (size_t i = 0; i < dims; ++i)
+        {
+            num_t p = params[i];
+            num_t x = tx[i];
+            if (p == 0.0)
+                ret[i] = x;
+            else
+                ret[i] = (2.0*floor(x/p) + 1.0)*p - x;
+        }
+        return ret;
+    }
+};
+
+/*
+Fisheye - generalized from flam3
+*/
+template <typename num_t, size_t dims>
+struct Fisheye: public Variation<num_t,dims>
+{
+    Fisheye(const Json& json): Variation<num_t,dims>(json) {}
+    inline Point<num_t,dims> calc(
+        rng_t<num_t>& rng, const Point<num_t,dims>& tx) const
+    {
+        (void)rng;
+        // TODO support changing the +1
+        num_t r = 1.0 / (tx.norm2() + 1.0);
+        return r * tx;
+    }
+};
+
+/*
+Bubble - generalized from flam3
+*/
+template <typename num_t, size_t dims>
+struct Bubble: public Variation<num_t,dims>
+{
+    Bubble(const Json& json): Variation<num_t,dims>(json) {}
+    inline Point<num_t,dims> calc(
+        rng_t<num_t>& rng, const Point<num_t,dims>& tx) const
+    {
+        (void)rng;
+        // TODO support changing the +4
+        num_t r = 1.0 / (tx.norm2sq() + 4.0);
+        return r * tx;
+    }
+};
+
+/*
+======= 2 dimensional variations from flam3 =======
+*/
+
+/*
 Swirl - 2d, from flam3
 */
 template <typename num_t, size_t dims>
 struct Swirl: public VariationFrom2D<num_t,dims>
 {
     Swirl(const Json& json): VariationFrom2D<num_t,dims>(json) {}
-    inline Point<num_t,2> calc2d(rng_t& rng, const Point<num_t,2>& tx) const
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
     {
         (void)rng;
         num_t r = tx.norm2sq();
@@ -74,7 +180,8 @@ template <typename num_t, size_t dims>
 struct Horseshoe: public VariationFrom2D<num_t,dims>
 {
     Horseshoe(const Json& json): VariationFrom2D<num_t,dims>(json) {}
-    inline Point<num_t,2> calc2d(rng_t& rng, const Point<num_t,2>& tx) const
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
     {
         (void)rng;
         num_t r = 1.0 / (tx.norm2() + eps<num_t>::value);
@@ -91,7 +198,8 @@ template <typename num_t, size_t dims>
 struct Polar: public VariationFrom2D<num_t,dims>
 {
     Polar(const Json& json): VariationFrom2D<num_t,dims>(json) {}
-    inline Point<num_t,2> calc2d(rng_t& rng, const Point<num_t,2>& tx) const
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
     {
         (void)rng;
         num_t a = tx.angle();
@@ -107,7 +215,8 @@ template <typename num_t, size_t dims>
 struct Handkerchief: public VariationFrom2D<num_t,dims>
 {
     Handkerchief(const Json& json): VariationFrom2D<num_t,dims>(json) {}
-    inline Point<num_t,2> calc2d(rng_t& rng, const Point<num_t,2>& tx) const
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
     {
         (void)rng;
         num_t a = tx.angle();
@@ -123,7 +232,8 @@ template <typename num_t, size_t dims>
 struct Heart: public VariationFrom2D<num_t,dims>
 {
     Heart(const Json& json): VariationFrom2D<num_t,dims>(json) {}
-    inline Point<num_t,2> calc2d(rng_t& rng, const Point<num_t,2>& tx) const
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
     {
         (void)rng;
         num_t a = tx.angle();
@@ -141,7 +251,8 @@ template <typename num_t, size_t dims>
 struct Disc: public VariationFrom2D<num_t,dims>
 {
     Disc(const Json& json): VariationFrom2D<num_t,dims>(json) {}
-    inline Point<num_t,2> calc2d(rng_t& rng, const Point<num_t,2>& tx) const
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
     {
         (void)rng;
         num_t a = tx.angle();
@@ -159,7 +270,8 @@ template <typename num_t, size_t dims>
 struct Spiral: public VariationFrom2D<num_t,dims>
 {
     Spiral(const Json& json): VariationFrom2D<num_t,dims>(json) {}
-    inline Point<num_t,2> calc2d(rng_t& rng, const Point<num_t,2>& tx) const
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
     {
         (void)rng;
         num_t r,sa,ca;
@@ -178,7 +290,8 @@ template <typename num_t, size_t dims>
 struct Hyperbolic: public VariationFrom2D<num_t,dims>
 {
     Hyperbolic(const Json& json): VariationFrom2D<num_t,dims>(json) {}
-    inline Point<num_t,2> calc2d(rng_t& rng, const Point<num_t,2>& tx) const
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
     {
         (void)rng;
         num_t r,sa,ca;
@@ -194,7 +307,8 @@ template <typename num_t, size_t dims>
 struct Diamond: public VariationFrom2D<num_t,dims>
 {
     Diamond(const Json& json): VariationFrom2D<num_t,dims>(json) {}
-    inline Point<num_t,2> calc2d(rng_t& rng, const Point<num_t,2>& tx) const
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
     {
         (void)rng;
         num_t r,sa,ca;
@@ -212,7 +326,8 @@ template <typename num_t, size_t dims>
 struct Ex: public VariationFrom2D<num_t,dims>
 {
     Ex(const Json& json): VariationFrom2D<num_t,dims>(json) {}
-    inline Point<num_t,2> calc2d(rng_t& rng, const Point<num_t,2>& tx) const
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
     {
         (void)rng;
         num_t a = tx.angle();
@@ -224,6 +339,10 @@ struct Ex: public VariationFrom2D<num_t,dims>
         return Point<num_t,2>(m0+m1,m0-m1);
     }
 };
+
+/*
+======= variations by tkoz =======
+*/
 
 /*
 Spherical P - tkoz, generalized from spherical
@@ -239,7 +358,8 @@ public:
         if (norm <= 0.0)
             throw std::runtime_error("norm <= 0");
     }
-    inline Point<num_t,dims> calc(rng_t& rng, const Point<num_t,dims>& tx) const
+    inline Point<num_t,dims> calc(
+        rng_t<num_t>& rng, const Point<num_t,dims>& tx) const
     {
         (void)rng;
         num_t r = 1.0 / (tx.normsum(norm) + eps<num_t>::value);
@@ -254,7 +374,8 @@ template <typename num_t, size_t dims>
 struct UnitSphere: public Variation<num_t,dims>
 {
     UnitSphere(const Json& json): Variation<num_t,dims>(json) {}
-    inline Point<num_t,dims> calc(rng_t& rng, const Point<num_t,dims>& tx) const
+    inline Point<num_t,dims> calc(
+        rng_t<num_t>& rng, const Point<num_t,dims>& tx) const
     {
         (void)rng;
         num_t r = 1.0 / (tx.norm2() + eps<num_t>::value);
@@ -276,7 +397,8 @@ public:
         if (norm <= 0.0)
             throw std::runtime_error("norm <= 0");
     }
-    inline Point<num_t,dims> calc(rng_t& rng, const Point<num_t,dims>& tx) const
+    inline Point<num_t,dims> calc(
+        rng_t<num_t>& rng, const Point<num_t,dims>& tx) const
     {
         (void)rng;
         num_t r = 1.0 / (tx.norm(norm) + eps<num_t>::value);
@@ -291,7 +413,8 @@ template <typename num_t, size_t dims>
 struct UnitCube: public Variation<num_t,dims>
 {
     UnitCube(const Json& json): Variation<num_t,dims>(json) {}
-    inline Point<num_t,dims> calc(rng_t& rng, const Point<num_t,dims>& tx) const
+    inline Point<num_t,dims> calc(
+        rng_t<num_t>& rng, const Point<num_t,dims>& tx) const
     {
         (void)rng;
         num_t r = 1.0 / (tx.norminf() + eps<num_t>::value);

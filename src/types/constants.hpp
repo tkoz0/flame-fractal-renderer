@@ -8,9 +8,7 @@ Constants for flame fractal rendering
 
 #include "types.hpp"
 
-namespace tkoz
-{
-namespace flame
+namespace tkoz::flame
 {
 
 // small epsilon value for avoiding division by zero, flam3 uses 1e-10
@@ -68,5 +66,4 @@ template <> struct pix_scale<u8,double>
 template <> struct pix_scale<u16,double>
 { static constexpr double value = 65536.0 * scale_adjust<double>::value; };
 
-}
 }
