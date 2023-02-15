@@ -165,6 +165,8 @@ template <
 int64_t JavaRandomGeneric<multiplier,addend,state_size,seed_uniquifier_init,
     seed_uniquifier_mult>::seed_uniquifier = seed_uniquifier_init;
 
+extern template class JavaRandomGeneric<>;
+
 typedef JavaRandomGeneric<> JavaRandom;
 
 #undef likely

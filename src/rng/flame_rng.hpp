@@ -11,6 +11,9 @@ Based on ISAAC with extra helpful functions
 
 #include <ctgmath>
 
+#include "../utils/math.hpp"
+#include "../utils/sfinae.hpp"
+
 // forward declaration
 namespace tkoz::flame
 {
@@ -21,13 +24,21 @@ class FlameRNG;
 #include "isaac.hpp"
 #include "../types/point.hpp"
 #include "../types/types.hpp"
+#include "../utils/sfinae.hpp"
 
 #define likely(x)   __builtin_expect(!!(x),1)
 #define unlikely(x) __builtin_expect(!!(x),0)
 
 // macros for using SFINAE
-#define FUNC_ENABLE_IF(T1,T2,RET) template <typename dummy = T1> \
+#define FUNC_ENABLE_IFSAME(T1,T2,RET) template <typename dummy = T1> \
     typename std::enable_if<std::is_same<dummy,T2>::value,RET>::type
+#define FUNC_ENABLE_IFSAME2(T1,T2,U1,U2,RET) template <typename dummy = T1> \
+    typename std::enable_if<std::is_same<dummy,T2>::value \
+        && std::is_same<U1,U2>::value,RET>::type
+#define ENABLE_IF(COND,RET) template <typename RET2 = RET> \
+    typename std::enable_if<(COND),RET2>::type
+#define ENABLE_IFEQ(N1,N2,RET) template <typename RET2 = RET> \
+    typename enable_if_eq<N1,N2,RET2>::type
 
 namespace tkoz::flame
 {
@@ -80,7 +91,7 @@ public:
         num_t u2 = (2.0*M_PI)*randNum();
         num_t r = sqrt(-2.0*log(u1));
         num_t s,c;
-        sincosg(u2,&s,&c);
+        sincosg(u2,s,c);
         z1 = r*c;
         z2 = r*s;
 #else // marsaglia polar method
@@ -122,47 +133,52 @@ public:
             ret[i] = randNum() - 0.5;
         return ret;
     }
-    // random point on the unit (dims-1)-sphere surface
-    template <size_t dims>
-    inline Point<num_t,dims> randDirection()
+    // random point on the unit 0-sphere (random sign)
+    template <size_t dims> inline
+    typename enable_if_eq<dims,1,Point<num_t,1>>::type randDirection()
     {
-        if (dims == 1)
-            return Point<num_t,1>(copysign(1.0,randNum()-0.5));
-        else if (dims == 2)
-        {
-            num_t a = (2.0*M_PI) * randNum();
-            num_t sa,ca;
-            sincosg(a,&sa,&ca);
-            return Point<num_t,2>(ca,sa);
-        }
-        else if (dims == 3)
-        {
+        return Point<num_t,1>(copysign(1.0,randNum()-0.5));
+    }
+    // random point on the unit 1-sphere (circle)
+    template <size_t dims> inline
+    typename enable_if_eq<dims,2,Point<num_t,2>>::type randDirection()
+    {
+        num_t a = (2.0*M_PI) * randNum();
+        num_t sa,ca;
+        sincosg(a,sa,ca);
+        return Point<num_t,2>(ca,sa);
+    }
+    // random point on the unit 2-sphere (sphere)
+    template <size_t dims> inline
+    typename enable_if_eq<dims,3,Point<num_t,3>>::type randDirection()
+    {
 #if 0 // first method on wolfram mathworld
-            num_t p = acos(2.0*randNum() - 1.0);
-            num_t t = (2.0*M_PI) * randNum();
-            num_t st,ct,sp,cp;
-            sincosg(p,&sp,&cp);
-            sincosg(t,&st,&ct);
-            return Point<num_t,3>(st*cp,st*sp,ct);
+        num_t p = acos(2.0*randNum() - 1.0);
+        num_t t = (2.0*M_PI) * randNum();
+        num_t st,ct,sp,cp;
+        sincosg(p,sp,cp);
+        sincosg(t,st,ct);
+        return Point<num_t,3>(st*cp,st*sp,ct);
 #else // second method on wolfram mathworld
-            num_t u = 2.0*randNum() - 1.0;
-            num_t t = (2.0*M_PI) * randNum();
-            num_t r = sqrt(1.0 - u*u);
-            num_t st,ct;
-            sincosg(t,&st,&ct);
-            return Point<num_t,3>(r*ct,r*st,u);
+        num_t u = 2.0*randNum() - 1.0;
+        num_t t = (2.0*M_PI) * randNum();
+        num_t r = sqrt(1.0 - u*u);
+        num_t st,ct;
+        sincosg(t,st,ct);
+        return Point<num_t,3>(r*ct,r*st,u);
 #endif
-        }
-        else
-        {
-            // gaussian distributed points and then normalize
-            Point<num_t,dims> ret;
-            for (size_t i = 0; i+1 < dims; i += 2)
-                randGaussianPair(ret[i],ret[i+1]);
-            if (dims % 2)
-                ret[dims-1] = randGaussian();
-            return ret/ret.norm2();
-        }
+    }
+    // random point on the unit (dims-1)-sphere
+    template <size_t dims> inline
+    typename std::enable_if<(dims>3),Point<num_t,dims>>::type randDirection()
+    {
+        // gaussian distributed points and then normalize
+        Point<num_t,dims> ret;
+        for (size_t i = 0; i+1 < dims; i += 2)
+            randGaussianPair(ret[i],ret[i+1]);
+        if (dims % 2)
+            ret[dims-1] = randGaussian();
+        return ret/ret.norm2();
     }
     // select a random xform index using cumulative weights
     inline size_t randXFI(num_t *cw)
@@ -175,8 +191,24 @@ public:
     }
 };
 
+extern template class FlameRNG<float,u32,4>;
+extern template class FlameRNG<float,u32,6>;
+extern template class FlameRNG<float,u32,8>;
+extern template class FlameRNG<double,u32,4>;
+extern template class FlameRNG<double,u32,6>;
+extern template class FlameRNG<double,u32,8>;
+extern template class FlameRNG<float,u64,4>;
+extern template class FlameRNG<float,u64,6>;
+extern template class FlameRNG<float,u64,8>;
+extern template class FlameRNG<double,u64,4>;
+extern template class FlameRNG<double,u64,6>;
+extern template class FlameRNG<double,u64,8>;
+
 }
 
 #undef likely
 #undef unlikely
-#undef FUNC_ENABLE_IF
+#undef FUNC_ENABLE_IFSAME
+#undef FUNC_ENABLE_IFSAME2
+#undef ENABLE_IF
+#undef ENABLE_IFEQ

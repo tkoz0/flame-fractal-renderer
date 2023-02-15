@@ -34,6 +34,7 @@ private:
     XForm<num_t,dims> final_xform;
     bool has_final_xform;
 public:
+    Flame(){}
     // construct from JSON data
     // throws error if something goes wrong
     Flame(const Json& input)
@@ -106,5 +107,17 @@ public:
         return final_xform;
     }
 };
+
+extern template class Flame<float,1>;
+extern template class Flame<float,2>;
+extern template class Flame<float,3>;
+extern template class Flame<float,4>;
+extern template class Flame<float,5>;
+
+extern template class Flame<double,1>;
+extern template class Flame<double,2>;
+extern template class Flame<double,3>;
+extern template class Flame<double,4>;
+extern template class Flame<double,5>;
 
 }

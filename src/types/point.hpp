@@ -8,6 +8,12 @@ Representation of a point in N dimensional real space.
 #include <cstdlib>
 #include <iostream>
 
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
+#include <ctgmath>
+
 // forward declaration
 namespace tkoz::flame
 {
@@ -235,13 +241,13 @@ public:
     {
         T ret;
         if (N == 1)
-            return abs(x());
+            return std::abs(x());
         switch (p)
         {
         case 0: // infinity norm
-            ret = abs(x());
+            ret = std::abs(x());
             for (size_t i = 1; i < N; ++i)
-                ret = std::max(ret,abs(vec[i]));
+                ret = std::max(ret,std::abs(vec[i]));
             return ret;
         case 1: // l1 norm
             return normsum<p>();
@@ -262,9 +268,9 @@ public:
         switch (p)
         {
         case 1: // l1 norm
-            ret = abs(x());
+            ret = std::abs(x());
             for (size_t i = 1; i < N; ++i)
-                ret += abs(vec[i]);
+                ret += std::abs(vec[i]);
             return ret;
         case 2: // l2 norm
             ret = x()*x();
@@ -272,17 +278,17 @@ public:
                 ret += vec[i]*vec[i];
             return ret;
         default: // p-norm
-            ret = pow(abs(x()),(T)p);
+            ret = pow(std::abs(x()),(T)p);
             for (size_t i = 1; i < N; ++i)
-                ret += pow(abs(vec[i]),(T)p);
+                ret += pow(std::abs(vec[i]),(T)p);
             return ret;
         }
     }
     inline T normsum(T p) const
     {
-        T ret = pow(abs(x()),p);
+        T ret = pow(std::abs(x()),p);
         for (size_t i = 1; i < N; ++i)
-            ret += pow(abs(vec[i]),p);
+            ret += pow(std::abs(vec[i]),p);
         return ret;
     }
     // 1-norm
@@ -384,5 +390,17 @@ std::ostream& operator<<(std::ostream& os, const Point<T,N>& p)
     os << ")";
     return os;
 }
+
+extern template class Point<float,1>;
+extern template class Point<float,2>;
+extern template class Point<float,3>;
+extern template class Point<float,4>;
+extern template class Point<float,5>;
+
+extern template class Point<double,1>;
+extern template class Point<double,2>;
+extern template class Point<double,3>;
+extern template class Point<double,4>;
+extern template class Point<double,5>;
 
 }

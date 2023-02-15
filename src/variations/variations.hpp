@@ -150,6 +150,71 @@ struct Bubble: public Variation<num_t,dims>
 };
 
 /*
+Noise - generalized from flamm3
+*/
+template <typename num_t, size_t dims>
+struct Noise: public Variation<num_t,dims>
+{
+    Noise(const Json& json): Variation<num_t,dims>(json) {}
+    inline Point<num_t,dims> calc(
+        rng_t<num_t>& rng, const Point<num_t,dims>& tx) const
+    {
+        num_t r = rng.randNum();
+        Point<num_t,dims> dir = rng.template randDirection<dims>();
+        return r * multComponents(tx,dir);
+    }
+};
+
+/*
+Blur - generalized from flam3
+*/
+template <typename num_t, size_t dims>
+struct Blur: public Variation<num_t,dims>
+{
+    Blur(const Json& json): Variation<num_t,dims>(json) {}
+    inline Point<num_t,dims> calc(
+        rng_t<num_t>& rng, const Point<num_t,dims>& tx) const
+    {
+        (void)tx;
+        num_t r = rng.randNum();
+        Point<num_t,dims> dir = rng.template randDirection<dims>();
+        return r * dir;
+    }
+};
+
+/*
+Gaussian Blur - generalized from flam3
+*/
+template <typename num_t, size_t dims>
+struct GaussianBlur: public Variation<num_t,dims>
+{
+    GaussianBlur(const Json& json): Variation<num_t,dims>(json) {}
+    inline Point<num_t,dims> calc(
+        rng_t<num_t>& rng, const Point<num_t,dims>& tx) const
+    {
+        (void)tx;
+        num_t r = rng.randGaussian();
+        Point<num_t,dims> dir = rng.template randDirection<dims>();
+        return r * dir;
+    }
+};
+
+/*
+Square Noise - generalized from square in flam3
+*/
+template <typename num_t, size_t dims>
+struct SquareNoise: public Variation<num_t,dims>
+{
+    SquareNoise(const Json& json): Variation<num_t,dims>(json) {}
+    inline Point<num_t,dims> calc(
+        rng_t<num_t>& rng, const Point<num_t,dims>& tx) const
+    {
+        (void)tx;
+        return rng.template randPoint2<dims>();
+    }
+};
+
+/*
 ======= 2 dimensional variations from flam3 =======
 */
 
@@ -337,6 +402,23 @@ struct Ex: public VariationFrom2D<num_t,dims>
         num_t m0 = n0*n0*n0 * r;
         num_t m1 = n1*n1*n1 * r;
         return Point<num_t,2>(m0+m1,m0-m1);
+    }
+};
+
+/*
+Julia - 2d, from flam3
+*/
+template <typename num_t, size_t dims>
+struct Julia: public VariationFrom2D<num_t,dims>
+{
+    Julia(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        num_t a = 0.5*tx.angle() + rng.randBool()*M_PI; // + 0 or PI
+        num_t sa,ca;
+        sincosg(a,sa,ca);
+        return tx.norm2() * Point<num_t,2>(ca,sa);
     }
 };
 

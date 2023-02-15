@@ -54,7 +54,7 @@ public:
         if (has_post)
             post = Affine<num_t,dims>(affine);
         else
-            post = Affine<num_t,2>();
+            post = Affine<num_t,dims>();
         for (Json varj : input["variations"].arrayValue())
             vars.push_back(std::shared_ptr<var_t>(var_t::parseVariation(varj)));
     }
@@ -74,7 +74,7 @@ public:
     {
         return post;
     }
-    inline const std::vector<var_t>& getVariations() const
+    inline const std::vector<std::shared_ptr<var_t>>& getVariations() const
     {
         return vars;
     }
@@ -91,5 +91,17 @@ public:
             state.p = post.apply_to(state.v);
     }
 };
+
+extern template class XForm<float,1>;
+extern template class XForm<float,2>;
+extern template class XForm<float,3>;
+extern template class XForm<float,4>;
+extern template class XForm<float,5>;
+
+extern template class XForm<double,1>;
+extern template class XForm<double,2>;
+extern template class XForm<double,3>;
+extern template class XForm<double,4>;
+extern template class XForm<double,5>;
 
 }

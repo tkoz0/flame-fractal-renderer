@@ -16,6 +16,7 @@ template <typename num_t, typename hist_t> class RendererBasic;
 #include "../types/types.hpp"
 #include "../types/iter_state.hpp"
 #include "../utils/flame.hpp"
+#include "../utils/sfinae.hpp"
 
 #define likely(x)   __builtin_expect(!!(x),1)
 #define unlikely(x) __builtin_expect(!!(x),0)
@@ -337,11 +338,16 @@ public:
     }
 };
 
+extern template class RendererBasic<float,u32>;
+extern template class RendererBasic<double,u32>;
+extern template class RendererBasic<float,u64>;
+extern template class RendererBasic<double,u64>;
+
 }
 
-#undef FUNC_ENABLE_IF
-#undef FUNC_ENABLE_IF2
-#undef ENABLE_IF
-#undef ENABLE_IFEQ
 #undef likely
 #undef unlikely
+#undef FUNC_ENABLE_IFSAME
+#undef FUNC_ENABLE_IFSAME2
+#undef ENABLE_IF
+#undef ENABLE_IFEQ

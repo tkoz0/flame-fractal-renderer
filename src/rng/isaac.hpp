@@ -324,6 +324,14 @@ public:
     }
 };
 
+extern template class Isaac<u32,4>;
+extern template class Isaac<u32,6>;
+extern template class Isaac<u32,8>;
+
+extern template class Isaac<u64,4>;
+extern template class Isaac<u64,6>;
+extern template class Isaac<u64,8>;
+
 #undef FUNC_ENABLE_IF
 #undef likely
 #undef unlikely

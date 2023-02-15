@@ -6,6 +6,7 @@ MT19937 Mersenne twister implementation
 
 #include <array>
 #include <cstdint>
+#include <ctime>
 
 #include "../utils/clock.hpp"
 
@@ -41,7 +42,9 @@ template <> struct mt_params<u32>
     static const u32 c = 0xEFC60000;
     static const u32 l = 18;
     static const u32 f = 1812433253;
+    static const u32 seed_uniq = 1853726117;
 };
+
 template <> struct mt_params<u64>
 {
     static const size_t w = 64;
@@ -57,6 +60,7 @@ template <> struct mt_params<u64>
     static const u64 c = 0xFFF7EEE000000000;
     static const u64 l = 43;
     static const u64 f = 6364136223846793005;
+    static const u64 seed_uniq = 7460189664030870853;
 };
 
 template <typename T> class MT19937
@@ -99,14 +103,18 @@ private:
 public:
     inline MT19937(T seed = 0)
     {
-        sedSeet(seed);
+        setSeed(seed);
     }
-    inline T setSeed(T seed = 0)
+    inline void setSeed(T seed = 0)
     {
+        static T seed_uniq = params::seed_uniq;
         if (seed)
             _seed(seed);
         else
-            _seed(clock_nanotime());
+        {
+            seed_uniq = (seed_uniq * 711671537) + 1002671653;
+            _seed(clock_nanotime() ^ seed_uniq ^ time(NULL));
+        }
     }
     inline T nextWord()
     {
@@ -121,6 +129,9 @@ public:
         return (_get() >> 11) / (double) 0x20000000000000L;
     }
 };
+
+extern template class MT19937<u32>;
+extern template class MT19937<u64>;
 
 #undef likely
 #undef unlikely
