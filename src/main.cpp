@@ -28,8 +28,6 @@ planned options (not available yet):
 #include <boost/program_options.hpp>
 
 #include "renderers/renderer.hpp"
-#include "types/types.hpp"
-#include "types/point.hpp"
 #include "utils/image.hpp"
 #include "utils/misc.hpp"
 
@@ -37,9 +35,6 @@ const std::string VERSION = "unspecified";
 
 namespace bpo = boost::program_options;
 typedef float num_t; // can also be double (slower)
-// Isaac RNG, 4 recommended for simulations, 8 recommended for cryptography
-typedef u32 isaac_word_t;
-size_t isaac_rparam = 4;
 
 int main(int argc, char **argv)
 {

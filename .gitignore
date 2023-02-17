@@ -1,7 +1,7 @@
 .vscode
-/bin
 /nlohmann/json.hpp
 *.o
+*.d
 *.out
 *.pgm
 *.png

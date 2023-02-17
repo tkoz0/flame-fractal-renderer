@@ -21,17 +21,6 @@ template <typename num_t, typename hist_t> class RendererBasic;
 #define likely(x)   __builtin_expect(!!(x),1)
 #define unlikely(x) __builtin_expect(!!(x),0)
 
-// macros for using SFINAE
-#define FUNC_ENABLE_IFSAME(T1,T2,RET) template <typename dummy = T1> \
-    typename std::enable_if<std::is_same<dummy,T2>::value,RET>::type
-#define FUNC_ENABLE_IFSAME2(T1,T2,U1,U2,RET) template <typename dummy = T1> \
-    typename std::enable_if<std::is_same<dummy,T2>::value \
-        && std::is_same<U1,U2>::value,RET>::type
-#define ENABLE_IF(COND,RET) template <typename RET2 = RET> \
-    typename std::enable_if<(COND),RET2>::type
-#define ENABLE_IFEQ(N1,N2,RET) template <typename RET2 = RET> \
-    typename enable_if_eq<N1,N2,RET2>::type
-
 namespace tkoz::flame
 {
 
@@ -347,7 +336,3 @@ extern template class RendererBasic<double,u64>;
 
 #undef likely
 #undef unlikely
-#undef FUNC_ENABLE_IFSAME
-#undef FUNC_ENABLE_IFSAME2
-#undef ENABLE_IF
-#undef ENABLE_IFEQ

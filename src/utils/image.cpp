@@ -3,6 +3,8 @@
 #include <boost/gil.hpp>
 #include <boost/gil/extension/io/png.hpp>
 
+#include "image.hpp"
+
 // write 8 bit pgm image
 bool write_pgm(std::ostream& os, size_t X, size_t Y, uint8_t *img)
 {
