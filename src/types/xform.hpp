@@ -13,6 +13,7 @@ namespace tkoz::flame
 template <typename num_t, size_t dims> class XForm;
 }
 
+#include "../settings.hpp"
 #include "point.hpp"
 #include "affine.hpp"
 #include "iter_state.hpp"
@@ -92,6 +93,7 @@ public:
     }
 };
 
+#if INSTANTIATE_TEMPLATES
 extern template class XForm<float,1>;
 extern template class XForm<float,2>;
 extern template class XForm<float,3>;
@@ -103,5 +105,6 @@ extern template class XForm<double,2>;
 extern template class XForm<double,3>;
 extern template class XForm<double,4>;
 extern template class XForm<double,5>;
+#endif
 
 }

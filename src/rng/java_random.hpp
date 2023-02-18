@@ -10,6 +10,7 @@ It does so in everything except the Gaussian random variables
 #include <cstdlib>
 #include <ctime>
 
+#include "../settings.hpp"
 #include "../utils/clock.hpp"
 
 #define likely(x)   __builtin_expect(!!(x),1)
@@ -165,7 +166,9 @@ template <
 int64_t JavaRandomGeneric<multiplier,addend,state_size,seed_uniquifier_init,
     seed_uniquifier_mult>::seed_uniquifier = seed_uniquifier_init;
 
+#if INSTANTIATE_TEMPLATES
 extern template class JavaRandomGeneric<>;
+#endif
 
 typedef JavaRandomGeneric<> JavaRandom;
 

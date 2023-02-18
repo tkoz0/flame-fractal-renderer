@@ -20,6 +20,7 @@ namespace tkoz::flame
 template <typename T, size_t N> class Point;
 }
 
+#include "../settings.hpp"
 #include "../utils/json_small.hpp"
 #include "../utils/sfinae.hpp"
 #include "types.hpp"
@@ -391,6 +392,7 @@ std::ostream& operator<<(std::ostream& os, const Point<T,N>& p)
     return os;
 }
 
+#if INSTANTIATE_TEMPLATES
 extern template class Point<float,1>;
 extern template class Point<float,2>;
 extern template class Point<float,3>;
@@ -402,5 +404,6 @@ extern template class Point<double,2>;
 extern template class Point<double,3>;
 extern template class Point<double,4>;
 extern template class Point<double,5>;
+#endif
 
 }

@@ -14,6 +14,7 @@ namespace tkoz::flame
 template <typename T, size_t N> class Affine;
 }
 
+#include "../settings.hpp"
 #include "../utils/json_small.hpp"
 #include "point.hpp"
 
@@ -92,6 +93,7 @@ std::ostream& operator<<(std::ostream& os, const Affine<T,N>& a)
     return os;
 }
 
+#if INSTANTIATE_TEMPLATES
 extern template class Affine<float,1>;
 extern template class Affine<float,2>;
 extern template class Affine<float,3>;
@@ -103,5 +105,6 @@ extern template class Affine<double,2>;
 extern template class Affine<double,3>;
 extern template class Affine<double,4>;
 extern template class Affine<double,5>;
+#endif
 
 }

@@ -15,6 +15,7 @@ namespace tkoz::flame
 template <typename num_t, size_t dims> class Flame;
 }
 
+#include "../settings.hpp"
 #include "../utils/json_small.hpp"
 #include "xform.hpp"
 
@@ -106,6 +107,7 @@ public:
     }
 };
 
+#if INSTANTIATE_TEMPLATES
 extern template class Flame<float,1>;
 extern template class Flame<float,2>;
 extern template class Flame<float,3>;
@@ -117,5 +119,6 @@ extern template class Flame<double,2>;
 extern template class Flame<double,3>;
 extern template class Flame<double,4>;
 extern template class Flame<double,5>;
+#endif
 
 }

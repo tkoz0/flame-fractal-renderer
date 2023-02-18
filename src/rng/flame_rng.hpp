@@ -11,6 +11,7 @@ Based on ISAAC with extra helpful functions
 
 #include <ctgmath>
 
+#include "../settings.hpp"
 #include "../utils/math.hpp"
 #include "../utils/sfinae.hpp"
 
@@ -191,6 +192,7 @@ public:
     }
 };
 
+#if INSTANTIATE_TEMPLATES
 extern template class FlameRNG<float,u32,4>;
 extern template class FlameRNG<float,u32,6>;
 extern template class FlameRNG<float,u32,8>;
@@ -203,6 +205,7 @@ extern template class FlameRNG<float,u64,8>;
 extern template class FlameRNG<double,u64,4>;
 extern template class FlameRNG<double,u64,6>;
 extern template class FlameRNG<double,u64,8>;
+#endif
 
 }
 

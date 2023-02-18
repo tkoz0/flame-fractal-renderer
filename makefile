@@ -16,8 +16,8 @@ SRCS_NONMAIN = $(shell find src/ -mindepth 2 -name "*.cpp")
 SRCS_ALL = $(shell find src/ -name "*.cpp")
 
 # dependency and object files
-DEPS = $(subst .cpp,.d,$(SRCS_ALL))
-OBJS = $(subst .cpp,.o,$(SRCS_ALL))
+DEPS = $(subst src/,obj/,$(subst .cpp,.d,$(SRCS_ALL)))
+OBJS = $(subst src/,obj/,$(subst .cpp,.o,$(SRCS_ALL)))
 
 all: ffbuf.out
 
@@ -31,16 +31,22 @@ nlohmann/json.hpp:
 	https://github.com/nlohmann/json/releases/download/v3.11.2/json.hpp
 
 # compile objects
-src/%.o: src/%.cpp src/%.d
+obj/%.o: src/%.cpp obj/%.d
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $@ -c $<
 
 # make dependency files
-src/%.d: src/%.cpp nlohmann/json.hpp
-	$(CXX) $(CXXFLAGS) -MM -MT $(subst .d,.o,$@) $< -MF $@
+obj/%.d: src/%.cpp .prereq
+	$(CXX) $(CXXFLAGS) -MM -MT $(subst src/,obj/,$(subst .d,.o,$@)) $< -MF $@
 
 include $(DEPS)
 
+# prerequisites for entire project
+.prereq: nlohmann/json.hpp
+	mkdir -p $(shell dirname $(OBJS))
+	touch .prereq
+
 clean:
+	$(RM) .prereq
 	$(RM) $(OBJS)
 	$(RM) $(DEPS)
 	$(RM) ffbuf.out
