@@ -65,6 +65,24 @@ ENABLE_IF2(dims>=2) Variation<num_t,dims>::parseVariation2d(const Json& json)
         return new JuliaN<num_t,dims>(json);
     if (name == "juliascope")
         return new JuliaScope<num_t,dims>(json);
+    if (name == "radial_blur")
+        return new RadialBlur<num_t,dims>(json);
+    if (name == "pie")
+        return new Pie<num_t,dims>(json);
+    if (name == "ngon")
+        return new NGon<num_t,dims>(json);
+    if (name == "curl")
+        return new Curl<num_t,dims>(json);
+    if (name == "arch")
+        return new Arch<num_t,dims>(json);
+    if (name == "tangent")
+        return new Tangent<num_t,dims>(json);
+    if (name == "rays")
+        return new Rays<num_t,dims>(json);
+    if (name == "blade")
+        return new Blade<num_t,dims>(json);
+    if (name == "secant")
+        return new Secant<num_t,dims>(json);
     return nullptr;
 }
 

@@ -630,6 +630,270 @@ public:
 };
 
 /*
+Radial Blur - 2d, from flam3
+*/
+template <typename num_t, size_t dims>
+class RadialBlur: public VariationFrom2D<num_t,dims>
+{
+    num_t spin,zoom,flam3weight;
+public:
+    RadialBlur(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        num_t angle = json["angle"].floatValue();
+        sincosg(angle*M_PI_2,spin,zoom);
+        flam3weight = json["flam3_weight"].floatValue();
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        num_t g = flam3weight * rng.randGaussian();
+        num_t ra = tx.norm2();
+        num_t a = tx.angle() + spin*g;
+        num_t sa,ca;
+        sincosg(a,sa,ca);
+        num_t rz = zoom*g - 1.0;
+        return ra*Point<num_t,2>(ca,sa) + rz*tx;
+    }
+};
+
+/*
+Pie - 2d, from flam3
+*/
+template <typename num_t, size_t dims>
+class Pie: public VariationFrom2D<num_t,dims>
+{
+    num_t slices,rotation,thickness,invslices2pi;
+public:
+    Pie(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        slices = json["slices"].floatValue();
+        rotation = json["rotation"].floatValue();
+        thickness = json["thickness"].floatValue();
+        invslices2pi = (2.0*M_PI)/slices;
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)tx;
+        i32 sl = (i32)(rng.randNum()*slices + 0.5);
+        num_t a = rotation + (sl + rng.randNum()*thickness)*invslices2pi;
+        num_t r = rng.randNum();
+        num_t sa,ca;
+        sincosg(a,sa,ca);
+        return r * Point<num_t,2>(ca,sa);
+    }
+};
+
+/*
+NGon - 2d, from flam3
+*/
+template <typename num_t, size_t dims>
+class NGon: public VariationFrom2D<num_t,dims>
+{
+    num_t powerval,angle,corners,circle,invangle;
+public:
+    NGon(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        num_t sides = json["sides"].floatValue();
+        powerval = json["power"].floatValue()/2.0;
+        angle = (2.0*M_PI)/sides;
+        corners = json["corners"].floatValue();
+        circle = json["circle"].floatValue();
+        invangle = sides/(2.0*M_PI);
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t r = pow(tx.norm2sq(),powerval);
+        num_t theta = tx.angle();
+        num_t phi = theta - angle*floor(theta*invangle);
+        static const num_t mult[2] = {0.0,1.0};
+        phi -= mult[phi > angle*0.5]*angle;
+        num_t amp = corners*(1.0/(cos(phi)+eps<num_t>::value)-1.0) + circle;
+        amp /= r + eps<num_t>::value;
+        return amp * tx;
+    }
+};
+
+/*
+Curl - 2d, from flam3
+*/
+template <typename num_t, size_t dims>
+class Curl: public VariationFrom2D<num_t,dims>
+{
+    num_t c1,c2;
+public:
+    Curl(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        c1 = json["c1"].floatValue();
+        c2 = json["c2"].floatValue();
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t re = 1.0 + c1*x + c2*(x*x - y*y);
+        num_t im = c1*y + 2.0*c2*x*y;
+        num_t r = 1.0 / (re*re + im*im + eps<num_t>::value);
+        return r * Point<num_t,2>(x*re+y*im,y*re-x*im);
+    }
+};
+
+/*
+Arch - 2d, from flam3
+*/
+template <typename num_t, size_t dims>
+class Arch: public VariationFrom2D<num_t,dims>
+{
+    num_t flam3weight;
+public:
+    Arch(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        flam3weight = json["flam3_weight"].floatValue();
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)tx;
+        num_t a = flam3weight * rng.randNum() * M_PI;
+        num_t sa,ca;
+        sincosg(a,sa,ca);
+        return flam3weight * Point<num_t,2>(sa,sa*sa/ca);
+    }
+};
+
+/*
+Tangent - 2d, from flam3
+*/
+template <typename num_t, size_t dims>
+struct Tangent: public VariationFrom2D<num_t,dims>
+{
+    Tangent(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t x,y;
+        tx.getXY(x,y);
+        return Point<num_t,2>(sin(x)/cos(y),tan(y));
+    }
+};
+
+/*
+Rays - 2d, from flam3
+*/
+template <typename num_t, size_t dims>
+class Rays: public VariationFrom2D<num_t,dims>
+{
+    num_t flam3weight;
+public:
+    Rays(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        flam3weight = json["flam3_weight"].floatValue();
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t a = flam3weight * rng.randNum() * M_PI;
+        num_t r = flam3weight / (tx.norm2sq() + eps<num_t>::value);
+        num_t tr = tan(a) * r;
+        return tr * Point<num_t,2>(cos(tx.x()),sin(tx.y()));
+    }
+};
+
+/*
+Blade - 2d, from flam3
+*/
+template <typename num_t, size_t dims>
+class Blade: public VariationFrom2D<num_t,dims>
+{
+    num_t flam3weight;
+public:
+    Blade(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        flam3weight = json["flam3_weight"].floatValue();
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        num_t r = rng.randNum() * flam3weight * tx.norm2();
+        num_t sr,cr;
+        sincosg(r,sr,cr);
+        return tx.x() * Point<num_t,2>(cr+sr,cr-sr);
+    }
+};
+
+/*
+Secant - 2d, based on secant2 from flam3
+*/
+template <typename num_t, size_t dims>
+class Secant: public VariationFrom2D<num_t,dims>
+{
+    num_t flam3weight;
+public:
+    Secant(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        flam3weight = json["flam3_weight"].floatValue();
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t cr = cos(flam3weight*tx.norm2());
+        num_t icr = 1.0/cr;
+        static const num_t sign[2] = {-1.0,1.0};
+        return Point<num_t,2>(tx.x(),icr+sign[cr<0]);
+    }
+};
+
+/*
+Twintrian - 2d, from flam3
+*/
+template <typename num_t, size_t dims>
+class Twintrian: public VariationFrom2D<num_t,dims>
+{
+    num_t flam3weight;
+public:
+    Twintrian(const Json& json): VariationsFrom2D<num_t,dims>(json)
+    {
+        flam3weight = json["flam3_weight"].floatValue();
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        num_t r = rng.randNum() * flam3weight * tx.norm2();
+        num_t sr,cr;
+        sincosg(r,sr,cr);
+        num_t diff = log10(sr*sr) + cr;
+        if (unlikely(bad_value(diff)))
+            diff = -30.0;
+        return tx.x() * Point<num_t,2>(diff,diff-sr*M_PI);
+    }
+};
+
+/*
+Cross - 2d, from flam3
+*/
+template <typename num_t, size_t dims>
+struct Cross: public VariationFrom2D<num_t,dims>
+{
+    Cross(const Json& json): VariationsFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t s = x*x - y*y;
+        num_t r = sqrt(1.0 / (s*s + eps<num_t>::value));
+        return r * tx;
+    }
+};
+
+/*
 ======= variations by tkoz =======
 */
 

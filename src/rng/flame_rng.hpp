@@ -84,6 +84,12 @@ public:
                 return (nextWord() >> 11) / (double)(1LL << 53);
         }
     }
+    // random integer in [0,n)
+    // uniformly distributed only when n is a power of 2
+    inline word_t randInt(word_t n)
+    {
+        return nextWord() % n;
+    }
     // generates 2 gaussian variables
     inline void randGaussianPair(num_t& z1, num_t& z2)
     {
