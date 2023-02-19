@@ -16,6 +16,10 @@
 #define ENABLE_IF2(COND) template <typename RET = Variation<num_t,dims>*> \
     typename std::enable_if<(COND),RET>::type
 
+// macros for helping with efficient code
+#define likely(x)   __builtin_expect(!!(x),1)
+#define unlikely(x) __builtin_expect(!!(x),0)
+
 namespace tkoz::flame::vars
 {
 

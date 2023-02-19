@@ -1,6 +1,7 @@
 #pragma once
 
 #include "variation_base.hpp"
+#include "../utils/flame.hpp"
 
 namespace tkoz::flame::vars
 {
@@ -858,7 +859,7 @@ class Twintrian: public VariationFrom2D<num_t,dims>
 {
     num_t flam3weight;
 public:
-    Twintrian(const Json& json): VariationsFrom2D<num_t,dims>(json)
+    Twintrian(const Json& json): VariationFrom2D<num_t,dims>(json)
     {
         flam3weight = json["flam3_weight"].floatValue();
     }
@@ -881,15 +882,301 @@ Cross - 2d, from flam3
 template <typename num_t, size_t dims>
 struct Cross: public VariationFrom2D<num_t,dims>
 {
-    Cross(const Json& json): VariationsFrom2D<num_t,dims>(json) {}
+    Cross(const Json& json): VariationFrom2D<num_t,dims>(json) {}
     inline Point<num_t,2> calc2d(
         rng_t<num_t>& rng, const Point<num_t,2>& tx) const
     {
+        (void)rng;
         num_t x,y;
         tx.getXY(x,y);
         num_t s = x*x - y*y;
         num_t r = sqrt(1.0 / (s*s + eps<num_t>::value));
         return r * tx;
+    }
+};
+
+/*
+Exp - 2d, from flam3
+*/
+template <typename num_t, size_t dims>
+struct Exp: public VariationFrom2D<num_t,dims>
+{
+    Exp(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t e = exp(tx.x());
+        num_t es,ec;
+        sincosg(tx.y(),es,ec);
+        return e * Point<num_t,2>(ec,es);
+    }
+};
+
+/*
+Log - 2d, from flam3
+*/
+template <typename num_t, size_t dims>
+struct Log: public VariationFrom2D<num_t,dims>
+{
+    Log(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        return Point<num_t,2>(log(tx.norm2sq()),tx.angle());
+    }
+};
+
+/*
+Sin - 2d, from flam3
+*/
+template <typename num_t, size_t dims>
+struct Sin: public VariationFrom2D<num_t,dims>
+{
+    Sin(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t s,c;
+        sincosg(x,s,c);
+        num_t sh = sinh(y);
+        num_t ch = cosh(y);
+        return Point<num_t,2>(s*ch,c*sh);
+    }
+};
+
+/*
+Cos - 2d, from flam3
+*/
+template <typename num_t, size_t dims>
+struct Cos: public VariationFrom2D<num_t,dims>
+{
+    Cos(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t s,c;
+        sincosg(x,s,c);
+        num_t ch = cosh(y);
+        num_t sh = sinh(y);
+        return Point<num_t,2>(c*ch,-s*sh);
+    }
+};
+
+/*
+Tan - 2d, from flam3
+*/
+template <typename num_t, size_t dims>
+struct Tan: public VariationFrom2D<num_t,dims>
+{
+    Tan(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t s,c;
+        sincosg(2.0*x,s,c);
+        num_t sh = sinh(2.0*y);
+        num_t ch = cosh(2.0*y);
+        return Point<num_t,2>(s,sh) / (c+ch);
+    }
+};
+
+/*
+Sec - 2d, from flam3
+*/
+template <typename num_t, size_t dims>
+struct Sec: public VariationFrom2D<num_t,dims>
+{
+    Sec(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t s,c;
+        sincosg(x,s,c);
+        num_t sh = sinh(y);
+        num_t ch = cosh(y);
+        return Point<num_t,2>(c*ch,s*sh) / (cos(2.0*x)+cosh(2.0*y));
+    }
+};
+
+/*
+Csc - 2d, from flam3
+*/
+template <typename num_t, size_t dims>
+struct Csc: public VariationFrom2D<num_t,dims>
+{
+    Csc(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t s,c;
+        sincosg(x,s,c);
+        num_t sh = sinh(y);
+        num_t ch = cosh(y);
+        return Point<num_t,2>(s*ch,-c*sh) / (cosh(2.0*y)-cos(2.0*x));
+    }
+};
+
+/*
+Cot - 2d, from flam3
+*/
+template <typename num_t, size_t dims>
+struct Cot: public VariationFrom2D<num_t,dims>
+{
+    Cot(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t s,c;
+        sincosg(2.0*x,s,c);
+        num_t sh = sinh(2.0*y);
+        num_t ch = cosh(2.0*y);
+        return Point<num_t,2>(s,-sh) / (ch-c);
+    }
+};
+
+/*
+Sinh - 2d, from flam3
+*/
+template <typename num_t, size_t dims>
+struct Sinh: public VariationFrom2D<num_t,dims>
+{
+    Sinh(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t s,c;
+        sincosg(y,s,c);
+        num_t sh = sinh(x);
+        num_t ch = cosh(x);
+        return Point<num_t,2>(sh*c,ch*s);
+    }
+};
+
+/*
+Cosh - 2d, from flam3
+*/
+template <typename num_t, size_t dims>
+struct Cosh: public VariationFrom2D<num_t,dims>
+{
+    Cosh(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t s,c;
+        sincosg(y,s,c);
+        num_t sh = sinh(x);
+        num_t ch = cosh(x);
+        return Point<num_t,2>(ch*c,sh*s);
+    }
+};
+
+/*
+Tanh - 2d, from flam3
+*/
+template <typename num_t, size_t dims>
+struct Tanh: public VariationFrom2D<num_t,dims>
+{
+    Tanh(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t s,c;
+        sincosg(2.0*y,s,c);
+        num_t sh = sinh(2.0*x);
+        num_t ch = cosh(2.0*x);
+        return Point<num_t,2>(sh,s) / (c+ch);
+    }
+};
+
+/*
+Sech - 2d, from flam3
+*/
+template <typename num_t, size_t dims>
+struct Sech: public VariationFrom2D<num_t,dims>
+{
+    Sech(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t s,c;
+        sincosg(y,s,c);
+        num_t sh = sinh(x);
+        num_t ch = cosh(x);
+        return Point<num_t,2>(c*ch,-s*sh) / (cos(2.0*y)+cosh(2.0*x));
+    }
+};
+
+/*
+Csch - 2d, from flam3
+*/
+template <typename num_t, size_t dims>
+struct Csch: public VariationFrom2D<num_t,dims>
+{
+    Csch(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t s,c;
+        sincosg(y,s,c);
+        num_t sh = sinh(x);
+        num_t ch = cosh(x);
+        return Point<num_t,2>(sh*c,-ch*s) / (cosh(2.0*x)-cos(2.0*y));
+    }
+};
+
+/*
+Coth - 2d, from flam3
+*/
+template <typename num_t, size_t dims>
+struct Coth: public VariationFrom2D<num_t,dims>
+{
+    Coth(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t s,c;
+        sincosg(2.0*y,s,c);
+        num_t sh = sinh(2.0*x);
+        num_t ch = cosh(2.0*x);
+        return Point<num_t,2>(sh,s) / (ch-c);
     }
 };
 

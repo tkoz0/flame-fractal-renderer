@@ -83,6 +83,38 @@ ENABLE_IF2(dims>=2) Variation<num_t,dims>::parseVariation2d(const Json& json)
         return new Blade<num_t,dims>(json);
     if (name == "secant")
         return new Secant<num_t,dims>(json);
+    if (name == "twintrian")
+        return new Twintrian<num_t,dims>(json);
+    if (name == "cross")
+        return new Cross<num_t,dims>(json);
+    if (name == "exp")
+        return new Exp<num_t,dims>(json);
+    if (name == "log")
+        return new Log<num_t,dims>(json);
+    if (name == "sin")
+        return new Sin<num_t,dims>(json);
+    if (name == "cos")
+        return new Cos<num_t,dims>(json);
+    if (name == "tan")
+        return new Tan<num_t,dims>(json);
+    if (name == "sec")
+        return new Sec<num_t,dims>(json);
+    if (name == "csc")
+        return new Csc<num_t,dims>(json);
+    if (name == "cot")
+        return new Cot<num_t,dims>(json);
+    if (name == "sinh")
+        return new Sinh<num_t,dims>(json);
+    if (name == "cosh")
+        return new Cosh<num_t,dims>(json);
+    if (name == "tanh")
+        return new Tanh<num_t,dims>(json);
+    if (name == "sech")
+        return new Sech<num_t,dims>(json);
+    if (name == "csch")
+        return new Csch<num_t,dims>(json);
+    if (name == "coth")
+        return new Coth<num_t,dims>(json);
     return nullptr;
 }
 
