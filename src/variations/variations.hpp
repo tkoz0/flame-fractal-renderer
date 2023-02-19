@@ -423,6 +423,213 @@ struct Julia: public VariationFrom2D<num_t,dims>
 };
 
 /*
+Exponential - 2d, from flam3
+*/
+template <typename num_t, size_t dims>
+struct Exponential: public VariationFrom2D<num_t,dims>
+{
+    Exponential(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t dx = exp(tx.x()-1.0);
+        num_t sdy,cdy;
+        sincosg(M_PI*tx.y(),sdy,cdy);
+        return dx * Point<num_t,2>(cdy,sdy);
+    }
+};
+
+/*
+Power - 2d, from flam3
+*/
+template <typename num_t, size_t dims>
+struct Power: public VariationFrom2D<num_t,dims>
+{
+    Power(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t r,sa,ca;
+        tx.getRadiusSinCos(r,sa,ca);
+        return pow(r,sa) * Point<num_t,2>(ca,sa);
+    }
+};
+
+/*
+Cosine - 2d, from flam3
+*/
+template <typename num_t, size_t dims>
+struct Cosine: public VariationFrom2D<num_t,dims>
+{
+    Cosine(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t sa,ca;
+        sincosg(x*M_PI,sa,ca);
+        return Point<num_t,2>(ca*cosh(y),-sa*sinh(y));
+    }
+};
+
+/*
+Blob - 2d, from flam3
+*/
+template <typename num_t, size_t dims>
+class Blob: public VariationFrom2D<num_t,dims>
+{
+    num_t mid,amp,waves;
+public:
+    Blob(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        num_t low = json["low"].floatValue();
+        num_t high = json["high"].floatValue();
+        mid = (high+low)/2.0;
+        amp = (high-low)/2.0;
+        waves = json["waves"].floatValue();
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t r,sa,ca;
+        tx.getRadiusSinCos(r,sa,ca);
+        num_t a = tx.angle();
+        r *= mid + amp*sin(waves*a);
+        return r * Point<num_t,2>(ca,sa);
+    }
+};
+
+/*
+PDJ - 2d, from flam3
+*/
+template <typename num_t, size_t dims>
+class PDJ: public VariationFrom2D<num_t,dims>
+{
+    num_t a,b,c,d;
+public:
+    PDJ(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        a = json["a"].floatValue();
+        b = json["b"].floatValue();
+        c = json["c"].floatValue();
+        d = json["d"].floatValue();
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t nx1 = cos(b*x);
+        num_t nx2 = sin(c*x);
+        num_t ny1 = sin(a*y);
+        num_t ny2 = cos(d*y);
+        return Point<num_t,2>(ny1-nx1,nx2-ny2);
+    }
+};
+
+/*
+Cylinder - 2d, from flam3
+*/
+template <typename num_t, size_t dims>
+struct Cylinder: public VariationFrom2D<num_t,dims>
+{
+    Cylinder(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        return Point<num_t,2>(sin(tx.x()),tx.y());
+    }
+};
+
+/*
+Perspective - 2d, from flam3
+*/
+template <typename num_t, size_t dims>
+class Perspective: public VariationFrom2D<num_t,dims>
+{
+    num_t dist,vsin,vfcos;
+public:
+    Perspective(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        dist = json["distance"].floatValue();
+        num_t angle = json["angle"].floatValue();
+        vsin = sin(angle);
+        vfcos = dist*cos(angle);
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t t = 1.0 / (dist - tx.y()*vsin);
+        return t * Point<num_t,2>(dist*tx.x(),vfcos*tx.y());
+    }
+};
+
+/*
+Julia N - 2d, from flam3
+*/
+template <typename num_t, size_t dims>
+class JuliaN: public VariationFrom2D<num_t,dims>
+{
+    num_t abspower,invpower,cn;
+public:
+    JuliaN(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        num_t power = json["power"].floatValue();
+        num_t dist = json["dist"].floatValue();
+        abspower = fabs(power);
+        invpower = 1.0/power;
+        cn = dist/(2.0*power);
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        i32 t = trunc(abspower*rng.randNum());
+        num_t a = (tx.angle() + (2.0*M_PI)*t) * invpower;
+        num_t r = pow(tx.norm2sq(),cn);
+        num_t sa,ca;
+        sincosg(a,sa,ca);
+        return r * Point<num_t,2>(ca,sa);
+    }
+};
+
+/*
+Julia Scope - 2d, from flam3
+*/
+template <typename num_t, size_t dims>
+class JuliaScope: public VariationFrom2D<num_t,dims>
+{
+    num_t abspower,invpower,cn;
+public:
+    JuliaScope(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        num_t power = json["power"].floatValue();
+        num_t dist = json["dist"].floatValue();
+        abspower = fabs(power);
+        invpower = 1.0/power;
+        cn = dist/(2.0*power);
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        i32 t = trunc(abspower*rng.randNum());
+        num_t dir = rng.template randDirection<1>().x();
+        num_t a = ((2.0*M_PI)*t + dir*tx.angle()) * invpower;
+        num_t r = pow(tx.norm2sq(),cn);
+        num_t sa,ca;
+        sincosg(a,sa,ca);
+        return r * Point<num_t,2>(ca,sa);
+    }
+};
+
+/*
 ======= variations by tkoz =======
 */
 

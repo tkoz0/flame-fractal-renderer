@@ -47,6 +47,24 @@ ENABLE_IF2(dims>=2) Variation<num_t,dims>::parseVariation2d(const Json& json)
         return new Ex<num_t,dims>(json);
     if (name == "julia")
         return new Julia<num_t,dims>(json);
+    if (name == "exponential")
+        return new Exponential<num_t,dims>(json);
+    if (name == "power")
+        return new Power<num_t,dims>(json);
+    if (name == "cosine")
+        return new Cosine<num_t,dims>(json);
+    if (name == "blob")
+        return new Blob<num_t,dims>(json);
+    if (name == "pdj")
+        return new PDJ<num_t,dims>(json);
+    if (name == "cylinder")
+        return new Cylinder<num_t,dims>(json);
+    if (name == "perspective")
+        return new Perspective<num_t,dims>(json);
+    if (name == "julian")
+        return new JuliaN<num_t,dims>(json);
+    if (name == "juliascope")
+        return new JuliaScope<num_t,dims>(json);
     return nullptr;
 }
 
