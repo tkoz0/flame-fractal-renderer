@@ -68,14 +68,14 @@ bool Json::boolValue() const
     return this->get<bool>();
 }
 
-int64_t Json::intValue() const
+JsonInt Json::intValue() const
 {
-    return this->get<int64_t>();
+    return this->get<JsonInt>();
 }
 
-double Json::floatValue() const
+JsonFloat Json::floatValue() const
 {
-    return this->get<double>();
+    return this->get<JsonFloat>();
 }
 
 std::string Json::stringValue() const

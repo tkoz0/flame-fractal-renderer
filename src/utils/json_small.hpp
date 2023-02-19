@@ -55,9 +55,9 @@ public:
     // returns boolean value, exception if not a boolean
     bool boolValue() const;
     // returns integer value, exception if not an integer
-    int64_t intValue() const;
+    JsonInt intValue() const;
     // returns floating point value, exception if not a floating point
-    double floatValue() const;
+    JsonFloat floatValue() const;
     // returns string value, exception if not a string
     std::string stringValue() const;
     // returns array value, exception if not an array

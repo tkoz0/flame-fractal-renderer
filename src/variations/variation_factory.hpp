@@ -31,6 +31,8 @@ ENABLE_IF2(dims>=2) Variation<num_t,dims>::parseVariation2d(const Json& json)
         return new Horseshoe<num_t,dims>(json);
     if (name == "polar")
         return new Polar<num_t,dims>(json);
+    if (name == "polar2")
+        return new Polar2<num_t,dims>(json);
     if (name == "handkerchief")
         return new Handkerchief<num_t,dims>(json);
     if (name == "heart")
@@ -115,6 +117,26 @@ ENABLE_IF2(dims>=2) Variation<num_t,dims>::parseVariation2d(const Json& json)
         return new Csch<num_t,dims>(json);
     if (name == "coth")
         return new Coth<num_t,dims>(json);
+    if (name == "auger")
+        return new Auger<num_t,dims>(json);
+    if (name == "flux")
+        return new Flux<num_t,dims>(json);
+    if (name == "mobius")
+        return new Mobius<num_t,dims>(json);
+    if (name == "scry")
+        return new Scry<num_t,dims>(json);
+    if (name == "split")
+        return new Split<num_t,dims>(json);
+    if (name == "stripes")
+        return new Stripes<num_t,dims>(json);
+    if (name == "wedge")
+        return new Wedge<num_t,dims>(json);
+    if (name == "wedge_julia")
+        return new WedgeJulia<num_t,dims>(json);
+    if (name == "wedge_sph")
+        return new WedgeSph<num_t,dims>(json);
+    if (name == "whorl")
+        return new Whorl<num_t,dims>(json);
     return nullptr;
 }
 
@@ -161,6 +183,10 @@ Variation<num_t,dims> *Variation<num_t,dims>::parseVariationNd(const Json& json)
         return new GaussianBlur<num_t,dims>(json);
     if (name == "square_noise")
         return new SquareNoise<num_t,dims>(json);
+    if (name == "separation")
+        return new Separation<num_t,dims>(json);
+    if (name == "splits")
+        return new Splits<num_t,dims>(json);
     if (name == "spherical_p")
         return new SphericalP<num_t,dims>(json);
     if (name == "unit_sphere")
