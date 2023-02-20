@@ -39,6 +39,14 @@ ENABLE_IF2(dims>=2) Variation<num_t,dims>::parseVariation2d(const Json& json)
         return new Heart<num_t,dims>(json);
     if (name == "disc")
         return new Disc<num_t,dims>(json);
+    if (name == "disc2")
+        return new Disc2<num_t,dims>(json);
+    if (name == "waves")
+        return new Waves<num_t,dims>(json);
+    if (name == "fan")
+        return new Fan<num_t,dims>(json);
+    if (name == "rings")
+        return new Rings<num_t,dims>(json);
     if (name == "spiral")
         return new Spiral<num_t,dims>(json);
     if (name == "hyperbolic")
@@ -137,6 +145,42 @@ ENABLE_IF2(dims>=2) Variation<num_t,dims>::parseVariation2d(const Json& json)
         return new WedgeSph<num_t,dims>(json);
     if (name == "whorl")
         return new Whorl<num_t,dims>(json);
+    if (name == "supershape")
+        return new Supershape<num_t,dims>(json);
+    if (name == "flower")
+        return new Flower<num_t,dims>(json);
+    if (name == "conic")
+        return new Conic<num_t,dims>(json);
+    if (name == "parabola")
+        return new Parabola<num_t,dims>(json);
+    if (name == "bipolar")
+        return new Bipolar<num_t,dims>(json);
+    if (name == "boarders")
+        return new Boarders<num_t,dims>(json);
+    if (name == "butterfly")
+        return new Butterfly<num_t,dims>(json);
+    if (name == "cell")
+        return new Cell<num_t,dims>(json);
+    if (name == "cpow")
+        return new CPow<num_t,dims>(json);
+    if (name == "curve")
+        return new Curve<num_t,dims>(json);
+    if (name == "edisc")
+        return new EDisc<num_t,dims>(json);
+    if (name == "elliptic")
+        return new Elliptic<num_t,dims>(json);
+    if (name == "escher")
+        return new Escher<num_t,dims>(json);
+    if (name == "foci")
+        return new Foci<num_t,dims>(json);
+    if (name == "lazysusan")
+        return new LazySusan<num_t,dims>(json);
+    if (name == "loonie")
+        return new Loonie<num_t,dims>(json);
+    if (name == "oscope")
+        return new OScope<num_t,dims>(json);
+    if (name == "popcorn")
+        return new Popcorn<num_t,dims>(json);
     return nullptr;
 }
 
@@ -187,6 +231,10 @@ Variation<num_t,dims> *Variation<num_t,dims>::parseVariationNd(const Json& json)
         return new Separation<num_t,dims>(json);
     if (name == "splits")
         return new Splits<num_t,dims>(json);
+    if (name == "pre_blur")
+        return new PreBlur<num_t,dims>(json);
+    if (name == "modulus")
+        return new Modulus<num_t,dims>(json);
     if (name == "spherical_p")
         return new SphericalP<num_t,dims>(json);
     if (name == "unit_sphere")
