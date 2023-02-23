@@ -85,11 +85,15 @@ public:
         // for 2d, faster to apply identity affine than to branch
         if (dims < 3 || has_pre)
             state.t = pre.apply_to(state.p);
+        else
+            state.t = state.p;
         state.v = Point<num_t,dims>();
         for (auto var : vars)
             state.v += var->getWeight() * var->calc(*state.rng,state.t);
         if (dims < 3 || has_post)
             state.p = post.apply_to(state.v);
+        else
+            state.p = state.v;
     }
 };
 
