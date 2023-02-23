@@ -11,7 +11,6 @@ namespace tkoz::flame
 template <typename num_t, typename hist_t> class RendererBasic;
 }
 
-#include "../settings.hpp"
 #include "../types/flame.hpp"
 #include "../types/point.hpp"
 #include "../types/types.hpp"
@@ -327,13 +326,6 @@ public:
         return ymax;
     }
 };
-
-#if INSTANTIATE_TEMPLATES
-extern template class RendererBasic<float,u32>;
-extern template class RendererBasic<double,u32>;
-extern template class RendererBasic<float,u64>;
-extern template class RendererBasic<double,u64>;
-#endif
 
 }
 

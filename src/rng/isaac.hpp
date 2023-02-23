@@ -12,7 +12,6 @@ See https://www.burtleburtle.net/bob/rand/isaacafa.html
 #include <tuple>
 #include <type_traits>
 
-#include "../settings.hpp"
 #include "../utils/clock.hpp"
 
 #define likely(x)   __builtin_expect(!!(x),1)
@@ -324,16 +323,6 @@ public:
         return std::make_tuple(randa,randb,randc);
     }
 };
-
-#if INSTANTIATE_TEMPLATES
-extern template class Isaac<u32,4>;
-extern template class Isaac<u32,6>;
-extern template class Isaac<u32,8>;
-
-extern template class Isaac<u64,4>;
-extern template class Isaac<u64,6>;
-extern template class Isaac<u64,8>;
-#endif
 
 #undef FUNC_ENABLE_IF
 #undef likely

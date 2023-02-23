@@ -8,7 +8,6 @@ MT19937 Mersenne twister implementation
 #include <cstdint>
 #include <ctime>
 
-#include "../settings.hpp"
 #include "../utils/clock.hpp"
 
 #define likely(x)   __builtin_expect(!!(x),1)
@@ -130,11 +129,6 @@ public:
         return (_get() >> 11) / (double) 0x20000000000000L;
     }
 };
-
-#if INSTANTIATE_TEMPLATES
-extern template class MT19937<u32>;
-extern template class MT19937<u64>;
-#endif
 
 #undef likely
 #undef unlikely
