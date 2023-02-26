@@ -1,3 +1,7 @@
+/*
+Variation classes. They put together the compute and parsing components.
+*/
+
 #pragma once
 
 #include "variation_base.hpp"
@@ -11,7 +15,7 @@ namespace tkoz::flame::vars
 */
 
 /*
-Linear - generalized from flam3
+Linear - generalized from flam3 var0_linear
 */
 template <typename num_t, size_t dims>
 struct Linear: public Variation<num_t,dims>
@@ -26,7 +30,8 @@ struct Linear: public Variation<num_t,dims>
 };
 
 /*
-Sinusoidal - generalized from flam3
+Sinusoidal - generalized from flam3 var1_sinusoidal
+Replace each coordinate with its sine
 */
 template <typename num_t, size_t dims>
 struct Sinusoidal: public Variation<num_t,dims>
@@ -41,7 +46,8 @@ struct Sinusoidal: public Variation<num_t,dims>
 };
 
 /*
-Spherical - generalized from flam3
+Spherical - generalized from flam3 var2_spherical
+Divide by squared 2-norm
 */
 template <typename num_t, size_t dims>
 struct Spherical: public Variation<num_t,dims>
@@ -51,13 +57,17 @@ struct Spherical: public Variation<num_t,dims>
         rng_t<num_t>& rng, const Point<num_t,dims>& tx) const
     {
         (void)rng;
+        // for small dimensions maybe division
+        // is better than precomputing 1/r^2
         num_t r = 1.0 / (tx.norm2sq() + eps<num_t>::value);
         return r * tx;
     }
 };
 
 /*
-Bent - generalized from bent2 in flam3
+Bent - generalized from flam3 var14_bent and var54_bent2
+In flam3, the default would be neg[2.0,0.5],pos[1,1] for bent
+The bent2 variation allows scaling negatives but not positives
 */
 template <typename num_t, size_t dims>
 class Bent: public Variation<num_t,dims>
@@ -67,6 +77,7 @@ class Bent: public Variation<num_t,dims>
 public:
     Bent(const Json& json): Variation<num_t,dims>(json)
     {
+        // should these default to all ones
         scales_neg = Point<num_t,dims>(json["scales_neg"]);
         scales_pos = Point<num_t,dims>(json["scales_pos"]);
     }
@@ -79,7 +90,7 @@ public:
         {
             if (ret[i] < 0.0)
                 ret[i] *= scales_neg[i];
-            else
+            else // flam3 does not scale positive coordinates
                 ret[i] *= scales_pos[i];
         }
         return ret;
@@ -117,41 +128,58 @@ public:
 };
 
 /*
-Fisheye - generalized from flam3
+Fisheye - generalized from flam3 var16_fisheye and var27_eyefish
+Keeping correct order from eyefish, rather than incorrect order of fisheye
+The original behavior can be achieved with affine transformations
 */
 template <typename num_t, size_t dims>
-struct Fisheye: public Variation<num_t,dims>
+class Fisheye: public Variation<num_t,dims>
 {
-    Fisheye(const Json& json): Variation<num_t,dims>(json) {}
+    num_t addval;
+public:
+    Fisheye(const Json& json): Variation<num_t,dims>(json)
+    {
+        // should this be required to be positive?
+        // in flam3, this is 1, should this be default?
+        addval = json["addval"].floatValue();
+    }
     inline Point<num_t,dims> calc(
         rng_t<num_t>& rng, const Point<num_t,dims>& tx) const
     {
         (void)rng;
         // TODO support changing the +1
-        num_t r = 1.0 / (tx.norm2() + 1.0);
+        // is division faster than precomputing 1/(r+addval)
+        num_t r = 1.0 / (tx.norm2() + addval);
         return r * tx;
     }
 };
 
 /*
-Bubble - generalized from flam3
+Bubble - generalized from flam3 var28_bubble
 */
 template <typename num_t, size_t dims>
-struct Bubble: public Variation<num_t,dims>
+class Bubble: public Variation<num_t,dims>
 {
-    Bubble(const Json& json): Variation<num_t,dims>(json) {}
+    num_t addval;
+public:
+    Bubble(const Json& json): Variation<num_t,dims>(json)
+    {
+        // should this be required positive or default to 4?
+        // default is 4 in flam3
+        addval = json["addval"].floatValue();
+    }
     inline Point<num_t,dims> calc(
         rng_t<num_t>& rng, const Point<num_t,dims>& tx) const
     {
         (void)rng;
-        // TODO support changing the +4
-        num_t r = 1.0 / (tx.norm2sq() + 4.0);
+        // is division faster or is precomputing 1/(r^2+addval) faster?
+        num_t r = 1.0 / (tx.norm2sq() + addval);
         return r * tx;
     }
 };
 
 /*
-Noise - generalized from flamm3
+Noise - generalized from flam3 var31_noise
 */
 template <typename num_t, size_t dims>
 struct Noise: public Variation<num_t,dims>
@@ -161,13 +189,14 @@ struct Noise: public Variation<num_t,dims>
         rng_t<num_t>& rng, const Point<num_t,dims>& tx) const
     {
         num_t r = rng.randNum();
+        // flam3 uses random unit vector in 2d plane
         Point<num_t,dims> dir = rng.template randDirection<dims>();
         return r * multComponents(tx,dir);
     }
 };
 
 /*
-Blur - generalized from flam3
+Blur - generalized from flam3 var34_blur
 */
 template <typename num_t, size_t dims>
 struct Blur: public Variation<num_t,dims>
@@ -178,13 +207,14 @@ struct Blur: public Variation<num_t,dims>
     {
         (void)tx;
         num_t r = rng.randNum();
+        // flam3 uses random unit vector in 2d plane
         Point<num_t,dims> dir = rng.template randDirection<dims>();
         return r * dir;
     }
 };
 
 /*
-Gaussian Blur - generalized from flam3
+Gaussian Blur - generalized from flam3 var35_gaussian
 */
 template <typename num_t, size_t dims>
 struct GaussianBlur: public Variation<num_t,dims>
@@ -194,6 +224,7 @@ struct GaussianBlur: public Variation<num_t,dims>
         rng_t<num_t>& rng, const Point<num_t,dims>& tx) const
     {
         (void)tx;
+        // flam3 simulates gaussian distribution with (4 randoms [0,1)) - 2
         num_t r = rng.randGaussian();
         Point<num_t,dims> dir = rng.template randDirection<dims>();
         return r * dir;
@@ -317,7 +348,7 @@ public:
 */
 
 /*
-Swirl - 2d, from flam3
+Swirl - 2d, from flam3 var3_swirl
 */
 template <typename num_t, size_t dims>
 struct Swirl: public VariationFrom2D<num_t,dims>
@@ -337,7 +368,7 @@ struct Swirl: public VariationFrom2D<num_t,dims>
 };
 
 /*
-Horseshoe - 2d, from flam3
+Horseshoe - 2d, from flam3 var4_horseshoe
 */
 template <typename num_t, size_t dims>
 struct Horseshoe: public VariationFrom2D<num_t,dims>
@@ -347,15 +378,17 @@ struct Horseshoe: public VariationFrom2D<num_t,dims>
         rng_t<num_t>& rng, const Point<num_t,2>& tx) const
     {
         (void)rng;
+        // is division better than precomputing 1/r
         num_t r = 1.0 / (tx.norm2() + eps<num_t>::value);
         num_t x,y;
         tx.getXY(x,y);
+        // is it faster to compute x^2-y^2
         return r * Point<num_t,2>((x-y)*(x+y),2.0*x*y);
     }
 };
 
 /*
-Polar - 2d, from flam3
+Polar - 2d, from flam3 var5_polar
 */
 template <typename num_t, size_t dims>
 struct Polar: public VariationFrom2D<num_t,dims>
@@ -387,7 +420,7 @@ struct Polar2: public VariationFrom2D<num_t,dims>
 };
 
 /*
-Handkerchief - 2d, from flam3
+Handkerchief - 2d, from flam3 var6_handkerchief
 */
 template <typename num_t, size_t dims>
 struct Handkerchief: public VariationFrom2D<num_t,dims>
@@ -404,7 +437,7 @@ struct Handkerchief: public VariationFrom2D<num_t,dims>
 };
 
 /*
-Heart - 2d, from flam3
+Heart - 2d, from flam3 var7_heart
 */
 template <typename num_t, size_t dims>
 struct Heart: public VariationFrom2D<num_t,dims>
@@ -423,7 +456,7 @@ struct Heart: public VariationFrom2D<num_t,dims>
 };
 
 /*
-Disc - 2d, from flam3
+Disc - 2d, from flam3 var8_disc
 */
 template <typename num_t, size_t dims>
 struct Disc: public VariationFrom2D<num_t,dims>
@@ -433,7 +466,7 @@ struct Disc: public VariationFrom2D<num_t,dims>
         rng_t<num_t>& rng, const Point<num_t,2>& tx) const
     {
         (void)rng;
-        num_t a = tx.angle();
+        num_t a = tx.angle(); // not including M_1_PI factor
         num_t r = tx.norm2();
         num_t sr,cr;
         sincosg(M_PI*r,sr,cr);
@@ -555,7 +588,7 @@ public:
 };
 
 /*
-Spiral - 2d, from flam3
+Spiral - 2d, from flam3 var9_spiral
 */
 template <typename num_t, size_t dims>
 struct Spiral: public VariationFrom2D<num_t,dims>
@@ -569,13 +602,14 @@ struct Spiral: public VariationFrom2D<num_t,dims>
         tx.getRadiusSinCos(r,sa,ca);
         num_t sr,cr;
         sincosg(r,sr,cr);
+        // is division faster than precomputing 1/r
         num_t r1 = 1.0 / (r + eps<num_t>::value);
         return r1 * Point<num_t,2>(ca+sr,sa-cr);
     }
 };
 
 /*
-Hyperbolic - 2d, from flam3
+Hyperbolic - 2d, from flam3 var10_hyperbolic
 */
 template <typename num_t, size_t dims>
 struct Hyperbolic: public VariationFrom2D<num_t,dims>
@@ -587,12 +621,12 @@ struct Hyperbolic: public VariationFrom2D<num_t,dims>
         (void)rng;
         num_t r,sa,ca;
         tx.getRadiusSinCos(r,sa,ca);
-        return Point<num_t,2>(sa/r,ca*(r+eps<num_t>::value));
+        return Point<num_t,2>(sa/(r+eps<num_t>::value),ca*r);
     }
 };
 
 /*
-Diamond - 2d, from flam3
+Diamond - 2d, from flam3 var11_diamond
 */
 template <typename num_t, size_t dims>
 struct Diamond: public VariationFrom2D<num_t,dims>
@@ -611,7 +645,7 @@ struct Diamond: public VariationFrom2D<num_t,dims>
 };
 
 /*
-Ex - 2d, from flam3
+Ex - 2d, from flam3 var12_ex
 */
 template <typename num_t, size_t dims>
 struct Ex: public VariationFrom2D<num_t,dims>
@@ -632,7 +666,7 @@ struct Ex: public VariationFrom2D<num_t,dims>
 };
 
 /*
-Julia - 2d, from flam3
+Julia - 2d, from flam3 var13_julia
 */
 template <typename num_t, size_t dims>
 struct Julia: public VariationFrom2D<num_t,dims>
@@ -644,12 +678,13 @@ struct Julia: public VariationFrom2D<num_t,dims>
         num_t a = 0.5*tx.angle() + rng.randBool()*M_PI; // + 0 or PI
         num_t sa,ca;
         sincosg(a,sa,ca);
+        // switched order of sin,cos from flam3
         return tx.norm2() * Point<num_t,2>(ca,sa);
     }
 };
 
 /*
-Exponential - 2d, from flam3
+Exponential - 2d, from flam3 var18_exponential
 */
 template <typename num_t, size_t dims>
 struct Exponential: public VariationFrom2D<num_t,dims>
@@ -659,15 +694,17 @@ struct Exponential: public VariationFrom2D<num_t,dims>
         rng_t<num_t>& rng, const Point<num_t,2>& tx) const
     {
         (void)rng;
-        num_t dx = exp(tx.x()-1.0);
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t dx = exp(x-1.0);
         num_t sdy,cdy;
-        sincosg(M_PI*tx.y(),sdy,cdy);
+        sincosg(M_PI*y,sdy,cdy);
         return dx * Point<num_t,2>(cdy,sdy);
     }
 };
 
 /*
-Power - 2d, from flam3
+Power - 2d, from flam3 var19_power
 */
 template <typename num_t, size_t dims>
 struct Power: public VariationFrom2D<num_t,dims>
@@ -684,7 +721,7 @@ struct Power: public VariationFrom2D<num_t,dims>
 };
 
 /*
-Cosine - 2d, from flam3
+Cosine - 2d, from flam3 var20_cosine
 */
 template <typename num_t, size_t dims>
 struct Cosine: public VariationFrom2D<num_t,dims>
@@ -703,7 +740,7 @@ struct Cosine: public VariationFrom2D<num_t,dims>
 };
 
 /*
-Blob - 2d, from flam3
+Blob - 2d, from flam3 var23_blob
 */
 template <typename num_t, size_t dims>
 class Blob: public VariationFrom2D<num_t,dims>
@@ -725,13 +762,13 @@ public:
         num_t r,sa,ca;
         tx.getRadiusSinCos(r,sa,ca);
         num_t a = tx.angle();
-        r *= mid + amp*sin(waves*a);
-        return r * Point<num_t,2>(ca,sa);
+        r *= mid + amp*sin(waves*a); // simplified
+        return r * Point<num_t,2>(ca,sa); // order switched
     }
 };
 
 /*
-PDJ - 2d, from flam3
+PDJ - 2d, from flam3 var24_pdj
 */
 template <typename num_t, size_t dims>
 class PDJ: public VariationFrom2D<num_t,dims>
@@ -760,7 +797,9 @@ public:
 };
 
 /*
-Cylinder - 2d, from flam3
+Cylinder - 2d, from flam3 var29_cylinder
+Should this variation be replaced with something more general?
+Similar to sinusoidal but only applies on some axes
 */
 template <typename num_t, size_t dims>
 struct Cylinder: public VariationFrom2D<num_t,dims>
@@ -775,7 +814,7 @@ struct Cylinder: public VariationFrom2D<num_t,dims>
 };
 
 /*
-Perspective - 2d, from flam3
+Perspective - 2d, from flam3 var30_perspective
 */
 template <typename num_t, size_t dims>
 class Perspective: public VariationFrom2D<num_t,dims>
@@ -793,8 +832,10 @@ public:
         rng_t<num_t>& rng, const Point<num_t,2>& tx) const
     {
         (void)rng;
-        num_t t = 1.0 / (dist - tx.y()*vsin);
-        return t * Point<num_t,2>(dist*tx.x(),vfcos*tx.y());
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t t = 1.0 / (dist - y*vsin);
+        return t * Point<num_t,2>(dist*x,vfcos*y);
     }
 };
 
@@ -856,7 +897,8 @@ public:
 };
 
 /*
-Radial Blur - 2d, from flam3
+Radial Blur - 2d, from flam3 var36_radial_blur
+Flam3 uses weight in a nonstandard way
 */
 template <typename num_t, size_t dims>
 class RadialBlur: public VariationFrom2D<num_t,dims>
@@ -872,6 +914,7 @@ public:
     inline Point<num_t,2> calc2d(
         rng_t<num_t>& rng, const Point<num_t,2>& tx) const
     {
+        // flam3 simulates gaussian with (4 randoms in [0,1)) - 2
         num_t g = flam3weight * rng.randGaussian();
         num_t ra = tx.norm2();
         num_t a = tx.angle() + spin*g;
@@ -1406,7 +1449,7 @@ struct Coth: public VariationFrom2D<num_t,dims>
 };
 
 /*
-Auger - 2d, from flam3
+Auger - 2d, from flam3 var96_auger
 */
 template <typename num_t, size_t dims>
 class Auger: public VariationFrom2D<num_t,dims>
@@ -1416,7 +1459,7 @@ public:
     Auger(const Json& json): VariationFrom2D<num_t,dims>(json)
     {
         freq = json["freq"].floatValue();
-        augerweight = json["auger_weight"].floatValue();
+        augerweight = json["flam3_weight"].floatValue();
         scale = json["scale"].floatValue() / 2.0;
         sym = json["sym"].floatValue();
     }
@@ -1435,7 +1478,7 @@ public:
 };
 
 /*
-Flux - 2d, from flam3
+Flux - 2d, from flam3 var97_flux
 */
 template <typename num_t, size_t dims>
 class Flux: public VariationFrom2D<num_t,dims>
@@ -1444,8 +1487,9 @@ class Flux: public VariationFrom2D<num_t,dims>
 public:
     Flux(const Json& json): VariationFrom2D<num_t,dims>(json)
     {
+        // why does flam3 have a +2 for this?
         spread = 2.0 + json["spread"].floatValue();
-        fluxweight = json["flux_weight"].floatValue();
+        fluxweight = json["flam3_weight"].floatValue();
     }
     inline Point<num_t,2> calc2d(
         rng_t<num_t>& rng, const Point<num_t,2>& tx) const
@@ -1465,7 +1509,7 @@ public:
 };
 
 /*
-Mobius - 2d, from flam3
+Mobius - 2d, from flam3 var98_mobius
 */
 template <typename num_t, size_t dims>
 class Mobius: public VariationFrom2D<num_t,dims>
@@ -1489,6 +1533,7 @@ public:
         num_t im_u = a.x()*y + a.y()*x + b.y();
         num_t re_v = c.x()*x - c.y()*y + d.x();
         num_t im_v = c.x()*y + c.y()*x + d.y();
+        // faster to divide instead of precomputing this?
         num_t rad = 1.0 / (re_v*re_v + im_v*im_v + eps<num_t>::value);
         return rad * Point<num_t,2>(re_u*re_v+im_u*im_v,im_u*re_v-re_u*im_v);
     }
@@ -1504,7 +1549,7 @@ class Scry: public VariationFrom2D<num_t,dims>
 public:
     Scry(const Json& json): VariationFrom2D<num_t,dims>(json)
     {
-        scryweight = json["scry_weight"].floatValue();
+        scryweight = json["flam3_weight"].floatValue();
     }
     inline Point<num_t,2> calc2d(
         rng_t<num_t>& rng, const Point<num_t,2>& tx) const
@@ -1667,7 +1712,7 @@ public:
     {
         choice[0] = json["inside"].floatValue();
         choice[1] = json["outside"].floatValue();
-        whorlweight = json["whorl_weight"].floatValue();
+        whorlweight = json["flam3_weight"].floatValue();
     }
     inline Point<num_t,2> calc2d(
         rng_t<num_t>& rng, const Point<num_t,2>& tx) const
@@ -2154,7 +2199,7 @@ public:
 };
 
 /*
-Popcorn - 2d, from flam3
+Popcorn - 2d, from flam3 var17_popcorn and var71_popcorn2
 */
 template <typename num_t, size_t dims>
 class Popcorn: public VariationFrom2D<num_t,dims>

@@ -18,6 +18,9 @@ template <typename num_t, size_t dims> class XForm;
 #include "iter_state.hpp"
 #include "../variations.hpp"
 
+// TODO need color speed and color parameters
+// perhaps generalized in some way
+
 namespace tkoz::flame
 {
 
