@@ -121,6 +121,7 @@ public:
     }
     inline Point<T,N>& operator/=(T k)
     {
+        // is it faster to divide instead of precomputing this to multiply?
         return *this *= (1/k);
     }
     /* === element access === */
@@ -207,10 +208,6 @@ public:
         Point<T,N> ret = a;
         ret /= k;
         return ret;
-    }
-    friend inline Point<T,N> operator/(T k, const Point<T,N>& a)
-    {
-        return a/k;
     }
     /* === functional programming stuff === */
     // map each coordinate under the same function
