@@ -1164,7 +1164,7 @@ struct Cross: public VariationFrom2D<num_t,dims>
 };
 
 /*
-Exp - 2d, from flam3
+Exp - 2d, from flam3 var82_exp
 */
 template <typename num_t, size_t dims>
 struct Exp: public VariationFrom2D<num_t,dims>
@@ -1174,15 +1174,17 @@ struct Exp: public VariationFrom2D<num_t,dims>
         rng_t<num_t>& rng, const Point<num_t,2>& tx) const
     {
         (void)rng;
-        num_t e = exp(tx.x());
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t e = exp(x);
         num_t es,ec;
-        sincosg(tx.y(),es,ec);
+        sincosg(y,es,ec);
         return e * Point<num_t,2>(ec,es);
     }
 };
 
 /*
-Log - 2d, from flam3
+Log - 2d, from flam3 var83_log
 */
 template <typename num_t, size_t dims>
 struct Log: public VariationFrom2D<num_t,dims>
@@ -1197,7 +1199,7 @@ struct Log: public VariationFrom2D<num_t,dims>
 };
 
 /*
-Sin - 2d, from flam3
+Sin - 2d, from flam3 var84_sin
 */
 template <typename num_t, size_t dims>
 struct Sin: public VariationFrom2D<num_t,dims>
@@ -1218,7 +1220,7 @@ struct Sin: public VariationFrom2D<num_t,dims>
 };
 
 /*
-Cos - 2d, from flam3
+Cos - 2d, from flam3 var85_cos
 */
 template <typename num_t, size_t dims>
 struct Cos: public VariationFrom2D<num_t,dims>
@@ -1239,7 +1241,7 @@ struct Cos: public VariationFrom2D<num_t,dims>
 };
 
 /*
-Tan - 2d, from flam3
+Tan - 2d, from flam3 var86_tan
 */
 template <typename num_t, size_t dims>
 struct Tan: public VariationFrom2D<num_t,dims>
@@ -1255,12 +1257,13 @@ struct Tan: public VariationFrom2D<num_t,dims>
         sincosg(2.0*x,s,c);
         num_t sh = sinh(2.0*y);
         num_t ch = cosh(2.0*y);
+        // is it faster to precompute 1/(c+ch) and multiply?
         return Point<num_t,2>(s,sh) / (c+ch);
     }
 };
 
 /*
-Sec - 2d, from flam3
+Sec - 2d, from flam3 var87_sec
 */
 template <typename num_t, size_t dims>
 struct Sec: public VariationFrom2D<num_t,dims>
@@ -1276,12 +1279,13 @@ struct Sec: public VariationFrom2D<num_t,dims>
         sincosg(x,s,c);
         num_t sh = sinh(y);
         num_t ch = cosh(y);
+        // is it faster to compute 1/(cos(2x)+cosh(2y)) and multiply?
         return Point<num_t,2>(c*ch,s*sh) / (cos(2.0*x)+cosh(2.0*y));
     }
 };
 
 /*
-Csc - 2d, from flam3
+Csc - 2d, from flam3 var88_csc
 */
 template <typename num_t, size_t dims>
 struct Csc: public VariationFrom2D<num_t,dims>
@@ -1297,12 +1301,13 @@ struct Csc: public VariationFrom2D<num_t,dims>
         sincosg(x,s,c);
         num_t sh = sinh(y);
         num_t ch = cosh(y);
+        // is it faster to compute 1/(cosh(2y)-cos(2x)) and multiply?
         return Point<num_t,2>(s*ch,-c*sh) / (cosh(2.0*y)-cos(2.0*x));
     }
 };
 
 /*
-Cot - 2d, from flam3
+Cot - 2d, from flam3 var89_cot
 */
 template <typename num_t, size_t dims>
 struct Cot: public VariationFrom2D<num_t,dims>
@@ -1318,12 +1323,13 @@ struct Cot: public VariationFrom2D<num_t,dims>
         sincosg(2.0*x,s,c);
         num_t sh = sinh(2.0*y);
         num_t ch = cosh(2.0*y);
+        // is it faster to compute 1/(ch-c) and multiply?
         return Point<num_t,2>(s,-sh) / (ch-c);
     }
 };
 
 /*
-Sinh - 2d, from flam3
+Sinh - 2d, from flam3 var90_sinh
 */
 template <typename num_t, size_t dims>
 struct Sinh: public VariationFrom2D<num_t,dims>
@@ -1344,7 +1350,7 @@ struct Sinh: public VariationFrom2D<num_t,dims>
 };
 
 /*
-Cosh - 2d, from flam3
+Cosh - 2d, from flam3 var91_cosh
 */
 template <typename num_t, size_t dims>
 struct Cosh: public VariationFrom2D<num_t,dims>
@@ -1365,7 +1371,7 @@ struct Cosh: public VariationFrom2D<num_t,dims>
 };
 
 /*
-Tanh - 2d, from flam3
+Tanh - 2d, from flam3 var92_tanh
 */
 template <typename num_t, size_t dims>
 struct Tanh: public VariationFrom2D<num_t,dims>
@@ -1381,12 +1387,13 @@ struct Tanh: public VariationFrom2D<num_t,dims>
         sincosg(2.0*y,s,c);
         num_t sh = sinh(2.0*x);
         num_t ch = cosh(2.0*x);
+        // is it faster to compute 1/(ch+c) and multiply?
         return Point<num_t,2>(sh,s) / (c+ch);
     }
 };
 
 /*
-Sech - 2d, from flam3
+Sech - 2d, from flam3 var93_sech
 */
 template <typename num_t, size_t dims>
 struct Sech: public VariationFrom2D<num_t,dims>
@@ -1402,12 +1409,13 @@ struct Sech: public VariationFrom2D<num_t,dims>
         sincosg(y,s,c);
         num_t sh = sinh(x);
         num_t ch = cosh(x);
+        // is it faster to compute 1/(cos(2y)+cosh(2x)) and multiply?
         return Point<num_t,2>(c*ch,-s*sh) / (cos(2.0*y)+cosh(2.0*x));
     }
 };
 
 /*
-Csch - 2d, from flam3
+Csch - 2d, from flam3 var94_csch
 */
 template <typename num_t, size_t dims>
 struct Csch: public VariationFrom2D<num_t,dims>
@@ -1423,12 +1431,13 @@ struct Csch: public VariationFrom2D<num_t,dims>
         sincosg(y,s,c);
         num_t sh = sinh(x);
         num_t ch = cosh(x);
+        // is it faster to compute 1/(cosh(2x)-cos(2y)) and multiply?
         return Point<num_t,2>(sh*c,-ch*s) / (cosh(2.0*x)-cos(2.0*y));
     }
 };
 
 /*
-Coth - 2d, from flam3
+Coth - 2d, from flam3 var95_coth
 */
 template <typename num_t, size_t dims>
 struct Coth: public VariationFrom2D<num_t,dims>
@@ -1444,6 +1453,7 @@ struct Coth: public VariationFrom2D<num_t,dims>
         sincosg(2.0*y,s,c);
         num_t sh = sinh(2.0*x);
         num_t ch = cosh(2.0*x);
+        // is it faster to compute 1/(ch-c) and multiply?
         return Point<num_t,2>(sh,s) / (ch-c);
     }
 };
