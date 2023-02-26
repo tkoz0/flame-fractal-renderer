@@ -235,6 +235,8 @@ Variation<num_t,dims> *Variation<num_t,dims>::parseVariationNd(const Json& json)
         return new PreBlur<num_t,dims>(json);
     if (name == "modulus")
         return new Modulus<num_t,dims>(json);
+    if (name == "celln")
+        return new CellN<num_t,dims>(json);
     if (name == "spherical_p")
         return new SphericalP<num_t,dims>(json);
     if (name == "unit_sphere")
