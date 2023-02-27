@@ -247,7 +247,7 @@ struct SquareNoise: public Variation<num_t,dims>
 };
 
 /*
-Separation - generalized from flam3
+Separation - generalized from flam3 var73_separation
 */
 template <typename num_t, size_t dims>
 class Separation: public Variation<num_t,dims>
@@ -276,7 +276,7 @@ public:
 };
 
 /*
-Splits - generalized from flam3
+Splits - generalized from flam3 var75_splits
 */
 template <typename num_t, size_t dims>
 class Splits: public Variation<num_t,dims>
@@ -302,7 +302,7 @@ public:
 };
 
 /*
-Pre Blur - generalized from flam3
+Pre Blur - generalized from flam3 var67_pre_blur
 */
 template <typename num_t, size_t dims>
 struct PreBlur: public Variation<num_t,dims>
@@ -312,6 +312,7 @@ struct PreBlur: public Variation<num_t,dims>
         rng_t<num_t>& rng, const Point<num_t,dims>& tx) const
     {
         (void)tx;
+        // flam3 simulates gaussian with (sum 4 randoms in [0,1)) - 2
         num_t g = rng.randGaussian();
         Point<num_t,dims> dir = rng.template randDirection<dims>();
         return g * dir;
@@ -319,7 +320,7 @@ struct PreBlur: public Variation<num_t,dims>
 };
 
 /*
-Modulus - generalized from flam3
+Modulus - generalized from flam3 var68_modulus
 */
 template <typename num_t, size_t dims>
 class Modulus: public Variation<num_t,dims>
@@ -337,6 +338,7 @@ public:
     {
         (void)rng;
         Point<num_t,dims> ret;
+        // computed in a different way, should behave the same as flam3
         for (size_t i = 0; i < dims; ++i)
             ret[i] = tx[i] - params2[i]*floor(tx[i]*params2inv[i] + 0.5);
         return ret;
@@ -438,7 +440,7 @@ struct Polar: public VariationFrom2D<num_t,dims>
 };
 
 /*
-Polar2 - 2d, from flam3
+Polar2 - 2d, from flam3 var70_polar2
 */
 template <typename num_t, size_t dims>
 struct Polar2: public VariationFrom2D<num_t,dims>
@@ -448,6 +450,7 @@ struct Polar2: public VariationFrom2D<num_t,dims>
         rng_t<num_t>& rng, const Point<num_t,2>& tx) const
     {
         (void)rng;
+        // leaving out 0.5 factor on the log
         return Point<num_t,2>(tx.angle(),log(tx.norm2sq()));
     }
 };
@@ -508,7 +511,7 @@ struct Disc: public VariationFrom2D<num_t,dims>
 };
 
 /*
-Disc2 - 2d, from flam3
+Disc2 - 2d, from flam3 var49_disc2
 */
 template <typename num_t, size_t dims>
 class Disc2: public VariationFrom2D<num_t,dims>
@@ -535,15 +538,18 @@ public:
         rng_t<num_t>& rng, const Point<num_t,2>& tx) const
     {
         (void)rng;
-        num_t t = rotpi * (tx.x() + tx.y());
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t t = rotpi * (x + y);
         num_t st,ct;
         sincosg(t,st,ct);
-        return tx.angle() * (Point<num_t,2>(st,ct) + addval);
+        // order of ct,st switched from flam3
+        return tx.angle() * (Point<num_t,2>(ct,st) + addval);
     }
 };
 
 /*
-Waves - 2d, from flam3
+Waves - 2d, from flam3 var15_waves and var81_waves2
 */
 template <typename num_t, size_t dims>
 class Waves: public VariationFrom2D<num_t,dims>
@@ -561,14 +567,16 @@ public:
         rng_t<num_t>& rng, const Point<num_t,2>& tx) const
     {
         (void)rng;
-        num_t dx = xs*sin(tx.y()*xf);
-        num_t dy = ys*sin(tx.x()*yf);
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t dx = xs*sin(y*xf);
+        num_t dy = ys*sin(x*yf);
         return tx + Point<num_t,2>(dx,dy);
     }
 };
 
 /*
-Fan - 2d, from flam3
+Fan - 2d, from flam3 var22_fan and var25_fan2
 */
 template <typename num_t, size_t dims>
 class Fan: public VariationFrom2D<num_t,dims>
@@ -588,16 +596,18 @@ public:
         (void)rng;
         num_t dx2 = dx*0.5;
         num_t a = tx.angle();
+        // the fmod part should behave the same as t in flam3
         num_t m = copysign(1.0,dx2-fmod(a+dy,dx));
         a += m*dx2;
         num_t sa,ca;
         sincosg(a,sa,ca);
+        // order of ca,sa switched from flam3
         return tx.norm2() * Point<num_t,2>(ca,sa);
     }
 };
 
 /*
-Rings - 2d, from flam3
+Rings - 2d, from flam3 var21_rings and var26_rings2
 */
 template <typename num_t, size_t dims>
 class Rings: public VariationFrom2D<num_t,dims>
@@ -615,7 +625,9 @@ public:
         (void)rng;
         num_t r,s,c;
         tx.getRadiusSinCos(r,s,c);
+        // should behave the same as in flam3
         r = fmod(r+dx,2.0*dx) - dx + r*(1.0-dx);
+        // order of c,s switched from flam3
         return r * Point<num_t,2>(c,s);
     }
 };
@@ -1592,7 +1604,8 @@ public:
 };
 
 /*
-Scry - 2d, from flam3
+Scry - 2d, from flam3 var72_scry
+Uses a nonstandard variation weight
 */
 template <typename num_t, size_t dims>
 class Scry: public VariationFrom2D<num_t,dims>
@@ -1614,7 +1627,7 @@ public:
 };
 
 /*
-Split - 2d, from flam3
+Split - 2d, from flam3 var74_split
 */
 template <typename num_t, size_t dims>
 class Split: public VariationFrom2D<num_t,dims>
@@ -1630,14 +1643,16 @@ public:
         rng_t<num_t>& rng, const Point<num_t,2>& tx) const
     {
         (void)rng;
-        num_t xs = copysign(1.0,cos(tx.x()*sizex));
-        num_t ys = copysign(1.0,cos(tx.y()*sizey));
-        return Point<num_t,2>(xs*tx.y(),ys*tx.x());
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t xs = copysign(1.0,cos(x*sizex));
+        num_t ys = copysign(1.0,cos(y*sizey));
+        return Point<num_t,2>(x*ys,y*xs);
     }
 };
 
 /*
-Stripes - 2d, from flam3
+Stripes - 2d, from flam3 var76_stripes
 */
 template <typename num_t, size_t dims>
 class Stripes: public VariationFrom2D<num_t,dims>
@@ -1653,19 +1668,21 @@ public:
         rng_t<num_t>& rng, const Point<num_t,2>& tx) const
     {
         (void)rng;
-        num_t rx = floor(tx.x() + 0.5);
-        num_t ox = tx.x() - rx;
-        return Point<num_t,2>(ox*space+rx,tx.y()+ox*ox*warp);
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t rx = floor(x + 0.5);
+        num_t ox = x - rx;
+        return Point<num_t,2>(ox*space+rx,y+ox*ox*warp);
     }
 };
 
 /*
-Wedge - 2d, from flam3
+Wedge - 2d, from flam3 var77_wedge
 */
 template <typename num_t, size_t dims>
 class Wedge: public VariationFrom2D<num_t,dims>
 {
-    num_t swirl,count,angle,hole;
+    num_t swirl,count,angle,hole,cf;
 public:
     Wedge(const Json& json): VariationFrom2D<num_t,dims>(json)
     {
@@ -1673,6 +1690,7 @@ public:
         count = json["count"].floatValue();
         angle = json["angle"].floatValue();
         hole = json["hole"].floatValue();
+        cf = 1.0 - angle*count*(M_1_PI*0.5);
     }
     inline Point<num_t,2> calc2d(
         rng_t<num_t>& rng, const Point<num_t,2>& tx) const
@@ -1681,7 +1699,6 @@ public:
         num_t r = tx.norm2();
         num_t a = tx.angle() + swirl*r;
         num_t c = floor((count*a + M_PI) * (M_1_PI*0.5));
-        num_t cf = 1.0 - angle*swirl*(M_1_PI*0.5);
         a = a*cf + c*angle;
         num_t sa,ca;
         sincosg(a,sa,ca);
@@ -1690,7 +1707,7 @@ public:
 };
 
 /*
-Wedge Julia - 2d, from flam3
+Wedge Julia - 2d, from flam3 var78_wedge_julia
 */
 template <typename num_t, size_t dims>
 class WedgeJulia: public VariationFrom2D<num_t,dims>
@@ -1705,7 +1722,7 @@ public:
         invpower = 1.0/power;
         num_t dist = json["dist"].floatValue();
         cn = dist/(2.0*power);
-        abspower = fabs(power);
+        abspower = fabs(power); // flam3 calls this rN
         cf = 1.0 - angle*count*(M_1_PI*0.5);
     }
     inline Point<num_t,2> calc2d(
@@ -1723,7 +1740,7 @@ public:
 };
 
 /*
-Wedge Sph - 2d, from flam3
+Wedge Sph - 2d, from flam3 var79_wedge_sph
 */
 template <typename num_t, size_t dims>
 class WedgeSph: public VariationFrom2D<num_t,dims>
@@ -1753,7 +1770,8 @@ public:
 };
 
 /*
-Whorl - 2d, from flam3
+Whorl - 2d, from flam3 var80_whorl
+Uses a nonstandard variation weight
 */
 template <typename num_t, size_t dims>
 class Whorl: public VariationFrom2D<num_t,dims>
@@ -2014,7 +2032,7 @@ public:
 };
 
 /*
-CPow - 2d, from flam3
+CPow - 2d, from flam3 var59_cpow
 */
 template <typename num_t, size_t dims>
 class CPow: public VariationFrom2D<num_t,dims>
@@ -2043,7 +2061,7 @@ public:
 };
 
 /*
-Curve - 2d, from flam3
+Curve - 2d, from flam3 var60_curve
 */
 template <typename num_t, size_t dims>
 class Curve: public VariationFrom2D<num_t,dims>
@@ -2058,6 +2076,7 @@ public:
         num_t ylen = json["ylen"].floatValue();
         xlen *= xlen;
         ylen *= ylen;
+        // flam3 uses 1e-20 as the minimum value for the denominator
         invxl = 1.0 / std::max(eps<num_t>::value,xlen);
         invyl = 1.0 / std::max(eps<num_t>::value,ylen);
     }
@@ -2074,11 +2093,12 @@ public:
 };
 
 /*
-E Disc - 2d, from flam3
+E Disc - 2d, from flam3 var61_edisc
 */
 template <typename num_t, size_t dims>
 class EDisc: public VariationFrom2D<num_t,dims>
 {
+    // constants from flam3, unused
     static constexpr num_t flam3_constant_inv = 0.0864278365005759;
     static constexpr num_t flam3_constant = 11.57034632;
 public:
@@ -2098,13 +2118,13 @@ public:
         sincosg(a1,s1,c1);
         num_t s2 = sinh(a2);
         num_t c2 = cosh(a2);
-        s1 *= copysign(1.0,y);
+        s1 *= copysign(1.0,-y);
         return Point<num_t,2>(c2*c1,s2*s1);
     }
 };
 
 /*
-Elliptic - 2d, from flam3
+Elliptic - 2d, from flam3 var62_elliptic
 */
 template <typename num_t, size_t dims>
 struct Elliptic: public VariationFrom2D<num_t,dims>
@@ -2122,6 +2142,7 @@ struct Elliptic: public VariationFrom2D<num_t,dims>
         num_t a = x/xmax;
         num_t b = 1.0 - a*a;
         num_t ssx = xmax - 1.0;
+        // is there a way to eliminate these branches?
         b = b < 0.0 ? 0.0 : sqrt(b);
         ssx = ssx < 0.0 ? 0.0 : sqrt(ssx);
         return Point<num_t,2>(atan2(a,b),copysign(1.0,y)*log(xmax+ssx));
@@ -2129,7 +2150,7 @@ struct Elliptic: public VariationFrom2D<num_t,dims>
 };
 
 /*
-Escher - 2d, from flam3
+Escher - 2d, from flam3 var63_escher
 */
 template <typename num_t, size_t dims>
 class Escher: public VariationFrom2D<num_t,dims>
@@ -2158,7 +2179,7 @@ public:
 };
 
 /*
-Foci - 2d, from flam3
+Foci - 2d, from flam3 var64_foci
 */
 template <typename num_t, size_t dims>
 struct Foci: public VariationFrom2D<num_t,dims>
@@ -2168,22 +2189,25 @@ struct Foci: public VariationFrom2D<num_t,dims>
         rng_t<num_t>& rng, const Point<num_t,2>& tx) const
     {
         (void)rng;
-        num_t expx = 0.5*exp(tx.x());
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t expx = 0.5*exp(x);
         num_t expnx = 0.25/expx;
         num_t sn,cn;
-        sincosg(tx.y(),sn,cn);
+        sincosg(y,sn,cn);
         num_t tmp = 1.0 / (expx + expnx - cn);
         return tmp * Point<num_t,2>(expx-expnx,sn);
     }
 };
 
 /*
-Lazy Susan - 2d, from flam3
+Lazy Susan - 2d, from flam3 var65_lazysusan
+Uses a nonstandard variation weight
 */
 template <typename num_t, size_t dims>
 class LazySusan: public VariationFrom2D<num_t,dims>
 {
-    num_t px,py,spin,twist,spacep1,lsweight;
+    num_t px,py,spin,twist,space,lsweight;
 public:
     LazySusan(const Json& json): VariationFrom2D<num_t,dims>(json)
     {
@@ -2191,7 +2215,7 @@ public:
         py = json["y"].floatValue();
         spin = json["spin"].floatValue();
         twist = json["twist"].floatValue();
-        spacep1 = 1.0 + json["space"].floatValue();
+        space = json["space"].floatValue();
         lsweight = json["flam3_weight"].floatValue();
     }
     inline Point<num_t,2> calc2d(
@@ -2199,7 +2223,7 @@ public:
     {
         (void)rng;
         num_t x = tx.x() - px;
-        num_t y = tx.y() - py;
+        num_t y = tx.y() + py;
         num_t r = hypot(x,y);
         if (r < lsweight)
         {
@@ -2210,38 +2234,41 @@ public:
         }
         else
         {
-            r = spacep1 / (r + eps<num_t>::value);
+            r = 1.0 + space / (r + eps<num_t>::value); // flam3 does not add eps
             return Point<num_t,2>(r*x+px,r*y-py);
         }
     }
 };
 
 /*
-Loonie - 2d, from flam3
+Loonie - 2d, from flam3 var66_loonie
+Uses a nonstandard variation weight
 */
 template <typename num_t, size_t dims>
 class Loonie: public VariationFrom2D<num_t,dims>
 {
-    num_t loonieweight;
+    num_t loonieweight,loonieweightsq;
 public:
     Loonie(const Json& json): VariationFrom2D<num_t,dims>(json)
     {
         loonieweight = json["flam3_weight"].floatValue();
+        loonieweightsq = loonieweight * loonieweight;
     }
     inline Point<num_t,2> calc2d(
         rng_t<num_t>& rng, const Point<num_t,2>& tx) const
     {
         (void)rng;
         num_t r2 = tx.norm2sq();
-        num_t w2 = loonieweight * loonieweight;
+        num_t w2 = loonieweightsq;
         num_t r = loonieweight;
+        // flam3 does not add eps
         if (r2 < w2) r *= sqrt(w2/(r2 + eps<num_t>::value) - 1.0);
         return r * tx;
     }
 };
 
 /*
-O Scope - 2d, from flam3
+O Scope - 2d, from flam3 var69_oscope
 */
 template <typename num_t, size_t dims>
 class OScope: public VariationFrom2D<num_t,dims>
@@ -2260,10 +2287,12 @@ public:
         rng_t<num_t>& rng, const Point<num_t,2>& tx) const
     {
         (void)rng;
-        num_t damp = exp(-fabs(tx.x())*p_damp);
-        num_t t = p_amp * damp * cos(tpf*tx.x()) + sep;
-        num_t y = copysign(1.0,fabs(tx.y())-t) * tx.y();
-        return Point<num_t,2>(tx.x(),y);
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t damp = exp(-fabs(x)*p_damp);
+        num_t t = p_amp * damp * cos(tpf*x) + sep;
+        num_t yy = copysign(1.0,fabs(y)-t) * y;
+        return Point<num_t,2>(x,yy);
     }
 };
 
