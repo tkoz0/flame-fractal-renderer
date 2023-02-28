@@ -16,7 +16,8 @@ planned options (not available yet):
 [-p --precision]: calculation precision (single or double) (default single)
 [-w --hist_bits]: histogram integer bit size (32 or 64) (default 32)
 [-R --rng]: random number generator (java,isaac32,isaac64) (default isaac32)
-[-r --seed]: random number generator seed seed (default random)
+[-r --seed]: random number generator seed (default random)
+[-v --verbose]: show extra information
 */
 
 #include <ctime>
@@ -35,6 +36,7 @@ const std::string VERSION = "unspecified";
 
 namespace bpo = boost::program_options;
 typedef float num_t; // can also be double (slower)
+typedef u32 hist_t; // can also be u64
 
 int main(int argc, char **argv)
 {
@@ -45,8 +47,8 @@ int main(int argc, char **argv)
             "flame parameters JSON file (required)")
         ("output,o",bpo::value<std::string>(),
             "output file (required)")
-        ("input,i",bpo::value<std::string>()->default_value(""),
-            "buffer (default none, render new buffer)")
+        ("input,i",bpo::value<std::vector<std::string>>(),
+            "buffers to add for initial histogram (default none)")
         ("samples,s",bpo::value<size_t>()->default_value(0),
             "samples to render (default 0)")
         ("type,t",bpo::value<std::string>()->default_value(""),
@@ -80,7 +82,9 @@ int main(int argc, char **argv)
     }
     // cmdline values
     std::string arg_flame = args["flame"].as<std::string>();
-    std::string arg_input = args["input"].as<std::string>();
+    std::vector<std::string> args_input;
+    if (args.count("input") > 0)
+        args_input = args["input"].as<std::vector<std::string>>();
     size_t arg_samples = args["samples"].as<size_t>();
     std::string arg_output = args["output"].as<std::string>();
     std::string arg_type = args["type"].as<std::string>();
@@ -142,7 +146,8 @@ int main(int argc, char **argv)
     std::cerr << "command line arguments:" << std::endl;
     std::cerr << "ffbuf" << std::endl;
     std::cerr << "--flame: " << arg_flame << std::endl;
-    std::cerr << "--input: " << arg_input << std::endl;
+    for (std::string arg_input : args_input)
+        std::cerr << "--input: " << arg_input << std::endl;
     std::cerr << "--samples: " << arg_samples << std::endl;
     std::cerr << "--output: " << arg_output << std::endl;
     std::cerr << "--type: " << arg_type << std::endl;
@@ -158,7 +163,7 @@ int main(int argc, char **argv)
     else
         json_flame = Json(read_text_file(arg_flame));
     std::cerr << "flame json (comments removed): " << json_flame << std::endl;
-    tkoz::flame::RendererBasic<num_t,u32> renderer(json_flame);
+    tkoz::flame::RendererBasic<num_t,hist_t> renderer(json_flame);
     const tkoz::flame::Flame<num_t,2>& flame = renderer.getFlame();
     std::cerr << "x size: " << flame.getSize()[0] << std::endl;
     std::cerr << "y size: " << flame.getSize()[1] << std::endl;
@@ -169,36 +174,48 @@ int main(int argc, char **argv)
     fprintf(stderr,"rect ratio (render bounds): %f\n",(float)ydiff/xdiff);
     fprintf(stderr,"size ratio (buffer): %f\n",
         (float)flame.getSize()[1]/flame.getSize()[0]);
-    u32 *buf = renderer.getHistogram(); // buffer to overwrite
+    hist_t *buf = renderer.getHistogram();
+    hist_t *fbuf = nullptr; // buffer for storing file contents
     // load buffer if specified
-    if (arg_input != "")
+    size_t i = 0;
+    for (std::string arg_input : args_input)
     {
+        ++i;
+        fprintf(stderr,"reading input file %s (%lu/%lu)\n",
+            arg_input.c_str(),i,args_input.size());
+        if (!fbuf) // use buffer to read from files
+            fbuf = new hist_t[renderer.getHistogramSize()];
         if (arg_input == "-") // input from stdin
         {
-            if (!std::cin.read((char*)buf,renderer.getHistogramSizeBytes()))
+            if (!std::cin.read((char*)fbuf,renderer.getHistogramSizeBytes()))
             {
                 std::cerr << "error: unable to read (enough) buffer bytes"
                     << std::endl;
                 return 1;
             }
-            if (!std::cin.eof())
+            if (std::cin.peek() != EOF)
                 std::cerr << "warn: did not reach EOF of stdin" << std::endl;
         }
         else
         {
             std::ifstream ifs(arg_input,std::ios::in|std::ios::binary);
-            if (!ifs.read((char*)buf,renderer.getHistogramSizeBytes()))
+            if (!ifs.read((char*)fbuf,renderer.getHistogramSizeBytes()))
             {
                 std::cerr << "error: unable to read (enough) buffer bytes"
                     << std::endl;
                 return 1;
             }
-            if (!ifs.eof())
+            if (ifs.peek() != EOF)
                 std::cerr << "warn: did not reach EOF of file" << std::endl;
             ifs.close();
         }
-        fprintf(stderr,"read %lu bytes\n",renderer.getHistogramSizeBytes());
+        fprintf(stderr,"read %lu bytes from %s\n",
+            renderer.getHistogramSizeBytes(),arg_input.c_str());
+        for (size_t i = 0; i < renderer.getHistogramSize(); ++i)
+            buf[i] += fbuf[i];
     }
+    if (fbuf) // clean up file buffer
+        delete[] fbuf;
     size_t buffer_sum_initial = 0;
     for (size_t i = 0; i < renderer.getHistogramSize(); ++i)
         buffer_sum_initial += buf[i];
@@ -265,8 +282,8 @@ int main(int argc, char **argv)
         for (auto p : renderer.getBadValuePoints())
             fprintf(stderr," (%le,%le)",p.x(),p.y());
         std::cerr << std::endl;
-        u32 sample_min = -1;
-        u32 sample_max = 0;
+        hist_t sample_min = -1;
+        hist_t sample_max = 0;
         size_t buffer_sum = 0;
         for (size_t i = 0; i < renderer.getHistogramSize(); ++i)
         {
@@ -316,13 +333,13 @@ int main(int argc, char **argv)
     u16 *img16 = nullptr;
     size_t X = renderer.getFlame().getSize()[0];
     size_t Y = renderer.getFlame().getSize()[1];
-    std::function<num_t(u32)> scale;
+    std::function<num_t(hist_t)> scale;
     if (arg_scaler == "binary")
-        scale = [](u32 n) { return n ? 1.0 : 0.0; };
+        scale = [](hist_t n) { return n ? 1.0 : 0.0; };
     else if (arg_scaler == "linear")
-        scale = [](u32 n) { return (num_t)n; };
+        scale = [](hist_t n) { return (num_t)n; };
     else if (arg_scaler == "log")
-        scale = [](u32 n) { return log(1.0+(num_t)n); };
+        scale = [](hist_t n) { return log(1.0+(num_t)n); };
     bool success;
     if (arg_img_bits == 8)
     {

@@ -5,12 +5,6 @@
 #include <thread>
 #include <vector>
 
-// forward declaration
-namespace tkoz::flame
-{
-template <typename num_t, typename hist_t> class RendererBasic;
-}
-
 #include "../types/flame.hpp"
 #include "../types/point.hpp"
 #include "../types/types.hpp"
