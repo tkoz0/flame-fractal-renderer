@@ -3,7 +3,7 @@ ffbuf: usage
 [-h --help]: show this message
 -f --flame: flame parameters JSON file (required)
 -o --output: output file (required)
-[-i --input]: buffer (default none, render new buffer)
+[-i --input]: buffers to start with (can use multiple input files)
 [-s --samples]: samples to render (default 0)
 [-t --type]: output type (png,pgm,buf) (default use file extension)
 [-b --img_bits]: bit depth for png or pgm output (8 or 16) (default 8)

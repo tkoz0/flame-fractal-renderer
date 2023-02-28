@@ -66,24 +66,24 @@ eventually. The software does not give good error messages for incorrect format.
 
 ## building
 
-Simply run `make` in the directory. It will build the executable `bin/ffbuf`.
+Simply run `make` in the directory. It will build the executable `ffbuf`.
 This was only tested on Ubuntu 20.04 and 22.04.
 
 ## command line options
 
-The help message:
+The help message for `ffbuf` (renderer for the grid buffer, currently 2d only):
 
 ```
 ffbuf: usage
 [-h --help]: show this message
 -f --flame: flame parameters JSON file (required)
 -o --output: output file (required)
-[-i --input]: buffer (default none, render new buffer)
+[-i --input]: buffers to start with (can use multiple input files)
 [-s --samples]: samples to render (default 0)
 [-t --type]: output type (png,pgm,buf) (default use file extension)
 [-b --img_bits]: bit depth for png or pgm output (8 or 16) (default 8)
 [-T --threads]: number of threads to use (default 1)
-[-z --batch_size]: multithreading batch size (default 250000)
+[-z --batch_size]: multithreading batch size (default 65536)
 [-B --bad_values]: bad value limit for terminating render (default 10)
 [-m --scaler]: scaling function for image (binary,linear,log) (default log)
 ```
@@ -99,9 +99,10 @@ In more detail:
 determined automatically from the extension (.png, .pgm, or .buf, see the `-t`
 option)
 
-`-i --input` specify a buffer file, otherwise start with an empty (zeroed)
+`-i --input` specify buffer files, otherwise start with an empty (zeroed)
 buffer. This can be used to add samples to an existing buffer or convert an
-existing buffer into an image.
+existing buffer into an image. This option can be used multiple times, all
+input buffers will be added together.
 
 `-s --samples` number of samples to render
 
