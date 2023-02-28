@@ -71,7 +71,8 @@ This was only tested on Ubuntu 20.04 and 22.04.
 
 ## command line options
 
-The help message for `ffbuf` (renderer for the grid buffer, currently 2d only):
+The help message for `ffbuf.out` (renderer for the grid buffer, currently 2d
+only):
 
 ```
 ffbuf: usage

@@ -65,7 +65,7 @@ int main(int argc, char **argv)
             "scaling function for image render (bin,lin,log) (default log)");
     bpo::variables_map args;
     bpo::store(bpo::command_line_parser(argc,argv).options(options).run(),args);
-    if (args.count("help") || args.empty())
+    if (args.count("help") || args.empty() || argc < 2)
     {
         std::cerr << options;
         return 1;
