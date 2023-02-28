@@ -1,3 +1,8 @@
+/*
+Isaac random number generator
+See https://www.burtleburtle.net/bob/rand/isaacafa.html
+*/
+
 #pragma once
 
 #include <cstdint>
@@ -7,7 +12,7 @@
 #include <tuple>
 #include <type_traits>
 
-#include "utils.hpp"
+#include "../utils/clock.hpp"
 
 #define likely(x)   __builtin_expect(!!(x),1)
 #define unlikely(x) __builtin_expect(!!(x),0)
@@ -55,6 +60,7 @@ public:
     // number of words in the internal state
     static const size_t randsiz = 1 << rparam;
     static const size_t randsizmask = randsiz-1;
+    typedef word_t word_type;
 private:
     size_t randcnt; // number of unused values in randrsl
     word_t randrsl[randsiz]; // generated values

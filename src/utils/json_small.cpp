@@ -4,13 +4,18 @@ Json::Json()
 {
 }
 
+Json::Json(const Json& json):
+    nlohmann::json(static_cast<const nlohmann::json&>(json))
+{
+}
+
 Json::Json(std::istream& input):
-        nlohmann::json(nlohmann::json::parse(input,nullptr,true,true))
+    nlohmann::json(nlohmann::json::parse(input,nullptr,true,true))
 {
 }
 
 Json::Json(const std::string& input):
-        nlohmann::json(nlohmann::json::parse(input,nullptr,true,true))
+    nlohmann::json(nlohmann::json::parse(input,nullptr,true,true))
 {
 }
 
@@ -53,19 +58,24 @@ bool Json::isObject() const
     return this->is_object();
 }
 
+size_t Json::length() const
+{
+    return this->size();
+}
+
 bool Json::boolValue() const
 {
     return this->get<bool>();
 }
 
-int64_t Json::intValue() const
+JsonInt Json::intValue() const
 {
-    return this->get<int64_t>();
+    return this->get<JsonInt>();
 }
 
-double Json::floatValue() const
+JsonFloat Json::floatValue() const
 {
-    return this->get<double>();
+    return this->get<JsonFloat>();
 }
 
 std::string Json::stringValue() const

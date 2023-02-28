@@ -1,1979 +1,2807 @@
+/*
+Variation functions
+*/
+
 #pragma once
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE
-#endif
-#include <ctgmath>
-#include <unordered_map>
+#include <cstdlib>
+#include <string>
 
-#include "types.hpp"
+#include "utils/json_small.hpp"
+#include "utils/math.hpp"
+#include "utils/sfinae.hpp"
+#include "utils/flame.hpp"
 
+#include "types/point.hpp"
+#include "types/types.hpp"
+#include "types/constants.hpp"
+#include "types/flame.hpp"
+
+// macros for using SFINAE
+#define ENABLE_IF(COND,RET) template <typename RET2 = RET> \
+    typename std::enable_if<(COND),RET2>::type
+#define ENABLE_IF2(COND) template <typename RET = Variation<num_t,dims>*> \
+    typename std::enable_if<(COND),RET>::type
+#define ENABLE_IF3(COND) template <typename RET> \
+    typename std::enable_if<(COND),RET>::type
+
+// macros for helping with efficient code
 #define likely(x)   __builtin_expect(!!(x),1)
 #define unlikely(x) __builtin_expect(!!(x),0)
 
-// types
-#define VAR_T   VarInfo<num_t,rand_t>
-#define STATE_T IterState<num_t,rand_t>&
-#define XFORM_T const XForm<num_t,rand_t>&
-#define JSON_T  const Json&
-#define PARAM_T std::vector<num_t>&
-#define VEC_T   Point2D<num_t>
-
-// macros for variation functions
-//#define VAR_FUNC  [](STATE_T S, num_t W, const num_t *P)
-#define VAR_FUNC  [](STATE_T state, const num_t *params)
-#define VAR_PARSE [](XFORM_T xform, JSON_T json, num_t weight, PARAM_T varp)
-#define VAR_RET(ret) state.v += (ret)
-#define VEC(x,y) VEC_T(x,y)
-#define TX state.t.x
-#define TY state.t.y
-#define TP state.t
-#define EPS eps<num_t>::value
-
-// pre-calculate flags
-#define PC_ATAN   (1 << 0)
-#define PC_ATANYX (1 << 1)
-#define PC_SINT   (1 << 2)
-#define PC_COST   (1 << 3)
-#define PC_R      (1 << 4)
-#define PC_R2     (1 << 5)
-
-namespace tkoz
-{
-namespace flame
+// forward declarations
+namespace tkoz::flame::vars
 {
 
-// iterator state used by variation functions, defined with renderer
-template <typename num_t, typename rand_t> struct IterState;
-
-// variation info for parsing variations
-template <typename num_t, typename rand_t> struct VarInfo
+// variation base class
+template <typename num_t, size_t dims>
+class Variation
 {
-    const std::function<void(STATE_T,const num_t*)> func;
-    u32 pc_flags;
-    const std::function<void(XFORM_T,JSON_T,num_t,PARAM_T)> params;
-    VarInfo(std::function<void(STATE_T,const num_t*)> func, u32 pc_flags,
-        std::function<void(XFORM_T,JSON_T,num_t,PARAM_T)> params = nullptr):
-        func(func),pc_flags(pc_flags),params(params) {}
-};
-
-// struct containing hardcoded information of available variations
-template <typename num_t, typename rand_t> struct vars
-{
-    static const std::unordered_map<std::string,VAR_T> data;
-};
-
-// parse JSON or use default value
-template <typename num_t>
-num_t parse_var_param(const Json& j, const std::string& key,
-        num_t default_, bool allow_integer = false)
-{
-    Json value;
-    if (j.valueAt(key,value))
+private:
+    num_t weight;
+    Variation(){} // must provide json for constructor
+public:
+    Variation(const Json& json)
     {
-        if (value.isFloat()) return value.floatValue();
-        if (value.isInt()) return (num_t) value.intValue();
-        if (value.isNull()) return default_;
-        throw std::runtime_error("value is not a number");
+        weight = json["weight"].floatValue();
     }
-    else
-        return default_;
-}
+    virtual ~Variation(){}
+    virtual inline Point<num_t,dims> calc(
+        rng_t<num_t>& rng, const Point<num_t,dims>& tx) const = 0;
+    inline num_t getWeight() const { return weight; }
+    ENABLE_IF2(dims<2) static parseVariation2d(const Json& json);
+    ENABLE_IF2(dims>=2) static parseVariation2d(const Json& json);
+    ENABLE_IF2(dims<3) static parseVariation3d(const Json& json);
+    ENABLE_IF2(dims>=3) static parseVariation3d(const Json& json);
+    static Variation<num_t,dims> *parseVariationNd(const Json& json);
+    static Variation<num_t,dims> *parseVariation(const Json& json);
+};
+
+// class for generalizing 2d variation to higher dimensions
+template <typename num_t, size_t dims>
+class VariationFrom2D: public Variation<num_t,dims>
+{
+    static_assert(dims >= 2);
+private:
+    u32 axis_x,axis_y;
+    typedef Point<num_t,dims> _nd;
+    typedef Point<num_t,2> _2d;
+public:
+    VariationFrom2D(const Json& json): Variation<num_t,dims>(json)
+    {
+        if (dims < 2)
+            throw std::runtime_error("minimum of 2 dimensions required");
+        if (dims == 2)
+            return;
+        JsonInt ax = json["axis_x"].intValue();
+        JsonInt ay = json["axis_y"].intValue();
+        if (ax < 0 || ax >= (JsonInt)dims)
+            throw std::runtime_error("axis_x index out of range");
+        if (ay < 0 || ay >= (JsonInt)dims)
+            throw std::runtime_error("axis_y index out of range");
+        if (ax == ay)
+            throw std::runtime_error("axes are not distinct");
+        axis_x = ax;
+        axis_y = ay;
+    }
+    virtual ~VariationFrom2D(){}
+    inline _nd calc(rng_t<num_t>& rng, const _nd& tx) const
+    {
+        return calc_h(rng,tx);
+    }
+    ENABLE_IF(dims==2,_nd) inline calc_h(rng_t<num_t>& rng, const _nd& tx) const
+    {
+        return calc2d(rng,tx);
+    }
+    ENABLE_IF(dims>2,_nd) inline calc_h(rng_t<num_t>& rng, const _nd& tx) const
+    {
+        _2d ret2d = calc2d(rng,_2d(tx[axis_x],tx[axis_y]));
+        _nd ret;
+        ret[axis_x] = ret2d.x();
+        ret[axis_y] = ret2d.y();
+        return ret;
+    }
+    virtual inline _2d calc2d(rng_t<num_t>& rng, const _2d& tx) const = 0;
+};
+
+// class for generalizing 3d variation to higher dimensions
+template <typename num_t, size_t dims>
+class VariationFrom3D: public Variation<num_t,dims>
+{
+    static_assert(dims >= 3);
+private:
+    u32 axis_x,axis_y,axis_z;
+    typedef Point<num_t,dims> _nd;
+    typedef Point<num_t,3> _3d;
+public:
+    VariationFrom3D(const Json& json): Variation<num_t,dims>(json)
+    {
+        if (dims < 3)
+            throw std::runtime_error("minimum of 2 dimensions required");
+        if (dims == 3)
+            return;
+        JsonInt ax = json["axis_x"].intValue();
+        JsonInt ay = json["axis_y"].intValue();
+        JsonInt az = json["axis_z"].intValue();
+        if (ax < 0 || ax >= (JsonInt)dims)
+            throw std::runtime_error("axis_x index out of range");
+        if (ay < 0 || ay >= (JsonInt)dims)
+            throw std::runtime_error("axis_y index out of range");
+        if (az < 0 || az >= (JsonInt)dims)
+            throw std::runtime_error("axis_z index out of range");
+        if (ax == ay || ax == az || ay == az)
+            throw std::runtime_error("axes are not distinct");
+        axis_x = ax;
+        axis_y = ay;
+        axis_z = az;
+    }
+    virtual ~VariationFrom3D(){}
+    inline _nd calc(rng_t<num_t>& rng, const _nd& tx) const
+    {
+        return calc_h(rng,tx);
+    }
+    ENABLE_IF(dims==3,_nd) inline calc_h(rng_t<num_t>& rng, const _nd& tx) const
+    {
+        return calc2d(rng,tx);
+    }
+    ENABLE_IF(dims>3,_nd) inline calc_h(rng_t<num_t>& rng, const _nd& tx) const
+    {
+        _3d ret3d = calc3d(rng,_3d(tx[axis_x],tx[axis_y],tx[axis_z]));
+        _nd ret;
+        ret[axis_x] = ret3d.x();
+        ret[axis_y] = ret3d.y();
+        ret[axis_z] = ret3d.z();
+        return ret;
+    }
+    virtual inline _3d calc3d(rng_t<num_t>& rng, const _3d& tx) const = 0;
+};
 
 /*
-Variation functions, parameters IterState<num_t>& state, const num_t *params
-- Inputs are the iteration state and pointer to parameters
-- Each computes a point (vector) from S.t to add to S.v (the variation sum)
-  - use the TX,TY,TP,VAR_RET macros above
-- Additional details and the RNG are accessible through state
-- Parameters and some precomputed values are accessible through params
-- if the parser function is not specified
-  - params[0] is the weight (0 should have the effect of S.v += (0,0))
-
-Variations using extra parameters have another function to create them
-- They call push_back to the vector `varp` for each precomputed parameter
-- Parameters can be parsed from the JSON data for the variation
-- Details about the xform can be used (such as the affine transforms)
-- If not specified, then params[0] is weight and there are no others
-
-TODO precomputed variables based on S.t for each iteration
+======= N dimensional variations from flam3 =======
 */
 
-template <typename num_t, typename rand_t>
-const std::unordered_map<std::string,VAR_T>
-vars<num_t,rand_t>::data =
+/*
+Linear - generalized from flam3 var0_linear
+*/
+template <typename num_t, size_t dims>
+struct Linear: public Variation<num_t,dims>
 {
-    {"linear", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            VAR_RET(W * TP);
-        },
-        0
-    )},
-    {"sinusoidal", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            VAR_RET(W * VEC(sin(TX),sin(TY)));
-        },
-        0
-    )},
-    {"spherical", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t r = W / (TP.r2() + EPS);
-            VAR_RET(r * TP);
-        },
-        0
-    )},
-    {"swirl", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t sr,cr;
-            sincosg(TP.r2(),&sr,&cr);
-            VAR_RET(W * VEC(sr*TX-cr*TY,cr*TX+sr*TY));
-        },
-        0
-    )},
-    {"horseshoe", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t r = W / (TP.r() + EPS);
-            VAR_RET(r * VEC((TX-TY)*(TX+TY),2.0*TX*TY));
-        },
-        0
-    )},
-    {"polar", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            VAR_RET(W * VEC(TP.atanxy()*M_1_PI,TP.r()-1.0));
-        },
-        0
-    )},
-    {"handkerchief", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t a = TP.atanxy();
-            num_t r = TP.r();
-            VAR_RET(W * r * VEC(sin(a+r),cos(a-r)));
-        },
-        0
-    )},
-    {"heart", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t r = TP.r();
-            num_t sa,ca;
-            sincosg(r*TP.atanxy(),&sa,&ca);
-            VAR_RET(r * W * VEC(sa,-ca));
-        },
-        0
-    )},
-    {"disc", VAR_T(
-        VAR_FUNC
-        {
-            num_t W_pi = params[0]; // W/pi
-            num_t a = TP.atanxy() * W_pi;
-            num_t sr,cr;
-            sincosg(M_PI*TP.r(),&sr,&cr);
-            VAR_RET(a * VEC(sr,cr));
-        },
-        0,
-        // store: weight/pi
-        VAR_PARSE
-        {
-            varp.push_back(M_1_PI*weight);
-        }
-    )},
-    {"spiral", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t sa,ca;
-            sincosg(TP.atanxy(),&sa,&ca);
-            num_t r = TP.r() + EPS;
-            num_t sr,cr;
-            sincosg(r,&sr,&cr);
-            num_t r1 = W / r;
-            VAR_RET(r1 * VEC(ca+sr,sa-cr));
-        },
-        0
-    )},
-    {"hyperbolic", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t r = TP.r() + EPS;
-            num_t sa,ca;
-            sincosg(TP.atanxy(),&sa,&ca);
-            VAR_RET(W * VEC(sa/r,ca*r));
-        },
-        0
-    )},
-    {"diamond", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t sa,ca;
-            sincosg(TP.atanxy(),&sa,&ca);
-            num_t sr,cr;
-            sincosg(TP.r(),&sr,&cr);
-            VAR_RET(W * VEC(sa*cr,ca*sr));
-        },
-        0
-    )},
-    {"ex", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t a = TP.atanxy();
-            num_t r = TP.r();
-            num_t n0 = sin(a+r);
-            num_t n1 = cos(a-r);
-            // TODO is this the best way to compute cubes
-            num_t m0 = n0*n0*n0 * r;
-            num_t m1 = n1*n1*n1 * r;
-            VAR_RET(W * VEC(m0+m1,m0-m1));
-        },
-        0
-    )},
-    {"julia", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            static const num_t table[2] = {0.0,M_PI};
-            num_t r = TP.r() * W;
-            num_t sa,ca;
-            sincosg(0.5*TP.atanxy()+table[state.randBool()],&sa,&ca);
-            VAR_RET(r * VEC(ca,sa));
-        },
-        0
-    )},
-    {"bent", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            static const num_t table_x[2] = {1.0,2.0};
-            static const num_t table_y[2] = {1.0,0.5};
-            num_t x = TX;
-            num_t y = TY;
-            x *= table_x[x < 0.0];
-            y *= table_y[y < 0.0];
-            VAR_RET(W * VEC(x,y));
-        },
-        0
-    )},
-    {"waves", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t dx2 = params[1];
-            num_t dy2 = params[2];
-            num_t b = params[3];
-            num_t e = params[4];
-            num_t x = TX * b * sin(TY * dx2);
-            num_t y = TY * e * sin(TX * dy2);
-            VAR_RET(W * VEC(x,y));
-        },
-        0,
-        // store: weight,dx2,dy2,b,e
-        VAR_PARSE
-        {
-            const Affine2D<num_t>& aff = xform.getPreAffine();
-            varp.push_back(weight);
-            varp.push_back(1.0 / (aff.c*aff.c + EPS));
-            varp.push_back(1.0 / (aff.f*aff.f + EPS));
-            varp.push_back(aff.b);
-            varp.push_back(aff.e);
-        }
-    )},
-    {"fisheye", VAR_T(
-        VAR_FUNC
-        {
-            num_t Wt2 = params[0]; // 2*weight
-            num_t r = Wt2 / (TP.r() + 1.0);
-            VAR_RET(r * VEC(TY,TX));
-        },
-        0,
-        // store: 2*weight
-        VAR_PARSE
-        {
-            varp.push_back(2.0*weight);
-        }
-    )},
-    {"popcorn", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t c = params[1];
-            num_t f = params[2];
-            num_t dx = c * sin(tan(3.0*TY));
-            num_t dy = f * sin(tan(3.0*TX));
-            VAR_RET(W * (TP + VEC(dx,dy)));
-        },
-        0,
-        // store: weight,c,f
-        VAR_PARSE
-        {
-            varp.push_back(weight);
-            varp.push_back(xform.getPreAffine().c);
-            varp.push_back(xform.getPreAffine().f);
-        }
-    )},
-    {"exponential", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t dx = W * exp(TX - 1.0);
-            num_t sdy,cdy;
-            sincosg(M_PI*TY,&sdy,&cdy);
-            VAR_RET(dx * VEC(cdy,sdy));
-        },
-        0
-    )},
-    {"power", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t sa,ca;
-            sincosg(TP.atanxy(),&sa,&ca);
-            num_t r = W * pow(TP.r(),sa);
-            VAR_RET(r * VEC(ca,sa));
-        },
-        0
-    )},
-    {"cosine", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t sa,ca;
-            sincosg(TX*M_PI,&sa,&ca);
-            VAR_RET(W * VEC(ca*cosh(TY),-sa*sinh(TY)));
-        },
-        0
-    )},
-    {"rings", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t dx = params[1];
-            num_t r = TP.r();
-            r = W * (fmod(r+dx,2.0*dx) - dx + r*(1.0-dx));
-            num_t sa,ca;
-            sincosg(TP.atanxy(),&sa,&ca);
-            VAR_RET(r * VEC(ca,sa));
-        },
-        0,
-        // store: weight,dx
-        VAR_PARSE
-        {
-            const Affine2D<num_t>& aff = xform.getPreAffine();
-            varp.push_back(weight);
-            varp.push_back(aff.c*aff.c + eps<num_t>::value);
-        }
-    )},
-    {"fan", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t dx = params[1];
-            num_t dy = params[2];
-            static const num_t table[2] = {1.0,-1.0};
-            num_t dx2 = dx*0.5;
-            num_t a = TP.atanxy();
-            num_t r = W * TP.r();
-            num_t sa,ca;
-            num_t m = table[fmod(a+dy,dx) > dx2];
-            a += m*dx2;
-            sincosg(a,&sa,&ca);
-            VAR_RET(r * VEC(ca,sa));
-        },
-        0,
-        // store: weight,dx,dy
-        VAR_PARSE
-        {
-            const Affine2D<num_t>& aff = xform.getPreAffine();
-            varp.push_back(weight);
-            varp.push_back(M_PI*(aff.c*aff.c + EPS));
-            varp.push_back(aff.f);
-        }
-    )},
-    {"blob", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t mid = params[1];
-            num_t diff2 = params[2];
-            num_t waves = params[3];
-            num_t r = TP.r();
-            num_t a = TP.atanxy();
-            r *= (mid + diff2*sin(waves*a));
-            VAR_RET(W * r * VEC(sin(a),cos(a)));
-        },
-        0,
-        // parse: low,high,waves
-        // store: weight,mid,diff/2,waves
-        VAR_PARSE
-        {
-            varp.push_back(weight);
-            num_t low = json["low"].floatValue();
-            num_t high = json["high"].floatValue();
-            num_t waves = json["waves"].floatValue();
-            varp.push_back((low+high)/2.0);
-            varp.push_back((high-low)/2.0);
-            varp.push_back(waves);
-        }
-    )},
-    {"pdj", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t a = params[1];
-            num_t b = params[2];
-            num_t c = params[3];
-            num_t d = params[4];
-            num_t nx1 = cos(b*TX);
-            num_t nx2 = sin(c*TX);
-            num_t ny1 = sin(a*TY);
-            num_t ny2 = cos(d*TY);
-            VAR_RET(W * VEC(ny1-nx1,nx2-ny2));
-        },
-        0,
-        // parse: a,b,c,d
-        // store: weight,a,b,c,d
-        VAR_PARSE
-        {
-            varp.push_back(weight);
-            varp.push_back(json["a"].floatValue());
-            varp.push_back(json["b"].floatValue());
-            varp.push_back(json["c"].floatValue());
-            varp.push_back(json["d"].floatValue());
-        }
-    )},
-    {"fan2", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t dx = params[1];
-            num_t dy = params[2];
-            num_t dxinv = params[3];
-            static const num_t table[2] = {1.0,-1.0};
-            num_t dx2 = 0.5 * dx;
-            num_t a = TP.atanxy();
-            num_t sa,ca;
-            num_t r = W * TP.r();
-            num_t t = a + dy - dx*(i32)((a + dy) * dxinv);
-            a += table[t > dx2]*dx2;
-            sincosg(a,&sa,&ca);
-            VAR_RET(r * VEC(sa,ca));
-        },
-        0,
-        // parse: x,y
-        // store: weight,dx,dy,1/dx
-        VAR_PARSE
-        {
-            num_t x = json["x"].floatValue();
-            num_t y = json["y"].floatValue();
-            num_t dx = M_PI * (x*x + EPS);
-            varp.push_back(weight);
-            varp.push_back(dx);
-            varp.push_back(y);
-            varp.push_back(1.0/dx);
-        }
-    )},
-    {"rings2", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t dx = params[1];
-            num_t dx2inv = params[2];
-            num_t r = TP.r();
-            r += -2.0*dx*(i32)((r+dx)*dx2inv) + r*(1.0 - dx);
-            num_t a = TP.atanxy();
-            num_t sa,ca;
-            sincosg(a,&sa,&ca);
-            VAR_RET(W * r * VEC(sa,ca));
-        },
-        0,
-        // parse: value
-        // store: weight,dx,1/(2*dx)
-        VAR_PARSE
-        {
-            num_t v = json["value"].floatValue();
-            num_t dx = v*v + EPS;
-            varp.push_back(weight);
-            varp.push_back(dx);
-            varp.push_back(0.5/dx);
-        }
-    )},
-    {"eyefish", VAR_T(
-        VAR_FUNC
-        {
-            num_t Wt2 = params[0]; // 2*weight
-            num_t r = Wt2 / (TP.r() + 1.0);
-            VAR_RET(r * TP);
-        },
-        0,
-        // store: 2*weight
-        VAR_PARSE
-        {
-            varp.push_back(2.0*weight);
-        }
-    )},
-    {"bubble", VAR_T(
-        VAR_FUNC
-        {
-            num_t Wt4 = params[0];
-            num_t r = Wt4 / (TP.r2() + 4.0); // W/(0.25*r^2+1) = 4*W/(r^2+4)
-            VAR_RET(r * TP);
-        },
-        0,
-        // store: 4*weight
-        VAR_PARSE
-        {
-            varp.push_back(4.0*weight);
-        }
-    )},
-    {"cylinder", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            VAR_RET(W * VEC(sin(TX),TY));
-        },
-        0
-    )},
-    {"perspective", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t dist = params[1];
-            num_t vsin = params[2];
-            num_t vfcos = params[3];
-            num_t t = 1.0 / (dist - TY*vsin);
-            VAR_RET(W * t * VEC(dist*TX,vfcos*TY));
-        },
-        0,
-        // parse: distance,angle
-        // store: weight,distance,persp_vsin,persp_vfcos
-        VAR_PARSE
-        {
-            num_t dist = json["distance"].floatValue();
-            num_t angle = json["angle"].floatValue();
-            varp.push_back(weight);
-            varp.push_back(dist);
-            varp.push_back(sin(angle));
-            varp.push_back(dist*cos(angle));
-        }
-    )},
-    {"noise", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t tr = (2.0 * M_PI) * state.randNum();
-            num_t sr,cr;
-            sincosg(tr,&sr,&cr);
-            num_t r = W * state.randNum();
-            VAR_RET(r * VEC(TX*cr,TY*sr));
-        },
-        0
-    )},
-    {"julian", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t abspower = params[1];
-            num_t invpower = params[2];
-            num_t cn = params[3];
-            i32 t = trunc(abspower*state.randNum());
-            num_t a = (TP.atanyx() + (2.0*M_PI)*t) * invpower;
-            num_t r = W * pow(TP.r2(),cn);
-            num_t sa,ca;
-            sincosg(a,&sa,&ca);
-            VAR_RET(r * VEC(ca,sa));
-        },
-        0,
-        // parse: power,distance
-        // store: weight,abs(power),1/power,cn
-        VAR_PARSE
-        {
-            num_t power = json["power"].floatValue();
-            num_t dist = json["distance"].floatValue();
-            varp.push_back(weight);
-            varp.push_back(fabs(power));
-            varp.push_back(1.0/power);
-            varp.push_back(dist/(2.0*power));
-        }
-    )},
-    {"juliascope", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t abspower = params[1];
-            num_t invpower = params[2];
-            num_t cn = params[3];
-            static const num_t table[2] = {-1.0,1.0};
-            i32 t = trunc(abspower*state.randNum());
-            num_t a = ((2.0*M_PI)*t + table[t&1]*TP.atanyx()) * invpower;
-            num_t sa,ca;
-            sincosg(a,&sa,&ca);
-            num_t r = W * pow(TP.r2(),cn);
-            VAR_RET(r * VEC(ca,sa));
-        },
-        0,
-        // parse: power,distance
-        // store: weight,abs(power),1/power,cn
-        VAR_PARSE
-        {
-            num_t power = json["power"].floatValue();
-            num_t dist = json["distance"].floatValue();
-            varp.push_back(weight);
-            varp.push_back(fabs(power));
-            varp.push_back(1.0/power);
-            varp.push_back(dist/(2.0*power));
-        }
-    )},
-    {"blur", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t a = (2.0 * M_PI) * state.randNum();
-            num_t sa,ca;
-            sincosg(a,&sa,&ca);
-            VAR_RET(W * state.randNum() * VEC(ca,sa));
-        },
-        0
-    )},
-    {"gaussian_blur", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t a = (2.0 * M_PI) * state.randNum();
-            num_t sa,ca;
-            sincosg(a,&sa,&ca);
-            num_t g = (state.randNum() + state.randNum()
-                + state.randNum() + state.randNum() - 2.0);
-            VAR_RET(W * g * VEC(ca,sa));
-        },
-        0
-    )},
-    {"radial_blur", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t spin = params[1];
-            num_t zoom = params[2];
-            num_t g = W * (state.randNum() + state.randNum()
-                + state.randNum() + state.randNum() - 2.0);
-            num_t ra = TP.r();
-            num_t a = TP.atanyx() + spin*g;
-            num_t sa,ca;
-            sincosg(a,&sa,&ca);
-            num_t rz = zoom*g - 1.0;
-            VAR_RET(ra*VEC(ca,sa) + rz*TP);
-        },
-        0,
-        // parse: angle
-        // store: weight,spin,zoom
-        VAR_PARSE
-        {
-            num_t angle = json["angle"].floatValue();
-            num_t spin,zoom;
-            sincosg(angle*M_PI_2,&spin,&zoom);
-            varp.push_back(weight);
-            varp.push_back(spin);
-            varp.push_back(zoom);
-        }
-    )},
-    {"pie", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t slices = params[1];
-            num_t rot = params[2];
-            num_t thick = params[3];
-            num_t invslices = params[4];
-            i32 sl = (i32)(state.randNum()*slices + 0.5);
-            num_t a = rot + (2.0*M_PI)*(sl + state.randNum()*thick)*invslices;
-            num_t r = W * state.randNum();
-            num_t sa,ca;
-            sincosg(a,&sa,&ca);
-            VAR_RET(r * VEC(ca,sa));
-        },
-        0,
-        // parse: slices,rotation,thickness
-        // store: weight,slices,rotation,thickness,1/slices
-        VAR_PARSE
-        {
-            num_t slices = json["slices"].floatValue();
-            varp.push_back(weight);
-            varp.push_back(slices);
-            varp.push_back(json["rotation"].floatValue());
-            varp.push_back(json["thickness"].floatValue());
-            varp.push_back(1.0/slices);
-        }
-    )},
-    {"ngon", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t powerval = params[1];
-            num_t angle = params[2];
-            num_t corners = params[3];
-            num_t circle = params[4];
-            num_t invangle = params[5];
-            static const num_t table[2] = {0.0,1.0};
-            num_t r = pow(TP.r2(),powerval);
-            num_t theta = TP.atanyx();
-            num_t phi = theta - angle*floor(theta*invangle);
-            phi -= table[phi > angle*0.5]*angle;
-            num_t amp = corners*(1.0/(cos(phi)+EPS) - 1.0) + circle;
-            amp /= (r + EPS);
-            VAR_RET(W * amp * TP);
-        },
-        0,
-        // parse: power,sides,corners,circle
-        // store: weight,power/2,2*pi/sides,corners,circle,sides/(2*pi)
-        VAR_PARSE
-        {
-            num_t sides = json["sides"].floatValue();
-            varp.push_back(weight);
-            varp.push_back(json["power"].floatValue()/2.0);
-            varp.push_back(2.0*M_PI/sides);
-            varp.push_back(json["corners"].floatValue());
-            varp.push_back(json["circle"].floatValue());
-            varp.push_back(sides/(2.0*M_PI));
-        }
-    )},
-    {"curl", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t c1 = params[1];
-            num_t c2 = params[2];
-            num_t re = 1.0 + c1*TX + c2*(TX*TX - TY*TY);
-            num_t im = c1*TY + 2.0*c2*TX*TY;
-            num_t r = W / (re*re + im*im); // +EPS ???
-            VAR_RET(r * VEC(TX*re+TY*im,TY*re-TX*im));
-        },
-        0,
-        // parse: c1,c2
-        // store: weight,c1,c2
-        VAR_PARSE
-        {
-            varp.push_back(weight);
-            varp.push_back(json["c1"].floatValue());
-            varp.push_back(json["c2"].floatValue());
-        }
-    )},
-    {"rectangles", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t px = params[1];
-            num_t py = params[2];
-            num_t x,y;
-            // branching with if/else seems to be the only good way here
-            if (px == 0.0) x = TX;
-            else x = (2.0*floor(TX/px) + 1.0)*px - TX;
-            if (py == 0.0) y = TY;
-            else y = (2.0*floor(TY/py) + 1.0)*py - TY;
-            VAR_RET(W * VEC(x,y));
-        },
-        0,
-        // parse: x,y
-        // store: weight,x,y
-        VAR_PARSE
-        {
-            varp.push_back(weight);
-            varp.push_back(json["x"].floatValue());
-            varp.push_back(json["y"].floatValue());
-        }
-    )},
-    {"arch", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t a = state.randNum() * W * M_PI;
-            num_t sa,ca;
-            sincosg(a,&sa,&ca);
-            VAR_RET(W * VEC(sa,sa*sa/ca));
-        },
-        0
-    )},
-    {"tangent", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            VAR_RET(W * VEC(sin(TX)/cos(TY),tan(TY)));
-        },
-        0
-    )},
-    {"square", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t x = state.randNum();
-            num_t y = state.randNum();
-            VAR_RET(W * VEC(x-0.5,y-0.5));
-        },
-        0
-    )},
-    {"rays", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t a = W * state.randNum() * M_PI;
-            num_t r = W / (TP.r2() + EPS);
-            num_t tr = W * tan(a) * r;
-            VAR_RET(tr * VEC(cos(TX),sin(TY)));
-        },
-        0
-    )},
-    {"blade", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t r = state.randNum() * W * TP.r();
-            num_t sr,cr;
-            sincosg(r,&sr,&cr);
-            VAR_RET(W * TX * VEC(cr+sr,cr-sr));
-        },
-        0
-    )},
-    {"secant2", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            static const num_t table[2] = {-1.0,1.0};
-            num_t cr = cos(W*TP.r());
-            num_t icr = 1.0/cos(W*TP.r());
-            VAR_RET(W * VEC(TX,icr+table[cr<0]));
-        },
-        0
-    )},
-    {"twintrian", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t r = state.randNum() * W * TP.r();
-            num_t sr,cr,diff;
-            sincosg(r,&sr,&cr);
-            diff = log10(sr*sr)+cr;
-            if (unlikely(bad_value(diff))) diff = -30.0;
-            VAR_RET(W * TX * VEC(diff,diff-sr*M_PI));
-        },
-        0
-    )},
-    {"cross", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t s = TX*TX - TY*TY;
-            num_t r = W * sqrt(1.0 / (s*s + EPS));
-            VAR_RET(r * TP);
-        },
-        0
-    )},
-    {"disc2", VAR_T(
-        VAR_FUNC
-        {
-            num_t W_pi = params[0];
-            num_t rotpi = params[1];
-            num_t cosadd = params[2];
-            num_t sinadd = params[3];
-            num_t t = rotpi * (TX + TY);
-            num_t st,ct;
-            sincosg(t,&st,&ct);
-            num_t r = W_pi * TP.atanxy();
-            VAR_RET(r * VEC(st+cosadd,ct+sinadd));
-        },
-        0,
-        // parse: rotation,twist
-        // store: weight/pi,timespi,cosadd,sinadd
-        VAR_PARSE
-        {
-            varp.push_back(weight*M_1_PI);
-            num_t rot = json["rotation"].floatValue();
-            num_t twist = json["twist"].floatValue();
-            varp.push_back(rot*M_PI);
-            num_t cosadd,sinadd;
-            sincosg(twist,&sinadd,&cosadd);
-            cosadd -= 1.0;
-            num_t k = 1.0;
-            if (twist > 2.0*M_PI)
-                k = (1.0+twist-2.0*M_PI);
-            if (twist < -2.0*M_PI)
-                k = (1.0+twist+2.0*M_PI);
-            varp.push_back(cosadd*k);
-            varp.push_back(sinadd*k);
-        }
-    )},
-    {"supershape", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t pm_4 = params[1];
-            num_t pneg1_n1 = params[2];
-            num_t n2 = params[3];
-            num_t n3 = params[4];
-            num_t rnd = params[5];
-            num_t holes = params[6];
-            num_t theta = pm_4*TP.atanyx() + M_PI_4;
-            num_t st,ct;
-            sincosg(theta,&st,&ct);
-            num_t t1 = pow(fabs(ct),n2);
-            num_t t2 = pow(fabs(st),n3);
-            num_t tr = TP.r();
-            num_t r = W * ((rnd*state.randNum() + (1.0-rnd)*tr) - holes)
-                        * pow(t1+t2,pneg1_n1) / tr; // +EPS ???
-            VAR_RET(r * TP);
-        },
-        0,
-        // parse: rnd,m,n1,n2,n3,holes
-        // store: weight,pm_4,pneg1_n1,n2,n3,rnd,holes
-        VAR_PARSE
-        {
-            varp.push_back(weight);
-            num_t n1 = json["n1"].floatValue();
-            varp.push_back(json["m"].floatValue()/4.0);
-            varp.push_back(-1.0/n1);
-            varp.push_back(json["n2"].floatValue());
-            varp.push_back(json["n3"].floatValue());
-            varp.push_back(json["rnd"].floatValue());
-            varp.push_back(json["holes"].floatValue());
-        }
-    )},
-    {"flower", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t petals = params[1];
-            num_t holes = params[2];
-            num_t theta = TP.atanyx();
-            num_t r = W * (state.randNum() - holes) * cos(petals*theta)
-                / TP.r(); // +EPS ???
-            VAR_RET(r * TP);
-        },
-        0,
-        // parse: petals,holes
-        // store: weight,petals,holes
-        VAR_PARSE
-        {
-            varp.push_back(weight);
-            varp.push_back(json["petals"].floatValue());
-            varp.push_back(json["holes"].floatValue());
-        }
-    )},
-    {"conic", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t eccen = params[1];
-            num_t holes = params[2];
-            num_t tr = TP.r(); // +EPS ???
-            num_t ct = TX / tr;
-            num_t r = W * (state.randNum() - holes) * eccen
-                / (tr + tr*eccen*ct);
-            VAR_RET(r * TP);
-        },
-        0,
-        // parse: eccentricity,holes
-        // store: weight,eccentricity,holes
-        VAR_PARSE
-        {
-            varp.push_back(weight);
-            varp.push_back(json["eccentricity"].floatValue());
-            varp.push_back(json["holes"].floatValue());
-        }
-    )},
-    {"parabola", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t ht = params[1];
-            num_t wt = params[2];
-            num_t sr,cr;
-            sincosg(TP.r(),&sr,&cr);
-            VAR_RET(W * VEC(ht*sr*sr*state.randNum(),wt*cr*state.randNum()));
-        },
-        0,
-        // parse: height,width
-        // store: weight,height,width
-        VAR_PARSE
-        {
-            varp.push_back(weight);
-            varp.push_back(json["height"].floatValue());
-            varp.push_back(json["width"].floatValue());
-        }
-    )},
-    {"bent2", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t px = params[1];
-            num_t py = params[2];
-            // TODO eliminate if statements
-            num_t nx = TX;
-            num_t ny = TY;
-            if (nx < 0.0) nx *= px;
-            if (ny < 0.0) ny *= py;
-            VAR_RET(W * VEC(nx,ny));
-        },
-        0,
-        // parse: x,y
-        // store: weight,x,y
-        VAR_PARSE
-        {
-            varp.push_back(weight);
-            varp.push_back(json["x"].floatValue());
-            varp.push_back(json["y"].floatValue());
-        }
-    )},
-    {"bipolar", VAR_T(
-        VAR_FUNC
-        {
-            num_t W2_pi = params[0];
-            num_t shift = params[1];
-            num_t x2y2 = TP.r2();
-            num_t t = x2y2+1.0;
-            num_t x2 = 2.0*TX;
-            num_t y = 0.5*atan2(2.0*TY,x2y2-1.0) + shift;
-            y -= M_PI * floor(y*M_1_PI + 0.5);
-            VAR_RET(W2_pi * VEC(0.25*log((t+x2)/(t-x2)),y));
-        },
-        0,
-        // parse: shift
-        // store: weight*2/pi,-(pi/2)*shift
-        VAR_PARSE
-        {
-            varp.push_back(weight*M_2_PI);
-            varp.push_back(-M_PI_2*json["shift"].floatValue());
-        }
-    )},
-    {"boarders", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            static const num_t table[2] = {-0.25,0.25};
-            // TODO ensure rounding works right, seems default is nearest
-            num_t rx = rint(TX);
-            num_t ry = rint(TY);
-            num_t ox = TX - rx;
-            num_t oy = TY - ry;
-            if (state.randNum() >= 0.75)
-                VAR_RET(W * VEC(ox*0.5+rx,oy*0.5+ry));
-            else
-            {
-                // TODO eliminate some branches
-                if (fabs(ox) >= fabs(oy))
-                {
-                    bool z = ox >= 0.0;
-                    num_t x = ox*0.5+rx+table[z];
-                    num_t y = oy*0.5+ry+table[z]*oy/ox;
-                    VAR_RET(W * VEC(x,y));
-                }
-                else
-                {
-                    bool z = oy >= 0.0;
-                    num_t x = ox*0.5+rx+table[z]*ox/oy;
-                    num_t y = oy*0.5+ry+table[z];
-                    VAR_RET(W * VEC(x,y));
-                }
-            }
-        },
-        0
-    )},
-    {"butterfly", VAR_T(
-        VAR_FUNC
-        {
-            num_t wx = params[0];
-            num_t y2 = 2.0*TY;
-            num_t r = wx * sqrt(fabs(TX*TY)  / (EPS + TX*TX + y2*y2));
-            VAR_RET(r * VEC(TX,y2));
-        },
-        0,
-        // store: weight*1.3029400317411197908970256609023
-        VAR_PARSE
-        {
-            // constant 4/sqrt(3*pi) from flam3 source
-            varp.push_back(weight*1.3029400317411197908970256609023);
-        }
-    )},
-    {"cell", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t size = params[1];
-            num_t invsize = params[2];
-            num_t x = floor(TX * invsize);
-            num_t y = floor(TY * invsize);
-            num_t dx = TX - x*size;
-            num_t dy = TY - y*size;
-            // TODO can branches be eliminated
-            if (y >= 0.0)
-            {
-                if (x >= 0.0) x *= 2.0, y *= 2.0;
-                else y *= 2.0, x = -(2.0*x+1.0);
-            }
-            else
-            {
-                if (x >= 0.0) y = -(2.0*y+1.0), x *= 2.0;
-                else y = -(2.0*y+1.0), x = -(2.0*x+1.0);
-            }
-            VAR_RET(W * VEC(dx+x*size,-dy-y*size));
-        },
-        0,
-        // parse: size
-        // store: weight,size,1/size
-        VAR_PARSE
-        {
-            num_t size = json["size"].floatValue();
-            varp.push_back(weight);
-            varp.push_back(size);
-            varp.push_back(1.0/size);
-        }
-    )},
-    {"cpow", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t va = params[1];
-            num_t vc = params[2];
-            num_t vd = params[3];
-            num_t power = params[4];
-            num_t a = TP.atanyx();
-            num_t lnr = 0.5 * log(TP.r2());
-            num_t ang = vc*a + vd*lnr + va*floor(power*state.randNum());
-            num_t sa,ca;
-            sincosg(ang,&sa,&ca);
-            num_t m = W * exp(vc*lnr - vd*a);
-            VAR_RET(m * VEC(ca,sa));
-        },
-        0,
-        // parse: r,i,power
-        // store: weight,va,vc,vd,power
-        VAR_PARSE
-        {
-            num_t r = json["r"].floatValue();
-            num_t i = json["i"].floatValue();
-            num_t power = json["power"].floatValue();
-            varp.push_back(weight);
-            varp.push_back(2.0*M_PI/power);
-            varp.push_back(r/power);
-            varp.push_back(i/power);
-            varp.push_back(power);
-        }
-    )},
-    {"curve", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t invxl = params[1];
-            num_t invyl = params[2];
-            num_t xamp = params[3];
-            num_t yamp = params[4];
-            VEC_T v = VEC(xamp*exp(-TY*TY*invxl),yamp*(-TX*TX*invyl));
-            VAR_RET(W * (TP + v));
-        },
-        0,
-        // parse: xamp,yamp,xlen,ylen
-        // store: weight,1.0/pc_xlen,1.0/pc_ylen,xamp,yamp
-        VAR_PARSE
-        {
-            num_t xamp = json["xamp"].floatValue();
-            num_t yamp = json["yamp"].floatValue();
-            num_t xlen = json["xlen"].floatValue();
-            num_t ylen = json["ylen"].floatValue();
-            num_t pc_xlen = xlen*xlen;
-            num_t pc_ylen = ylen*ylen;
-            varp.push_back(weight);
-            varp.push_back(1.0 / (pc_xlen < 1e-20 ? 1e-20 : pc_xlen));
-            varp.push_back(1.0 / (pc_ylen < 1e-20 ? 1e-20 : pc_ylen));
-            varp.push_back(xamp);
-            varp.push_back(yamp);
-        }
-    )},
-    {"edisc", VAR_T(
-        VAR_FUNC
-        {
-            num_t W_c = params[0];
-            static const num_t table[2] = {1.0,-1.0};
-            num_t tmp = TP.r2() + 1.0;
-            num_t tmp2 = 2.0 * TX;
-            num_t xmax = 0.5*(sqrt(tmp+tmp2)+sqrt(tmp-tmp2));
-            num_t a1 = log(xmax + sqrt(xmax - 1.0));
-            num_t a2 = -acos(TX / xmax);
-            num_t s1,c1;
-            sincosg(a1,&s1,&c1);
-            num_t s2 = sinh(a2);
-            num_t c2 = cosh(a2);
-            s1 *= table[TY > 0.0];
-            VAR_RET(W_c * VEC(c2*c1,s2*s1));
-        },
-        0,
-        // store: weight*0.0864278365005759 (division by 11.57034632 in flam3)
-        VAR_PARSE
-        {
-            varp.push_back(weight*0.0864278365005759);
-        }
-    )},
-    {"elliptic", VAR_T(
-        VAR_FUNC
-        {
-            num_t W2_pi = params[0];
-            static const num_t table[2] = {-1.0,1.0};
-            num_t tmp = TP.r2() + 1.0;
-            num_t x2 = 2.0 * TX;
-            num_t xmax = 0.5 * (sqrt(tmp+x2)+sqrt(tmp-x2));
-            num_t a = TX / xmax;
-            num_t b = 1.0 - a*a;
-            num_t ssx = xmax - 1.0;
-            // TODO can branches be eliminated
-            b = b < 0.0 ? 0.0 : sqrt(b);
-            ssx = ssx < 0.0 ? 0.0 : sqrt(ssx);
-            VAR_RET(W2_pi * VEC(atan2(a,b),table[TY>0.0]*log(xmax+ssx)));
-        },
-        0,
-        // store: weight*2/pi
-        VAR_PARSE
-        {
-            varp.push_back(weight*M_2_PI);
-        }
-    )},
-    {"escher", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t vc = params[1];
-            num_t vd = params[2];
-            num_t a = TP.atanyx();
-            num_t lnr = 0.5 * log(TP.r2());
-            num_t m = W * exp(vc*lnr - vd*a);
-            num_t n = vc*a + vd*lnr;
-            num_t sn,cn;
-            sincosg(n,&sn,&cn);
-            VAR_RET(m * VEC(cn,sn));
-        },
-        0,
-        // parse: beta
-        // store: weight,vc,vd
-        VAR_PARSE
-        {
-            num_t beta = json["beta"].floatValue();
-            num_t seb,ceb;
-            sincosg(beta,&seb,&ceb);
-            varp.push_back(weight);
-            varp.push_back(0.5*(1.0+ceb));
-            varp.push_back(0.5*seb);
-        }
-    )},
-    {"foci", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t expx = 0.5 * exp(TX);
-            num_t expnx = 0.25 / expx;
-            num_t sn,cn;
-            sincosg(TY,&sn,&cn);
-            num_t tmp = W / (expx + expnx - cn);
-            VAR_RET(tmp * VEC(expx-expnx,sn));
-        },
-        0
-    )},
-    {"lazysusan", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t px = params[1];
-            num_t py = params[2];
-            num_t spin = params[3];
-            num_t twist = params[4];
-            num_t spacep1tw = params[5];
-            num_t x = TX - px;
-            num_t y = TY - py;
-            num_t r = hypot(x,y); // +EPS ???
-            num_t sa,ca;
-            if (r < W)
-            {
-                num_t a = atan2(y,x) + spin + twist*(W-r);
-                sincosg(a,&sa,&ca);
-                r *= W;
-                VAR_RET(VEC(r*ca+px,r*sa-py));
-            }
-            else
-            {
-                r = spacep1tw / r;
-                VAR_RET(VEC(r*x+px,r*y-py));
-            }
-        },
-        0,
-        // parse: spin,space,twist,x,y
-        // store: weight,x,y,spin,twist,(1+space)*weight
-        VAR_PARSE
-        {
-            varp.push_back(weight);
-            varp.push_back(json["x"].floatValue());
-            varp.push_back(json["y"].floatValue());
-            varp.push_back(json["spin"].floatValue());
-            varp.push_back(json["twist"].floatValue());
-            varp.push_back((1.0+json["space"].floatValue())*weight);
-        }
-    )},
-    {"loonie", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t r2 = TP.r2(); // +EPS ???
-            num_t w2 = W*W;
-            num_t r = W;
-            if (r2 < w2) r *= sqrt(w2/r2 - 1.0);
-            VAR_RET(r * TP);
-        },
-        0
-    )},
-    {"pre_blur", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t g = W * (state.randNum() + state.randNum()
-                + state.randNum() + state.randNum() - 2.0);
-            num_t a = (2.0 * M_PI) * state.randNum();
-            num_t sa,ca;
-            sincosg(a,&sa,&ca);
-            VAR_RET(g * VEC(ca,sa));
-        },
-        0
-    )},
-    {"modulus", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t px = params[1];
-            num_t py = params[2];
-            num_t pxinv = params[3];
-            num_t pyinv = params[4];
-            num_t x = TX - px*floor(TX*pxinv + 0.5);
-            num_t y = TY - py*floor(TY*pyinv + 0.5);
-            VAR_RET(W * VEC(x,y));
-        },
-        0,
-        // parse: x,y
-        // store: weight,2*x,2*y,1/(2*x),1/(2*y)
-        VAR_PARSE
-        {
-            num_t x = json["x"].floatValue();
-            num_t y = json["y"].floatValue();
-            varp.push_back(weight);
-            varp.push_back(2.0*x);
-            varp.push_back(2.0*y);
-            varp.push_back(1.0/(2.0*x));
-            varp.push_back(1.0/(2.0*y));
-        }
-    )},
-    {"oscope", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t tpf = params[1];
-            num_t p_amp = params[2];
-            num_t p_damp = params[3];
-            num_t sep = params[4];
-            static const num_t table[2] = {1.0,-1.0};
-            num_t damp = exp(-fabs(TX)*p_damp);
-            num_t t = p_amp * damp * cos(tpf*TX) + sep;
-            num_t y = table[fabs(TY) <= t] * TY;
-            VAR_RET(W * VEC(TX,y));
-        },
-        0,
-        // parse: separation,frequency,amplitude,damping
-        // store: weight,tpf(2*pi*freq),amplitude,damping,separation
-        VAR_PARSE
-        {
-            num_t freq = json["frequency"].floatValue();
-            varp.push_back(weight);
-            varp.push_back(2.0*M_PI*freq);
-            varp.push_back(json["amplitude"].floatValue());
-            varp.push_back(json["damping"].floatValue());
-            varp.push_back(json["separation"].floatValue());
-        }
-    )},
-    {"polar2", VAR_T(
-        VAR_FUNC
-        {
-            num_t W_pi = params[0];
-            VAR_RET(W_pi * VEC(TP.atanxy(),0.5*log(TP.r2())));
-        },
-        0,
-        // store: weight/pi
-        VAR_PARSE
-        {
-            varp.push_back(weight*M_1_PI);
-        }
-    )},
-    {"popcorn2", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t px = params[1];
-            num_t py = params[2];
-            num_t pc = params[3];
-            num_t dx = px*sin(tan(TY*pc));
-            num_t dy = py*sin(tan(TX*pc));
-            VAR_RET(W * (TP + VEC(dx,dy)));
-        },
-        0,
-        // parse: x,y,c
-        // store: weight,x,y,c
-        VAR_PARSE
-        {
-            varp.push_back(weight);
-            varp.push_back(json["x"].floatValue());
-            varp.push_back(json["y"].floatValue());
-            varp.push_back(json["c"].floatValue());
-        }
-    )},
-    {"scry", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t t = TP.r2();
-            num_t r = 1.0 / (sqrt(t) * (t + 1.0/(W + EPS)));
-            VAR_RET(r * TP);
-        },
-        0
-    )},
-    {"separation", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t x2 = params[1];
-            num_t y2 = params[2];
-            num_t xin = params[3];
-            num_t yin = params[4];
-            static const num_t table[2] = {-1.0,1.0};
-            bool xp = TX > 0.0;
-            bool yp = TY > 0.0;
-            num_t x = sqrt(TX*TX + x2) + table[!xp]*xin;
-            num_t y = sqrt(TY*TY + y2) + table[!yp]*yin;
-            VAR_RET(W * VEC(table[xp]*x,table[yp]*y));
-        },
-        0,
-        // parse: x,y,xin,yin
-        // store: weight,x*x,y*y,xin,yin
-        VAR_PARSE
-        {
-            num_t x = json["x"].floatValue();
-            num_t y = json["y"].floatValue();
-            varp.push_back(weight);
-            varp.push_back(x*x);
-            varp.push_back(y*y);
-            varp.push_back(json["xin"].floatValue());
-            varp.push_back(json["yin"].floatValue());
-        }
-    )},
-    {"split", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t xspi = params[1];
-            num_t yspi = params[2];
-            static const num_t table[2] = {-1.0,1.0};
-            bool xp = cos(TX*xspi) >= 0.0;
-            bool yp = cos(TY*yspi) >= 0.0;
-            VAR_RET(W * VEC(table[xp]*TY,table[yp]*TX));
-        },
-        0,
-        // parse: xsize,ysize
-        // store: weight,pi*xsize,pi*ysize
-        VAR_PARSE
-        {
-            varp.push_back(weight);
-            varp.push_back(M_PI*json["xsize"].floatValue());
-            varp.push_back(M_PI*json["ysize"].floatValue());
-        }
-    )},
-    {"splits", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t px = params[1];
-            num_t py = params[2];
-            static const num_t table[2] = {-1.0,1.0};
-            VAR_RET(W * (TP + VEC(table[TX>=0.0]*px,table[TY>=0.0]*py)));
-        },
-        0,
-        // parse: x,y
-        // store: weight,x,y
-        VAR_PARSE
-        {
-            varp.push_back(weight);
-            varp.push_back(json["x"].floatValue());
-            varp.push_back(json["y"].floatValue());
-        }
-    )},
-    {"stripes", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t space = params[1];
-            num_t warp = params[2];
-            num_t rx = floor(TX + 0.5);
-            num_t ox = TX - rx;
-            VAR_RET(W * VEC(ox*space+rx,TY+ox*ox*warp));
-        },
-        0,
-        // parse: space,warp
-        // store: weight,1-space,warp
-        VAR_PARSE
-        {
-            varp.push_back(weight);
-            varp.push_back(1.0-json["space"].floatValue());
-            varp.push_back(json["warp"].floatValue());
-        }
-    )},
-    {"wedge", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t swirl = params[1];
-            num_t count = params[2];
-            num_t angle = params[3];
-            num_t hole = params[4];
-            num_t r = TP.r();
-            num_t a = TP.atanyx() + swirl*r;
-            num_t c = floor((count*a + M_PI) * (M_1_PI*0.5));
-            num_t cf = 1.0 - angle*swirl*(M_1_PI*0.5);
-            a = a*cf + c*angle;
-            num_t sa,ca;
-            sincosg(a,&sa,&ca);
-            VAR_RET(W * (r + hole) * VEC(ca,sa));
-        },
-        0,
-        // parse: angle,hole,count,swirl
-        // store: weight,swirl,count,angle,hole
-        VAR_PARSE
-        {
-            varp.push_back(weight);
-            varp.push_back(json["swirl"].floatValue());
-            varp.push_back(json["count"].floatValue());
-            varp.push_back(json["angle"].floatValue());
-            varp.push_back(json["hole"].floatValue());
-        }
-    )},
-    {"wedge_julia", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t cn = params[1];
-            num_t abspower = params[2];
-            num_t power = params[3];
-            num_t count = params[4];
-            num_t angle = params[5];
-            num_t cf = params[6];
-            num_t r = W * pow(TP.r2(),cn);
-            i32 tr = (i32)(abspower * state.randNum());
-            num_t a = (TP.atanyx() + (2.0*M_PI)*tr) / power;
-            num_t c = floor((count*a + M_PI) * (M_1_PI*0.5));
-            num_t sa,ca;
-            a = a*cf + c*angle;
-            sincosg(a,&sa,&ca);
-            VAR_RET(r * VEC(ca,sa));
-        },
-        0,
-        // parse: angle,count,power,distance
-        // store: weight,cn,abs(power),power,count,angle,cf
-        VAR_PARSE
-        {
-            num_t angle = json["angle"].floatValue();
-            num_t count = json["count"].floatValue();
-            num_t power = json["power"].floatValue();
-            num_t dist = json["distance"].floatValue();
-            varp.push_back(weight);
-            varp.push_back(dist/(2.0*power));
-            varp.push_back(fabs(power));
-            varp.push_back(power);
-            varp.push_back(count);
-            varp.push_back(angle);
-            varp.push_back(1.0-angle*count*M_1_PI*0.5);
-        }
-    )},
-    {"wedge_sph", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t swirl = params[1];
-            num_t count = params[2];
-            num_t cf = params[3];
-            num_t angle = params[4];
-            num_t hole = params[5];
-            num_t r = 1.0 / (TP.r() + EPS);
-            num_t a = TP.atanyx() + swirl*r;
-            num_t c = floor((count*a + M_PI) * (M_1_PI*0.5));
-            num_t sa,ca;
-            a = a*cf + c*angle;
-            sincosg(a,&sa,&ca);
-            VAR_RET(W * (r + hole) * VEC(ca,sa));
-        },
-        0,
-        // parse: angle,count,hole,swirl
-        // store: weight,swirl,count,cf,angle,hole
-        VAR_PARSE
-        {
-            num_t angle = json["angle"].floatValue();
-            num_t count = json["count"].floatValue();
-            varp.push_back(weight);
-            varp.push_back(json["swirl"].floatValue());
-            varp.push_back(count);
-            varp.push_back(1.0-angle*count*M_1_PI*0.5);
-            varp.push_back(angle);
-            varp.push_back(json["hole"].floatValue());
-        }
-    )},
-    {"whorl", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t choice[2] = {params[1],params[2]};
-            num_t r = TP.r();
-            num_t a = TP.atanyx();
-            a += choice[r >= W] / (W - r);
-            num_t sa,ca;
-            sincosg(a,&sa,&ca);
-            VAR_RET(W * r * VEC(ca,sa));
-        },
-        0,
-        // parse: inside,outside
-        // store: weight,inside,outside
-        VAR_PARSE
-        {
-            varp.push_back(weight);
-            varp.push_back(json["inside"].floatValue());
-            varp.push_back(json["outside"].floatValue());
-        }
-    )},
-    {"waves2", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t xfreq = params[1];
-            num_t xscale = params[2];
-            num_t yfreq = params[3];
-            num_t yscale = params[4];
-            num_t dx = xscale*sin(TY*xfreq);
-            num_t dy = yscale*sin(TX*yfreq);
-            VAR_RET(W * (TP + VEC(dx,dy)));
-        },
-        0,
-        // parse: xfreq,xscale,yfreq,yscale
-        // store: weight,xfreq,xscale,yfreq,yscale
-        VAR_PARSE
-        {
-            varp.push_back(weight);
-            varp.push_back(json["xfreq"].floatValue());
-            varp.push_back(json["xscale"].floatValue());
-            varp.push_back(json["yfreq"].floatValue());
-            varp.push_back(json["yscale"].floatValue());
-        }
-    )},
-    {"exp", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t e = exp(TX);
-            num_t es,ec;
-            sincosg(TY,&es,&ec);
-            VAR_RET(W * e * VEC(ec,es));
-        },
-        0
-    )},
-    {"log", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            VAR_RET(W * VEC(0.5*log(TP.r2()),TP.atanyx()));
-        },
-        0
-    )},
-    {"sin", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t s,c;
-            sincosg(TX,&s,&c);
-            num_t sh = sinh(TY);
-            num_t ch = cosh(TY);
-            VAR_RET(W * VEC(s*ch,c*sh));
-        },
-        0
-    )},
-    {"cos", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t s,c;
-            sincosg(TX,&s,&c);
-            num_t sh = sinh(TY);
-            num_t ch = cosh(TY);
-            VAR_RET(W * VEC(c*ch,-s*sh));
-        },
-        0
-    )},
-    {"tan", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t s,c;
-            sincosg(2.0*TX,&s,&c);
-            num_t sh = sinh(2.0*TY);
-            num_t ch = cosh(2.0*TY);
-            num_t den = W/(c+ch);
-            VAR_RET(den * VEC(s,sh));
-        },
-        0
-    )},
-    {"sec", VAR_T(
-        VAR_FUNC
-        {
-            num_t Wt2 = params[0];
-            num_t s,c;
-            sincosg(TX,&s,&c);
-            num_t sh = sinh(TY);
-            num_t ch = cosh(TY);
-            num_t den = Wt2/(cos(2.0*TX)+cosh(2.0*TY));
-            VAR_RET(den * VEC(c*ch,s*sh));
-        },
-        0,
-        // store: 2*weight
-        VAR_PARSE
-        {
-            varp.push_back(2.0*weight);
-        }
-    )},
-    {"csc", VAR_T(
-        VAR_FUNC
-        {
-            num_t Wt2 = params[0];
-            num_t s,c;
-            sincosg(TX,&s,&c);
-            num_t sh = sinh(TY);
-            num_t ch = cosh(TY);
-            num_t den = Wt2/(cosh(2.0*TY)-cos(2.0*TX));
-            VAR_RET(den * VEC(s*ch,-c*sh));
-        },
-        0,
-        // store: 2*weight
-        VAR_PARSE
-        {
-            varp.push_back(2.0*weight);
-        }
-    )},
-    {"cot", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t s,c;
-            sincosg(2.0*TX,&s,&c);
-            num_t sh = sinh(2.0*TY);
-            num_t ch = cosh(2.0*TY);
-            num_t den = W/(ch-c);
-            VAR_RET(den * VEC(s,-sh));
-        },
-        0
-    )},
-    {"sinh", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t s,c;
-            sincosg(TY,&s,&c);
-            num_t sh = sinh(TX);
-            num_t ch = cosh(TX);
-            VAR_RET(W * VEC(sh*c,ch*s));
-        },
-        0
-    )},
-    {"cosh", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t s,c;
-            sincosg(TY,&s,&c);
-            num_t sh = sinh(TX);
-            num_t ch = cosh(TX);
-            VAR_RET(W * VEC(ch*c,sh*s));
-        },
-        0
-    )},
-    {"tanh", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t s,c;
-            sincosg(2.0*TY,&s,&c);
-            num_t sh = sinh(2.0*TX);
-            num_t ch = cosh(2.0*TX);
-            num_t den = W/(c+ch);
-            VAR_RET(den * VEC(sh,s));
-        },
-        0
-    )},
-    {"sech", VAR_T(
-        VAR_FUNC
-        {
-            num_t Wt2 = params[0];
-            num_t s,c;
-            sincosg(TY,&s,&c);
-            num_t sh = sinh(TX);
-            num_t ch = cosh(TX);
-            num_t den = Wt2/(cos(2.0*TY)+cosh(2.0*TX));
-            VAR_RET(den * VEC(c*ch,-s*sh));
-        },
-        0,
-        // store: 2*weight
-        VAR_PARSE
-        {
-            varp.push_back(2.0*weight);
-        }
-    )},
-    {"csch", VAR_T(
-        VAR_FUNC
-        {
-            num_t Wt2 = params[0];
-            num_t s,c;
-            sincosg(TY,&s,&c);
-            num_t sh = sinh(TX);
-            num_t ch = cosh(TX);
-            num_t den = Wt2/(cosh(2.0*TX)-cos(2.0*TY));
-            VAR_RET(den * VEC(sh*c,-ch*s));
-        },
-        0,
-        // store: 2*weight
-        VAR_PARSE
-        {
-            varp.push_back(2.0*weight);
-        }
-    )},
-    {"coth", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t s,c;
-            sincosg(2.0*TY,&s,&c);
-            num_t sh = sinh(2.0*TX);
-            num_t ch = cosh(2.0*TX);
-            num_t den = W/(ch-c);
-            VAR_RET(den * VEC(sh,s));
-        },
-        0
-    )},
-    {"auger", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t freq = params[1];
-            num_t aw = params[2];
-            num_t scale = params[3];
-            num_t sym = params[4];
-            num_t s = sin(freq*TX);
-            num_t t = sin(freq*TY);
-            num_t dy = TY + aw*(scale + fabs(TY))*s;
-            num_t dx = aw*(scale + fabs(TX))*t;
-            VAR_RET(W * VEC(TX+sym*dx,dy));
-        },
-        0,
-        // parse: sym,auger_weight,freq,scale
-        // store: weight,freq,auger_weight,scale/2,sym
-        VAR_PARSE
-        {
-            varp.push_back(weight);
-            varp.push_back(json["freq"].floatValue());
-            varp.push_back(json["auger_weight"].floatValue());
-            varp.push_back(json["scale"].floatValue()/2.0);
-            varp.push_back(json["sym"].floatValue());
-        }
-    )},
-    {"flux", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t spread = params[1];
-            num_t xpw = TX + W;
-            num_t xmw = TX - W;
-            num_t y2 = TY * TY;
-            num_t ar = W * spread * sqrt(sqrt(y2 + xpw*xpw)/sqrt(y2 + xmw*xmw));
-            num_t aa = (atan2(TY,xmw) - atan2(TY,xpw)) * 0.5;
-            num_t sa,ca;
-            sincosg(aa,&sa,&ca);
-            VAR_RET(ar * VEC(ca,sa));
-        },
-        0,
-        // parse: spread
-        // store: weight,2+spread
-        VAR_PARSE
-        {
-            varp.push_back(weight);
-            varp.push_back(2.0+json["spread"].floatValue());
-        }
-    )},
-    {"mobius", VAR_T(
-        VAR_FUNC
-        {
-            num_t W = params[0];
-            num_t re_a = params[1];
-            num_t re_b = params[2];
-            num_t re_c = params[3];
-            num_t re_d = params[4];
-            num_t im_a = params[5];
-            num_t im_b = params[6];
-            num_t im_c = params[7];
-            num_t im_d = params[8];
-            num_t re_u = re_a*TX - im_a*TY + re_b;
-            num_t im_u = re_a*TY + im_a*TX + im_b;
-            num_t re_v = re_c*TX - im_c*TY + re_d;
-            num_t im_v = re_c*TY + im_c*TX + im_d;
-            num_t rad_v = W / (re_v*re_v + im_v*im_v); // +EPS ???
-            VAR_RET(rad_v * VEC(re_u*re_v+im_u*im_v,im_u*re_v-re_u*im_v));
-        },
-        0,
-        // parse: re_a,re_b,re_c,re_d,im_a,im_b,im_c,im_d
-        // store: weight,re_a,re_b,re_c,re_d,im_a,im_b,im_c,im_d
-        VAR_PARSE
-        {
-            varp.push_back(weight);
-            varp.push_back(json["re_a"].floatValue());
-            varp.push_back(json["re_b"].floatValue());
-            varp.push_back(json["re_c"].floatValue());
-            varp.push_back(json["re_d"].floatValue());
-            varp.push_back(json["im_a"].floatValue());
-            varp.push_back(json["im_b"].floatValue());
-            varp.push_back(json["im_c"].floatValue());
-            varp.push_back(json["im_d"].floatValue());
-        }
-    )}
+    Linear(const Json& json): Variation<num_t,dims>(json) {}
+    inline Point<num_t,dims> calc(
+        rng_t<num_t>& rng, const Point<num_t,dims>& tx) const
+    {
+        (void)rng;
+        return tx;
+    }
 };
 
-}
+/*
+Sinusoidal - generalized from flam3 var1_sinusoidal
+Replace each coordinate with its sine
+*/
+template <typename num_t, size_t dims>
+struct Sinusoidal: public Variation<num_t,dims>
+{
+    Sinusoidal(const Json& json): Variation<num_t,dims>(json) {}
+    inline Point<num_t,dims> calc(
+        rng_t<num_t>& rng, const Point<num_t,dims>& tx) const
+    {
+        (void)rng;
+        return tx.map([](num_t x){ return sin(x); });
+    }
+};
+
+/*
+Spherical - generalized from flam3 var2_spherical
+Divide by squared 2-norm
+*/
+template <typename num_t, size_t dims>
+struct Spherical: public Variation<num_t,dims>
+{
+    Spherical(const Json& json): Variation<num_t,dims>(json) {}
+    inline Point<num_t,dims> calc(
+        rng_t<num_t>& rng, const Point<num_t,dims>& tx) const
+    {
+        (void)rng;
+        // for small dimensions maybe division
+        // is better than precomputing 1/r^2
+        num_t r = 1.0 / (tx.norm2sq() + eps<num_t>::value);
+        return r * tx;
+    }
+};
+
+/*
+Bent - generalized from flam3 var14_bent and var54_bent2
+In flam3, the default would be neg[2.0,0.5],pos[1,1] for bent
+The bent2 variation allows scaling negatives but not positives
+*/
+template <typename num_t, size_t dims>
+class Bent: public Variation<num_t,dims>
+{
+    Point<num_t,dims> scales_neg;
+    Point<num_t,dims> scales_pos;
+public:
+    Bent(const Json& json): Variation<num_t,dims>(json)
+    {
+        // should these default to all ones
+        scales_neg = Point<num_t,dims>(json["scales_neg"]);
+        scales_pos = Point<num_t,dims>(json["scales_pos"]);
+    }
+    inline Point<num_t,dims> calc(
+        rng_t<num_t>& rng, const Point<num_t,dims>& tx) const
+    {
+        (void)rng;
+        Point<num_t,dims> ret = tx;
+        for (size_t i = 0; i < dims; ++i)
+        {
+            if (ret[i] < 0.0)
+                ret[i] *= scales_neg[i];
+            else // flam3 does not scale positive coordinates
+                ret[i] *= scales_pos[i];
+        }
+        return ret;
+    }
+};
+
+/*
+Rectangles - generalized from flam3 var40_rectangles
+*/
+template <typename num_t, size_t dims>
+class Rectangles: public Variation<num_t,dims>
+{
+    Point<num_t,dims> params;
+public:
+    Rectangles(const Json& json): Variation<num_t,dims>(json)
+    {
+        params = Point<num_t,dims>(json["params"]);
+    }
+    inline Point<num_t,dims> calc(
+        rng_t<num_t>& rng, const Point<num_t,dims>& tx) const
+    {
+        (void)rng;
+        Point<num_t,dims> ret;
+        for (size_t i = 0; i < dims; ++i)
+        {
+            num_t p = params[i];
+            num_t x = tx[i];
+            if (p == 0.0)
+                ret[i] = x;
+            else
+                ret[i] = (2.0*floor(x/p) + 1.0)*p - x;
+        }
+        return ret;
+    }
+};
+
+/*
+Fisheye - generalized from flam3 var16_fisheye and var27_eyefish
+Keeping correct order from eyefish, rather than incorrect order of fisheye
+The original behavior can be achieved with affine transformations
+*/
+template <typename num_t, size_t dims>
+class Fisheye: public Variation<num_t,dims>
+{
+    num_t addval;
+public:
+    Fisheye(const Json& json): Variation<num_t,dims>(json)
+    {
+        // should this be required to be positive?
+        // in flam3, this is 1, should this be default?
+        addval = json["addval"].floatValue();
+    }
+    inline Point<num_t,dims> calc(
+        rng_t<num_t>& rng, const Point<num_t,dims>& tx) const
+    {
+        (void)rng;
+        // TODO support changing the +1
+        // is division faster than precomputing 1/(r+addval)
+        num_t r = 1.0 / (tx.norm2() + addval);
+        return r * tx;
+    }
+};
+
+/*
+Bubble - generalized from flam3 var28_bubble
+*/
+template <typename num_t, size_t dims>
+class Bubble: public Variation<num_t,dims>
+{
+    num_t addval;
+public:
+    Bubble(const Json& json): Variation<num_t,dims>(json)
+    {
+        // should this be required positive or default to 4?
+        // default is 4 in flam3
+        addval = json["addval"].floatValue();
+    }
+    inline Point<num_t,dims> calc(
+        rng_t<num_t>& rng, const Point<num_t,dims>& tx) const
+    {
+        (void)rng;
+        // is division faster or is precomputing 1/(r^2+addval) faster?
+        num_t r = 1.0 / (tx.norm2sq() + addval);
+        return r * tx;
+    }
+};
+
+/*
+Noise - generalized from flam3 var31_noise
+*/
+template <typename num_t, size_t dims>
+struct Noise: public Variation<num_t,dims>
+{
+    Noise(const Json& json): Variation<num_t,dims>(json) {}
+    inline Point<num_t,dims> calc(
+        rng_t<num_t>& rng, const Point<num_t,dims>& tx) const
+    {
+        num_t r = rng.randNum();
+        // flam3 uses random unit vector in 2d plane
+        Point<num_t,dims> dir = rng.template randDirection<dims>();
+        return r * multComponents(tx,dir);
+    }
+};
+
+/*
+Blur - generalized from flam3 var34_blur
+*/
+template <typename num_t, size_t dims>
+struct Blur: public Variation<num_t,dims>
+{
+    Blur(const Json& json): Variation<num_t,dims>(json) {}
+    inline Point<num_t,dims> calc(
+        rng_t<num_t>& rng, const Point<num_t,dims>& tx) const
+    {
+        (void)tx;
+        num_t r = rng.randNum();
+        // flam3 uses random unit vector in 2d plane
+        Point<num_t,dims> dir = rng.template randDirection<dims>();
+        return r * dir;
+    }
+};
+
+/*
+Gaussian Blur - generalized from flam3 var35_gaussian
+*/
+template <typename num_t, size_t dims>
+struct GaussianBlur: public Variation<num_t,dims>
+{
+    GaussianBlur(const Json& json): Variation<num_t,dims>(json) {}
+    inline Point<num_t,dims> calc(
+        rng_t<num_t>& rng, const Point<num_t,dims>& tx) const
+    {
+        (void)tx;
+        // flam3 simulates gaussian distribution with (4 randoms [0,1)) - 2
+        num_t r = rng.randGaussian();
+        Point<num_t,dims> dir = rng.template randDirection<dims>();
+        return r * dir;
+    }
+};
+
+/*
+Square Noise - generalized from flam3 var43_square
+*/
+template <typename num_t, size_t dims>
+struct SquareNoise: public Variation<num_t,dims>
+{
+    SquareNoise(const Json& json): Variation<num_t,dims>(json) {}
+    inline Point<num_t,dims> calc(
+        rng_t<num_t>& rng, const Point<num_t,dims>& tx) const
+    {
+        (void)tx;
+        return rng.template randPoint2<dims>();
+    }
+};
+
+/*
+Separation - generalized from flam3 var73_separation
+*/
+template <typename num_t, size_t dims>
+class Separation: public Variation<num_t,dims>
+{
+    Point<num_t,dims> sep2,inside;
+public:
+    Separation(const Json& json): Variation<num_t,dims>(json)
+    {
+        sep2 = Point<num_t,dims>(json["params"]);
+        for (size_t i = 0; i < dims; ++i)
+            sep2[i] *= sep2[i];
+        inside = Point<num_t,dims>(json["inside"]);
+    }
+    inline Point<num_t,dims> calc(
+        rng_t<num_t>& rng, const Point<num_t,dims>& tx) const
+    {
+        (void)rng;
+        Point<num_t,dims> ret;
+        for (size_t i = 0; i < dims; ++i)
+        {
+            num_t s = copysign(1.0,tx[i]);
+            ret[i] = s * (sqrt(tx[i]*tx[i] + sep2[i]) - s*inside[i]);
+        }
+        return ret;
+    }
+};
+
+/*
+Splits - generalized from flam3 var75_splits
+*/
+template <typename num_t, size_t dims>
+class Splits: public Variation<num_t,dims>
+{
+    Point<num_t,dims> params;
+public:
+    Splits(const Json& json): Variation<num_t,dims>(json)
+    {
+        params = Point<num_t,dims>(json["params"]);
+    }
+    inline Point<num_t,dims> calc(
+        rng_t<num_t>& rng, const Point<num_t,dims>& tx) const
+    {
+        (void)rng;
+        Point<num_t,dims> ret;
+        for (size_t i = 0; i < dims; ++i)
+        {
+            num_t s = copysign(1.0,tx[i]);
+            ret[i] = s*params[i];
+        }
+        return tx + ret;
+    }
+};
+
+/*
+Pre Blur - generalized from flam3 var67_pre_blur
+*/
+template <typename num_t, size_t dims>
+struct PreBlur: public Variation<num_t,dims>
+{
+    PreBlur(const Json& json): Variation<num_t,dims>(json) {}
+    inline Point<num_t,dims> calc(
+        rng_t<num_t>& rng, const Point<num_t,dims>& tx) const
+    {
+        (void)tx;
+        // flam3 simulates gaussian with (sum 4 randoms in [0,1)) - 2
+        num_t g = rng.randGaussian();
+        Point<num_t,dims> dir = rng.template randDirection<dims>();
+        return g * dir;
+    }
+};
+
+/*
+Modulus - generalized from flam3 var68_modulus
+*/
+template <typename num_t, size_t dims>
+class Modulus: public Variation<num_t,dims>
+{
+    Point<num_t,dims> params2, params2inv;
+public:
+    Modulus(const Json& json): Variation<num_t,dims>(json)
+    {
+        params2 = Point<num_t,dims>(json["params"]);
+        params2 *= 2.0;
+        params2inv = params2.map([](num_t x){ return 1.0/x; });
+    }
+    inline Point<num_t,dims> calc(
+        rng_t<num_t>& rng, const Point<num_t,dims>& tx) const
+    {
+        (void)rng;
+        Point<num_t,dims> ret;
+        // computed in a different way, should behave the same as flam3
+        for (size_t i = 0; i < dims; ++i)
+            ret[i] = tx[i] - params2[i]*floor(tx[i]*params2inv[i] + 0.5);
+        return ret;
+    }
+};
+
+/*
+Cell N - generalized from flam3 var58_cell
+Flam3 uses the same size for both dimensions
+*/
+template <typename num_t, size_t dims>
+class CellN: public Variation<num_t,dims>
+{
+    Point<num_t,dims> sizes,invsizes;
+public:
+    CellN(const Json& json): Variation<num_t,dims>(json)
+    {
+        sizes = Point<num_t,dims>(json["sizes"]);
+        for (size_t i = 0; i < dims; ++i)
+            invsizes[i] = 1.0 / sizes[i];
+    }
+    inline Point<num_t,dims> calc(
+        rng_t<num_t>& rng, const Point<num_t,dims>& tx) const
+    {
+        (void)rng;
+        Point<num_t,dims> ret;
+        for (size_t i = 0; i < dims; ++i)
+        {
+            num_t x = floor(tx[i] * invsizes[i]);
+            num_t dx = tx[i] - x*sizes[i];
+            num_t xs = copysign(2.0,x);
+            num_t x2 = x * xs;
+            x2 -= (num_t)(x < 0);
+            ret[i] = dx + x2*sizes[i];
+        }
+        return ret;
+    }
+};
+
+/*
+======= 2 dimensional variations from flam3 =======
+*/
+
+/*
+Swirl - 2d, from flam3 var3_swirl
+*/
+template <typename num_t, size_t dims>
+struct Swirl: public VariationFrom2D<num_t,dims>
+{
+    Swirl(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t r = tx.norm2sq();
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t sr,cr;
+        sincosg(r,sr,cr);
+        return Point<num_t,2>(x*sr-y*cr,x*cr+y*sr);
+    }
+};
+
+/*
+Horseshoe - 2d, from flam3 var4_horseshoe
+*/
+template <typename num_t, size_t dims>
+struct Horseshoe: public VariationFrom2D<num_t,dims>
+{
+    Horseshoe(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        // is division better than precomputing 1/r
+        num_t r = 1.0 / (tx.norm2() + eps<num_t>::value);
+        num_t x,y;
+        tx.getXY(x,y);
+        // is it faster to compute x^2-y^2
+        return r * Point<num_t,2>((x-y)*(x+y),2.0*x*y);
+    }
+};
+
+/*
+Polar - 2d, from flam3 var5_polar
+*/
+template <typename num_t, size_t dims>
+struct Polar: public VariationFrom2D<num_t,dims>
+{
+    Polar(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t a = tx.angle();
+        num_t r = tx.norm2();
+        return Point<num_t,2>(a*M_1_PI,r-1.0);
+    }
+};
+
+/*
+Polar2 - 2d, from flam3 var70_polar2
+*/
+template <typename num_t, size_t dims>
+struct Polar2: public VariationFrom2D<num_t,dims>
+{
+    Polar2(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        // leaving out 0.5 factor on the log
+        return Point<num_t,2>(tx.angle(),log(tx.norm2sq()));
+    }
+};
+
+/*
+Handkerchief - 2d, from flam3 var6_handkerchief
+*/
+template <typename num_t, size_t dims>
+struct Handkerchief: public VariationFrom2D<num_t,dims>
+{
+    Handkerchief(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t a = tx.angle();
+        num_t r = tx.norm2();
+        return r * Point<num_t,2>(sin(a+r),cos(a-r));
+    }
+};
+
+/*
+Heart - 2d, from flam3 var7_heart
+*/
+template <typename num_t, size_t dims>
+struct Heart: public VariationFrom2D<num_t,dims>
+{
+    Heart(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t a = tx.angle();
+        num_t r = tx.norm2();
+        num_t sa,ca;
+        sincosg(r*a,sa,ca);
+        return r * Point<num_t,2>(sa,-ca);
+    }
+};
+
+/*
+Disc - 2d, from flam3 var8_disc
+*/
+template <typename num_t, size_t dims>
+struct Disc: public VariationFrom2D<num_t,dims>
+{
+    Disc(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t a = tx.angle(); // not including M_1_PI factor
+        num_t r = tx.norm2();
+        num_t sr,cr;
+        sincosg(M_PI*r,sr,cr);
+        return a * Point<num_t,2>(sr,cr);
+    }
+};
+
+/*
+Disc2 - 2d, from flam3 var49_disc2
+*/
+template <typename num_t, size_t dims>
+class Disc2: public VariationFrom2D<num_t,dims>
+{
+    num_t rotpi;
+    Point<num_t,2> addval;
+public:
+    Disc2(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        num_t rot = json["rotation"].floatValue();
+        num_t twist = json["twist"].floatValue();
+        rotpi = rot*M_PI;
+        num_t sinadd,cosadd;
+        sincosg(twist,sinadd,cosadd);
+        cosadd -= 1.0;
+        num_t k = 1.0 + twist;
+        if (twist > 2.0*M_PI) k -= 2.0*M_PI;
+        if (twist < -2.0*M_PI) k += 2.0*M_PI;
+        cosadd *= k;
+        sinadd *= k;
+        addval = Point<num_t,2>(cosadd,sinadd);
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t t = rotpi * (x + y);
+        num_t st,ct;
+        sincosg(t,st,ct);
+        // order of ct,st switched from flam3
+        return tx.angle() * (Point<num_t,2>(ct,st) + addval);
+    }
+};
+
+/*
+Waves - 2d, from flam3 var15_waves and var81_waves2
+*/
+template <typename num_t, size_t dims>
+class Waves: public VariationFrom2D<num_t,dims>
+{
+    num_t xf,xs,yf,ys;
+public:
+    Waves(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        xf = json["xfreq"].floatValue();
+        xs = json["xscale"].floatValue();
+        yf = json["yfreq"].floatValue();
+        ys = json["yscale"].floatValue();
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t dx = xs*sin(y*xf);
+        num_t dy = ys*sin(x*yf);
+        return tx + Point<num_t,2>(dx,dy);
+    }
+};
+
+/*
+Fan - 2d, from flam3 var22_fan and var25_fan2
+*/
+template <typename num_t, size_t dims>
+class Fan: public VariationFrom2D<num_t,dims>
+{
+    num_t dx,dy;
+public:
+    Fan(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        num_t x = json["x"].floatValue();
+        num_t y = json["y"].floatValue();
+        dx = M_PI * (x*x + eps<num_t>::value);
+        dy = y;
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t dx2 = dx*0.5;
+        num_t a = tx.angle();
+        // the fmod part should behave the same as t in flam3
+        num_t m = copysign(1.0,dx2-fmod(a+dy,dx));
+        a += m*dx2;
+        num_t sa,ca;
+        sincosg(a,sa,ca);
+        // order of ca,sa switched from flam3
+        return tx.norm2() * Point<num_t,2>(ca,sa);
+    }
+};
+
+/*
+Rings - 2d, from flam3 var21_rings and var26_rings2
+*/
+template <typename num_t, size_t dims>
+class Rings: public VariationFrom2D<num_t,dims>
+{
+    num_t dx;
+public:
+    Rings(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        num_t v = json["value"].floatValue();
+        dx = v*v + eps<num_t>::value;
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t r,s,c;
+        tx.getRadiusSinCos(r,s,c);
+        // should behave the same as in flam3
+        r = fmod(r+dx,2.0*dx) - dx + r*(1.0-dx);
+        // order of c,s switched from flam3
+        return r * Point<num_t,2>(c,s);
+    }
+};
+
+/*
+Spiral - 2d, from flam3 var9_spiral
+*/
+template <typename num_t, size_t dims>
+struct Spiral: public VariationFrom2D<num_t,dims>
+{
+    Spiral(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t r,sa,ca;
+        tx.getRadiusSinCos(r,sa,ca);
+        num_t sr,cr;
+        sincosg(r,sr,cr);
+        // is division faster than precomputing 1/r
+        num_t r1 = 1.0 / (r + eps<num_t>::value);
+        return r1 * Point<num_t,2>(ca+sr,sa-cr);
+    }
+};
+
+/*
+Hyperbolic - 2d, from flam3 var10_hyperbolic
+*/
+template <typename num_t, size_t dims>
+struct Hyperbolic: public VariationFrom2D<num_t,dims>
+{
+    Hyperbolic(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t r,sa,ca;
+        tx.getRadiusSinCos(r,sa,ca);
+        return Point<num_t,2>(sa/(r+eps<num_t>::value),ca*r);
+    }
+};
+
+/*
+Diamond - 2d, from flam3 var11_diamond
+*/
+template <typename num_t, size_t dims>
+struct Diamond: public VariationFrom2D<num_t,dims>
+{
+    Diamond(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t r,sa,ca;
+        tx.getRadiusSinCos(r,sa,ca);
+        num_t sr,cr;
+        sincosg(r,sr,cr);
+        return Point<num_t,2>(sa*cr,ca*sr);
+    }
+};
+
+/*
+Ex - 2d, from flam3 var12_ex
+*/
+template <typename num_t, size_t dims>
+struct Ex: public VariationFrom2D<num_t,dims>
+{
+    Ex(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t a = tx.angle();
+        num_t r = tx.norm2();
+        num_t n0 = sin(a+r);
+        num_t n1 = cos(a-r);
+        num_t m0 = n0*n0*n0 * r;
+        num_t m1 = n1*n1*n1 * r;
+        return Point<num_t,2>(m0+m1,m0-m1);
+    }
+};
+
+/*
+Julia - 2d, from flam3 var13_julia
+*/
+template <typename num_t, size_t dims>
+struct Julia: public VariationFrom2D<num_t,dims>
+{
+    Julia(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        num_t a = 0.5*tx.angle() + rng.randBool()*M_PI; // + 0 or PI
+        num_t sa,ca;
+        sincosg(a,sa,ca);
+        // switched order of sin,cos from flam3
+        return tx.norm2() * Point<num_t,2>(ca,sa);
+    }
+};
+
+/*
+Exponential - 2d, from flam3 var18_exponential
+*/
+template <typename num_t, size_t dims>
+struct Exponential: public VariationFrom2D<num_t,dims>
+{
+    Exponential(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t dx = exp(x-1.0);
+        num_t sdy,cdy;
+        sincosg(M_PI*y,sdy,cdy);
+        return dx * Point<num_t,2>(cdy,sdy);
+    }
+};
+
+/*
+Power - 2d, from flam3 var19_power
+*/
+template <typename num_t, size_t dims>
+struct Power: public VariationFrom2D<num_t,dims>
+{
+    Power(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t r,sa,ca;
+        tx.getRadiusSinCos(r,sa,ca);
+        return pow(r,sa) * Point<num_t,2>(ca,sa);
+    }
+};
+
+/*
+Cosine - 2d, from flam3 var20_cosine
+*/
+template <typename num_t, size_t dims>
+struct Cosine: public VariationFrom2D<num_t,dims>
+{
+    Cosine(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t sa,ca;
+        sincosg(x*M_PI,sa,ca);
+        return Point<num_t,2>(ca*cosh(y),-sa*sinh(y));
+    }
+};
+
+/*
+Blob - 2d, from flam3 var23_blob
+*/
+template <typename num_t, size_t dims>
+class Blob: public VariationFrom2D<num_t,dims>
+{
+    num_t mid,amp,waves;
+public:
+    Blob(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        num_t low = json["low"].floatValue();
+        num_t high = json["high"].floatValue();
+        mid = (high+low)/2.0;
+        amp = (high-low)/2.0;
+        waves = json["waves"].floatValue();
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t r,sa,ca;
+        tx.getRadiusSinCos(r,sa,ca);
+        num_t a = tx.angle();
+        r *= mid + amp*sin(waves*a); // simplified
+        return r * Point<num_t,2>(ca,sa); // order switched
+    }
+};
+
+/*
+PDJ - 2d, from flam3 var24_pdj
+*/
+template <typename num_t, size_t dims>
+class PDJ: public VariationFrom2D<num_t,dims>
+{
+    num_t a,b,c,d;
+public:
+    PDJ(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        a = json["a"].floatValue();
+        b = json["b"].floatValue();
+        c = json["c"].floatValue();
+        d = json["d"].floatValue();
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t nx1 = cos(b*x);
+        num_t nx2 = sin(c*x);
+        num_t ny1 = sin(a*y);
+        num_t ny2 = cos(d*y);
+        return Point<num_t,2>(ny1-nx1,nx2-ny2);
+    }
+};
+
+/*
+Cylinder - 2d, from flam3 var29_cylinder
+Should this variation be replaced with something more general?
+Similar to sinusoidal but only applies on some axes
+*/
+template <typename num_t, size_t dims>
+struct Cylinder: public VariationFrom2D<num_t,dims>
+{
+    Cylinder(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        return Point<num_t,2>(sin(tx.x()),tx.y());
+    }
+};
+
+/*
+Perspective - 2d, from flam3 var30_perspective
+*/
+template <typename num_t, size_t dims>
+class Perspective: public VariationFrom2D<num_t,dims>
+{
+    num_t dist,vsin,vfcos;
+public:
+    Perspective(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        dist = json["distance"].floatValue();
+        num_t angle = json["angle"].floatValue();
+        vsin = sin(angle);
+        vfcos = dist*cos(angle);
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t t = 1.0 / (dist - y*vsin);
+        return t * Point<num_t,2>(dist*x,vfcos*y);
+    }
+};
+
+/*
+Julia N - 2d, from flam3 var32_juliaN_generic
+*/
+template <typename num_t, size_t dims>
+class JuliaN: public VariationFrom2D<num_t,dims>
+{
+    num_t abspower,invpower,cn;
+public:
+    JuliaN(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        num_t power = json["power"].floatValue();
+        num_t dist = json["dist"].floatValue();
+        abspower = fabs(power); // flam3 calls this rN
+        invpower = 1.0/power;
+        cn = dist/(2.0*power);
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        i32 t = trunc(abspower*rng.randNum());
+        num_t a = (tx.angle() + (2.0*M_PI)*t) * invpower;
+        num_t r = pow(tx.norm2sq(),cn);
+        num_t sa,ca;
+        sincosg(a,sa,ca);
+        return r * Point<num_t,2>(ca,sa);
+    }
+};
+
+/*
+Julia Scope - 2d, from flam3 var33_juliaScope_generic
+*/
+template <typename num_t, size_t dims>
+class JuliaScope: public VariationFrom2D<num_t,dims>
+{
+    num_t abspower,invpower,cn;
+public:
+    JuliaScope(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        num_t power = json["power"].floatValue();
+        num_t dist = json["dist"].floatValue();
+        abspower = fabs(power); // flam3 calls this rN
+        invpower = 1.0/power;
+        cn = dist/(2.0*power);
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        i32 t = trunc(abspower*rng.randNum());
+        num_t dir = rng.template randDirection<1>().x();
+        num_t a = ((2.0*M_PI)*t + dir*tx.angle()) * invpower;
+        num_t r = pow(tx.norm2sq(),cn);
+        num_t sa,ca;
+        sincosg(a,sa,ca);
+        return r * Point<num_t,2>(ca,sa);
+    }
+};
+
+/*
+Radial Blur - 2d, from flam3 var36_radial_blur
+Flam3 uses weight in a nonstandard way
+*/
+template <typename num_t, size_t dims>
+class RadialBlur: public VariationFrom2D<num_t,dims>
+{
+    num_t spin,zoom,flam3weight;
+public:
+    RadialBlur(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        num_t angle = json["angle"].floatValue();
+        sincosg(angle*M_PI_2,spin,zoom);
+        flam3weight = json["flam3_weight"].floatValue();
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        // flam3 simulates gaussian with (4 randoms in [0,1)) - 2
+        num_t g = flam3weight * rng.randGaussian();
+        num_t ra = tx.norm2();
+        num_t a = tx.angle() + spin*g;
+        num_t sa,ca;
+        sincosg(a,sa,ca);
+        num_t rz = zoom*g - 1.0;
+        return ra*Point<num_t,2>(ca,sa) + rz*tx;
+    }
+};
+
+/*
+Pie - 2d, from flam3 var37_pie
+*/
+template <typename num_t, size_t dims>
+class Pie: public VariationFrom2D<num_t,dims>
+{
+    num_t slices,rotation,thickness,invslices2pi;
+public:
+    Pie(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        slices = json["slices"].floatValue();
+        rotation = json["rotation"].floatValue();
+        thickness = json["thickness"].floatValue();
+        invslices2pi = (2.0*M_PI)/slices;
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)tx;
+        i32 sl = (i32)(rng.randNum()*slices + 0.5);
+        num_t a = rotation + (sl + rng.randNum()*thickness)*invslices2pi;
+        num_t r = rng.randNum();
+        num_t sa,ca;
+        sincosg(a,sa,ca);
+        return r * Point<num_t,2>(ca,sa);
+    }
+};
+
+/*
+NGon - 2d, from flam3 var38_ngon
+*/
+template <typename num_t, size_t dims>
+class NGon: public VariationFrom2D<num_t,dims>
+{
+    num_t powerval,angle,corners,circle,invangle;
+public:
+    NGon(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        num_t sides = json["sides"].floatValue();
+        powerval = json["power"].floatValue()/2.0;
+        angle = (2.0*M_PI)/sides; // in flam3, named b, not precomputed
+        corners = json["corners"].floatValue();
+        circle = json["circle"].floatValue();
+        invangle = sides/(2.0*M_PI);
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t r = pow(tx.norm2sq(),powerval);
+        num_t theta = tx.angle();
+        num_t phi = theta - angle*floor(theta*invangle);
+        static const num_t mult[2] = {0.0,1.0};
+        phi -= mult[phi > angle*0.5]*angle;
+        num_t amp = corners*(1.0/(cos(phi)+eps<num_t>::value)-1.0) + circle;
+        amp /= r + eps<num_t>::value;
+        return amp * tx;
+    }
+};
+
+/*
+Curl - 2d, from flam3 var39_curl
+*/
+template <typename num_t, size_t dims>
+class Curl: public VariationFrom2D<num_t,dims>
+{
+    num_t c1,c2;
+public:
+    Curl(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        c1 = json["c1"].floatValue();
+        c2 = json["c2"].floatValue();
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t re = 1.0 + c1*x + c2*(x*x - y*y);
+        num_t im = c1*y + 2.0*c2*x*y;
+        // is it faster to divide than precompute 1/(re^2+im^2)
+        // flam3 does not add eps to the denominator
+        num_t r = 1.0 / (re*re + im*im + eps<num_t>::value);
+        return r * Point<num_t,2>(x*re+y*im,y*re-x*im);
+    }
+};
+
+/*
+Arch - 2d, from flam3 var41_arch
+Uses a nonstandard weight
+*/
+template <typename num_t, size_t dims>
+class Arch: public VariationFrom2D<num_t,dims>
+{
+    num_t flam3weight;
+public:
+    Arch(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        flam3weight = json["flam3_weight"].floatValue();
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)tx;
+        num_t a = flam3weight * rng.randNum() * M_PI;
+        num_t sa,ca;
+        sincosg(a,sa,ca);
+        return Point<num_t,2>(sa,sa*sa/ca);
+    }
+};
+
+/*
+Tangent - 2d, from flam3 var42_tangent
+*/
+template <typename num_t, size_t dims>
+struct Tangent: public VariationFrom2D<num_t,dims>
+{
+    Tangent(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t x,y;
+        tx.getXY(x,y);
+        return Point<num_t,2>(sin(x)/cos(y),tan(y));
+    }
+};
+
+/*
+Rays - 2d, from flam3 var44_rays
+Uses nonstandard variation weight
+*/
+template <typename num_t, size_t dims>
+class Rays: public VariationFrom2D<num_t,dims>
+{
+    num_t flam3weight;
+public:
+    Rays(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        flam3weight = json["flam3_weight"].floatValue();
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t a = flam3weight * rng.randNum() * M_PI;
+        num_t r = flam3weight / (tx.norm2sq() + eps<num_t>::value);
+        num_t tr = tan(a) * r; // not multiplying flam3weight here
+        return tr * Point<num_t,2>(cos(x),sin(y));
+    }
+};
+
+/*
+Blade - 2d, from flam3 var45_blade
+Uses nonstandard variation weight
+*/
+template <typename num_t, size_t dims>
+class Blade: public VariationFrom2D<num_t,dims>
+{
+    num_t flam3weight;
+public:
+    Blade(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        flam3weight = json["flam3_weight"].floatValue();
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        num_t r = rng.randNum() * flam3weight * tx.norm2();
+        num_t sr,cr;
+        sincosg(r,sr,cr);
+        return tx.x() * Point<num_t,2>(cr+sr,cr-sr);
+    }
+};
+
+/*
+Secant - 2d, from flam3 var46_secant2
+Uses nonstandard variation weight
+*/
+template <typename num_t, size_t dims>
+class Secant: public VariationFrom2D<num_t,dims>
+{
+    num_t flam3weight;
+public:
+    Secant(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        flam3weight = json["flam3_weight"].floatValue();
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t cr = cos(flam3weight*tx.norm2());
+        num_t icr = 1.0/cr;
+        num_t sign = copysign(1.0,-cr);
+        return Point<num_t,2>(tx.x(),icr+sign);
+    }
+};
+
+/*
+Twintrian - 2d, from flam3 var47_twintrian
+Uses nonstandard variation weight
+*/
+template <typename num_t, size_t dims>
+class Twintrian: public VariationFrom2D<num_t,dims>
+{
+    num_t flam3weight;
+public:
+    Twintrian(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        flam3weight = json["flam3_weight"].floatValue();
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        num_t r = rng.randNum() * flam3weight * tx.norm2();
+        num_t sr,cr;
+        sincosg(r,sr,cr);
+        num_t diff = log10(sr*sr) + cr; // why log10?
+        if (unlikely(bad_value(diff))) // flam3 uses this, does it make sense?
+            diff = -30.0;
+        return tx.x() * Point<num_t,2>(diff,diff-sr*M_PI);
+    }
+};
+
+/*
+Cross - 2d, from flam3 var48_cross
+*/
+template <typename num_t, size_t dims>
+struct Cross: public VariationFrom2D<num_t,dims>
+{
+    Cross(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t s = x*x - y*y;
+        num_t r = sqrt(1.0 / (s*s + eps<num_t>::value));
+        return r * tx;
+    }
+};
+
+/*
+Exp - 2d, from flam3 var82_exp
+*/
+template <typename num_t, size_t dims>
+struct Exp: public VariationFrom2D<num_t,dims>
+{
+    Exp(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t e = exp(x);
+        num_t es,ec;
+        sincosg(y,es,ec);
+        return e * Point<num_t,2>(ec,es);
+    }
+};
+
+/*
+Log - 2d, from flam3 var83_log
+*/
+template <typename num_t, size_t dims>
+struct Log: public VariationFrom2D<num_t,dims>
+{
+    Log(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        return Point<num_t,2>(log(tx.norm2sq()),tx.angle());
+    }
+};
+
+/*
+Sin - 2d, from flam3 var84_sin
+*/
+template <typename num_t, size_t dims>
+struct Sin: public VariationFrom2D<num_t,dims>
+{
+    Sin(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t s,c;
+        sincosg(x,s,c);
+        num_t sh = sinh(y);
+        num_t ch = cosh(y);
+        return Point<num_t,2>(s*ch,c*sh);
+    }
+};
+
+/*
+Cos - 2d, from flam3 var85_cos
+*/
+template <typename num_t, size_t dims>
+struct Cos: public VariationFrom2D<num_t,dims>
+{
+    Cos(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t s,c;
+        sincosg(x,s,c);
+        num_t ch = cosh(y);
+        num_t sh = sinh(y);
+        return Point<num_t,2>(c*ch,-s*sh);
+    }
+};
+
+/*
+Tan - 2d, from flam3 var86_tan
+*/
+template <typename num_t, size_t dims>
+struct Tan: public VariationFrom2D<num_t,dims>
+{
+    Tan(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t s,c;
+        sincosg(2.0*x,s,c);
+        num_t sh = sinh(2.0*y);
+        num_t ch = cosh(2.0*y);
+        // is it faster to precompute 1/(c+ch) and multiply?
+        return Point<num_t,2>(s,sh) / (c+ch);
+    }
+};
+
+/*
+Sec - 2d, from flam3 var87_sec
+*/
+template <typename num_t, size_t dims>
+struct Sec: public VariationFrom2D<num_t,dims>
+{
+    Sec(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t s,c;
+        sincosg(x,s,c);
+        num_t sh = sinh(y);
+        num_t ch = cosh(y);
+        // is it faster to compute 1/(cos(2x)+cosh(2y)) and multiply?
+        return Point<num_t,2>(c*ch,s*sh) / (cos(2.0*x)+cosh(2.0*y));
+    }
+};
+
+/*
+Csc - 2d, from flam3 var88_csc
+*/
+template <typename num_t, size_t dims>
+struct Csc: public VariationFrom2D<num_t,dims>
+{
+    Csc(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t s,c;
+        sincosg(x,s,c);
+        num_t sh = sinh(y);
+        num_t ch = cosh(y);
+        // is it faster to compute 1/(cosh(2y)-cos(2x)) and multiply?
+        return Point<num_t,2>(s*ch,-c*sh) / (cosh(2.0*y)-cos(2.0*x));
+    }
+};
+
+/*
+Cot - 2d, from flam3 var89_cot
+*/
+template <typename num_t, size_t dims>
+struct Cot: public VariationFrom2D<num_t,dims>
+{
+    Cot(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t s,c;
+        sincosg(2.0*x,s,c);
+        num_t sh = sinh(2.0*y);
+        num_t ch = cosh(2.0*y);
+        // is it faster to compute 1/(ch-c) and multiply?
+        return Point<num_t,2>(s,-sh) / (ch-c);
+    }
+};
+
+/*
+Sinh - 2d, from flam3 var90_sinh
+*/
+template <typename num_t, size_t dims>
+struct Sinh: public VariationFrom2D<num_t,dims>
+{
+    Sinh(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t s,c;
+        sincosg(y,s,c);
+        num_t sh = sinh(x);
+        num_t ch = cosh(x);
+        return Point<num_t,2>(sh*c,ch*s);
+    }
+};
+
+/*
+Cosh - 2d, from flam3 var91_cosh
+*/
+template <typename num_t, size_t dims>
+struct Cosh: public VariationFrom2D<num_t,dims>
+{
+    Cosh(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t s,c;
+        sincosg(y,s,c);
+        num_t sh = sinh(x);
+        num_t ch = cosh(x);
+        return Point<num_t,2>(ch*c,sh*s);
+    }
+};
+
+/*
+Tanh - 2d, from flam3 var92_tanh
+*/
+template <typename num_t, size_t dims>
+struct Tanh: public VariationFrom2D<num_t,dims>
+{
+    Tanh(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t s,c;
+        sincosg(2.0*y,s,c);
+        num_t sh = sinh(2.0*x);
+        num_t ch = cosh(2.0*x);
+        // is it faster to compute 1/(ch+c) and multiply?
+        return Point<num_t,2>(sh,s) / (c+ch);
+    }
+};
+
+/*
+Sech - 2d, from flam3 var93_sech
+*/
+template <typename num_t, size_t dims>
+struct Sech: public VariationFrom2D<num_t,dims>
+{
+    Sech(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t s,c;
+        sincosg(y,s,c);
+        num_t sh = sinh(x);
+        num_t ch = cosh(x);
+        // is it faster to compute 1/(cos(2y)+cosh(2x)) and multiply?
+        return Point<num_t,2>(c*ch,-s*sh) / (cos(2.0*y)+cosh(2.0*x));
+    }
+};
+
+/*
+Csch - 2d, from flam3 var94_csch
+*/
+template <typename num_t, size_t dims>
+struct Csch: public VariationFrom2D<num_t,dims>
+{
+    Csch(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t s,c;
+        sincosg(y,s,c);
+        num_t sh = sinh(x);
+        num_t ch = cosh(x);
+        // is it faster to compute 1/(cosh(2x)-cos(2y)) and multiply?
+        return Point<num_t,2>(sh*c,-ch*s) / (cosh(2.0*x)-cos(2.0*y));
+    }
+};
+
+/*
+Coth - 2d, from flam3 var95_coth
+*/
+template <typename num_t, size_t dims>
+struct Coth: public VariationFrom2D<num_t,dims>
+{
+    Coth(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t s,c;
+        sincosg(2.0*y,s,c);
+        num_t sh = sinh(2.0*x);
+        num_t ch = cosh(2.0*x);
+        // is it faster to compute 1/(ch-c) and multiply?
+        return Point<num_t,2>(sh,s) / (ch-c);
+    }
+};
+
+/*
+Auger - 2d, from flam3 var96_auger
+*/
+template <typename num_t, size_t dims>
+class Auger: public VariationFrom2D<num_t,dims>
+{
+    num_t freq,augerweight,scale,sym;
+public:
+    Auger(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        freq = json["freq"].floatValue();
+        augerweight = json["flam3_weight"].floatValue();
+        scale = json["scale"].floatValue() / 2.0;
+        sym = json["sym"].floatValue();
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t s = sin(freq*x);
+        num_t t = sin(freq*y);
+        num_t dy = y + augerweight*(scale + fabs(y))*s;
+        num_t dx = x + augerweight*(scale + fabs(x))*t;
+        return Point<num_t,2>(x+sym*(dx-x),dy);
+    }
+};
+
+/*
+Flux - 2d, from flam3 var97_flux
+*/
+template <typename num_t, size_t dims>
+class Flux: public VariationFrom2D<num_t,dims>
+{
+    num_t spread,fluxweight;
+public:
+    Flux(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        // why does flam3 have a +2 for this?
+        spread = 2.0 + json["spread"].floatValue();
+        fluxweight = json["flam3_weight"].floatValue();
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t xpw = x + fluxweight;
+        num_t xmw = x - fluxweight;
+        num_t y2 = y*y;
+        num_t avgr = spread * sqrt(sqrt(y2+xpw*xpw)/sqrt(y2+xmw*xmw));
+        num_t avga = (atan2(y,xmw) - atan2(y,xpw)) * 0.5;
+        num_t c,s;
+        sincosg(avga,c,s);
+        return avgr * Point<num_t,2>(c,s);
+    }
+};
+
+/*
+Mobius - 2d, from flam3 var98_mobius
+*/
+template <typename num_t, size_t dims>
+class Mobius: public VariationFrom2D<num_t,dims>
+{
+    Point<num_t,2> a,b,c,d;
+public:
+    Mobius(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        a = Point<num_t,2>(json["a"]);
+        b = Point<num_t,2>(json["b"]);
+        c = Point<num_t,2>(json["c"]);
+        d = Point<num_t,2>(json["d"]);
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t re_u = a.x()*x - a.y()*y + b.x();
+        num_t im_u = a.x()*y + a.y()*x + b.y();
+        num_t re_v = c.x()*x - c.y()*y + d.x();
+        num_t im_v = c.x()*y + c.y()*x + d.y();
+        // faster to divide instead of precomputing this?
+        num_t rad = 1.0 / (re_v*re_v + im_v*im_v + eps<num_t>::value);
+        return rad * Point<num_t,2>(re_u*re_v+im_u*im_v,im_u*re_v-re_u*im_v);
+    }
+};
+
+/*
+Scry - 2d, from flam3 var72_scry
+Uses a nonstandard variation weight
+*/
+template <typename num_t, size_t dims>
+class Scry: public VariationFrom2D<num_t,dims>
+{
+    num_t scryweight;
+public:
+    Scry(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        scryweight = json["flam3_weight"].floatValue();
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t t = tx.norm2sq();
+        num_t r = 1.0 / (sqrt(t) * (t + 1.0/(scryweight + eps<num_t>::value)));
+        return r * tx;
+    }
+};
+
+/*
+Split - 2d, from flam3 var74_split
+*/
+template <typename num_t, size_t dims>
+class Split: public VariationFrom2D<num_t,dims>
+{
+    num_t sizex,sizey;
+public:
+    Split(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        sizex = json["xsize"].floatValue() * M_PI;
+        sizey = json["ysize"].floatValue() * M_PI;
+    }
+    inline Point<num_t,dims> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t xs = copysign(1.0,cos(x*sizex));
+        num_t ys = copysign(1.0,cos(y*sizey));
+        return Point<num_t,2>(x*ys,y*xs);
+    }
+};
+
+/*
+Stripes - 2d, from flam3 var76_stripes
+*/
+template <typename num_t, size_t dims>
+class Stripes: public VariationFrom2D<num_t,dims>
+{
+    num_t space,warp;
+public:
+    Stripes(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        space = 1.0 - json["space"].floatValue();
+        warp = json["warp"].floatValue();
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t rx = floor(x + 0.5);
+        num_t ox = x - rx;
+        return Point<num_t,2>(ox*space+rx,y+ox*ox*warp);
+    }
+};
+
+/*
+Wedge - 2d, from flam3 var77_wedge
+*/
+template <typename num_t, size_t dims>
+class Wedge: public VariationFrom2D<num_t,dims>
+{
+    num_t swirl,count,angle,hole,cf;
+public:
+    Wedge(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        swirl = json["swirl"].floatValue();
+        count = json["count"].floatValue();
+        angle = json["angle"].floatValue();
+        hole = json["hole"].floatValue();
+        cf = 1.0 - angle*count*(M_1_PI*0.5);
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t r = tx.norm2();
+        num_t a = tx.angle() + swirl*r;
+        num_t c = floor((count*a + M_PI) * (M_1_PI*0.5));
+        a = a*cf + c*angle;
+        num_t sa,ca;
+        sincosg(a,sa,ca);
+        return (r+hole) * Point<num_t,2>(ca,sa);
+    }
+};
+
+/*
+Wedge Julia - 2d, from flam3 var78_wedge_julia
+*/
+template <typename num_t, size_t dims>
+class WedgeJulia: public VariationFrom2D<num_t,dims>
+{
+    num_t cn,abspower,invpower,count,angle,cf;
+public:
+    WedgeJulia(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        angle = json["angle"].floatValue();
+        count = json["count"].floatValue();
+        num_t power = json["power"].floatValue();
+        invpower = 1.0/power;
+        num_t dist = json["dist"].floatValue();
+        cn = dist/(2.0*power);
+        abspower = fabs(power); // flam3 calls this rN
+        cf = 1.0 - angle*count*(M_1_PI*0.5);
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        num_t r = pow(tx.norm2sq(),cn);
+        i32 tr = (i32)(abspower * rng.randNum());
+        num_t a = (tx.angle() + (2.0*M_PI)*tr) * invpower;
+        num_t c = floor((count*a + M_PI) * (M_1_PI*0.5));
+        num_t sa,ca;
+        a = a*cf + c*angle;
+        sincosg(a,sa,ca);
+        return r * Point<num_t,2>(ca,sa);
+    }
+};
+
+/*
+Wedge Sph - 2d, from flam3 var79_wedge_sph
+*/
+template <typename num_t, size_t dims>
+class WedgeSph: public VariationFrom2D<num_t,dims>
+{
+    num_t swirl,count,cf,angle,hole;
+public:
+    WedgeSph(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        angle = json["angle"].floatValue();
+        count = json["count"].floatValue();
+        swirl = json["swirl"].floatValue();
+        hole = json["hole"].floatValue();
+        cf = 1.0 - angle*count*(M_1_PI*0.5);
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t r = 1.0 / (tx.norm2() + eps<num_t>::value);
+        num_t a = tx.angle() + swirl*r;
+        num_t c = floor((count*a + M_PI) * (M_1_PI*0.5));
+        num_t sa,ca;
+        a = a*cf + c*angle;
+        sincosg(a,sa,ca);
+        return (r+hole) * Point<num_t,2>(ca,sa);
+    }
+};
+
+/*
+Whorl - 2d, from flam3 var80_whorl
+Uses a nonstandard variation weight
+*/
+template <typename num_t, size_t dims>
+class Whorl: public VariationFrom2D<num_t,dims>
+{
+    num_t choice[2],whorlweight;
+public:
+    Whorl(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        choice[0] = json["inside"].floatValue();
+        choice[1] = json["outside"].floatValue();
+        whorlweight = json["flam3_weight"].floatValue();
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t r = tx.norm2();
+        num_t a = tx.angle();
+        a += choice[r >= whorlweight] / (whorlweight - r);
+        num_t sa,ca;
+        sincosg(a,sa,ca);
+        return r * Point<num_t,2>(ca,sa);
+    }
+};
+
+/*
+Supershape - 2d, from flam3 var50_supershape
+*/
+template <typename num_t, size_t dims>
+class Supershape: public VariationFrom2D<num_t,dims>
+{
+    num_t pm_4,pneg1_n1,n2,n3,rnd,holes;
+public:
+    Supershape(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        num_t n1 = json["n1"].floatValue();
+        pm_4 = json["m"].floatValue() / 4.0;
+        pneg1_n1 = -1.0 / n1;
+        n2 = json["n2"].floatValue();
+        n3 = json["n3"].floatValue();
+        rnd = json["rnd"].floatValue();
+        holes = json["holes"].floatValue();
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        num_t theta = pm_4*tx.angle() + M_PI_4;
+        num_t st,ct;
+        sincosg(theta,st,ct);
+        num_t t1 = pow(fabs(ct),n2);
+        num_t t2 = pow(fabs(st),n3);
+        num_t tr = tx.norm2();
+        num_t r = (rnd*rng.randNum() + (1.0-rnd)*tr) - holes;
+        r *= pow(t1+t2,pneg1_n1) / tr;
+        return r * tx;
+    }
+};
+
+/*
+Flower - 2d, from flam3 var51_flower
+*/
+template <typename num_t, size_t dims>
+class Flower: public VariationFrom2D<num_t,dims>
+{
+    num_t petals,holes;
+public:
+    Flower(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        petals = json["petals"].floatValue();
+        holes = json["holes"].floatValue();
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        num_t theta = tx.angle();
+        num_t r = (rng.randNum() - holes) * cos(petals*theta);
+        r /= tx.norm2() + eps<num_t>::value; // flam3 does not add eps
+        return r * tx;
+    }
+};
+
+/*
+Conic - 2d, from flam3 var52_conic
+*/
+template <typename num_t, size_t dims>
+class Conic: public VariationFrom2D<num_t,dims>
+{
+    num_t eccen,holes;
+public:
+    Conic(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        eccen = json["eccen"].floatValue();
+        holes = json["holes"].floatValue();
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        num_t tr = tx.norm2();
+        num_t ct = tx.x() / (tr + eps<num_t>::value); // flam3 does not add eps
+        num_t r = (rng.randNum() - holes) * eccen / (tr + tr*eccen*ct);
+        return r * tx;
+    }
+};
+
+/*
+Parabola - 2d, from flam3 var53_parabola
+*/
+template <typename num_t, size_t dims>
+class Parabola: public VariationFrom2D<num_t,dims>
+{
+    num_t h,w;
+public:
+    Parabola(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        h = json["height"].floatValue();
+        w = json["width"].floatValue();
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        num_t sr,cr;
+        sincosg(tx.norm2(),sr,cr);
+        num_t x = h*sr*sr*rng.randNum();
+        num_t y = w*cr*rng.randNum();
+        return Point<num_t,2>(x,y);
+    }
+};
+
+/*
+Bipolar - 2d, from flam3 var55_bipolar
+*/
+template <typename num_t, size_t dims>
+class Bipolar: public VariationFrom2D<num_t,dims>
+{
+    num_t shift;
+public:
+    Bipolar(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        shift = -M_PI_2 * json["shift"].floatValue();
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t x2y2 = tx.norm2sq();
+        num_t t = x2y2 + 1.0;
+        num_t x2 = 2.0*tx.x();
+        num_t y = 0.5*atan2(2.0*tx.y(),x2y2-1.0) + shift;
+        // this should behave the same as flam3
+        y -= M_PI * floor(y*M_1_PI + 0.5);
+        // not including 0.25 factor of the log that flam3 has
+        return Point<num_t,2>(log((t+x2)/(t-x2)),y);
+    }
+};
+
+/*
+Boarders - 2d, from flam3 var56_boarders
+Adds a customization to the probability
+*/
+template <typename num_t, size_t dims>
+class Boarders: public VariationFrom2D<num_t,dims>
+{
+    num_t prob;
+public:
+    Boarders(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        // in flam3 this is 0.75, should this be default?
+        prob = json["prob"].floatValue();
+        if (prob < 0.0 || prob > 1.0)
+            throw std::runtime_error("boarders probability out of range");
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t rx = rint(x);
+        num_t ry = rint(y);
+        num_t ox = x - rx;
+        num_t oy = y - ry;
+        if (rng.randNum() >= prob)
+            return Point<num_t,2>(ox*0.5+rx,oy*0.5+ry);
+        else
+        {
+            // in flam3, this is 0.25
+            // should it be customizable or use this formula?
+            num_t mag = 1.0 - prob;
+            if (fabs(ox) >= fabs(oy))
+            {
+                num_t s = copysign(mag,ox);
+                num_t x = ox*0.5 + rx + s;
+                num_t y = oy*0.5 + ry + s*oy/ox;
+                return Point<num_t,2>(x,y);
+            }
+            else
+            {
+                num_t s = copysign(mag,oy);
+                num_t x = ox*0.5 + rx + s*ox/oy;
+                num_t y = oy*0.5 + ry + s;
+                return Point<num_t,2>(x,y);
+            }
+        }
+    }
+};
+
+/*
+Butterfly - 2d, from flam3 var57_butterfly
+*/
+template <typename num_t, size_t dims>
+class Butterfly: public VariationFrom2D<num_t,dims>
+{
+    // constant from flam3, not used here
+    static constexpr num_t flam3_constant = 1.3029400317411197908970256609023;
+public:
+    Butterfly(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t y2 = 2.0*y;
+        num_t r = sqrt(fabs(x*y) / (x*x + y2*y2 + eps<num_t>::value));
+        return r * Point<num_t,2>(x,y2);
+    }
+};
+
+/*
+Cell - 2d, from flam3 var58_cell
+*/
+template <typename num_t, size_t dims>
+class Cell: public VariationFrom2D<num_t,dims>
+{
+    num_t size,invsize;
+public:
+    Cell(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        size = json["size"].floatValue();
+        invsize = 1.0/size;
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t x = floor(tx.x() * invsize);
+        num_t y = floor(tx.y() * invsize);
+        num_t dx = tx.x() - x*size;
+        num_t dy = tx.y() - y*size;
+        num_t xs = copysign(2.0,x);
+        num_t ys = copysign(2.0,y);
+        num_t x2 = x * xs;
+        num_t y2 = y * ys;
+        // use boolean converted to float
+        x2 -= (num_t)(x < 0);
+        y2 -= (num_t)(y < 0);
+        return Point<num_t,2>(dx+x2*size,-dy-y2*size);
+    }
+};
+
+/*
+CPow - 2d, from flam3 var59_cpow
+*/
+template <typename num_t, size_t dims>
+class CPow: public VariationFrom2D<num_t,dims>
+{
+    num_t va,vc,vd,power;
+public:
+    CPow(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        num_t r = json["r"].floatValue();
+        num_t i = json["i"].floatValue();
+        power = json["power"].floatValue();
+        va = 2.0*M_PI/power;
+        vc = r/power;
+        vd = i/power;
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        num_t a = tx.angle();
+        num_t lnr = 0.5 * log(tx.norm2sq());
+        num_t ang = vc*a + vd*lnr + va*floor(power*rng.randNum());
+        num_t sa,ca;
+        sincosg(ang,sa,ca);
+        return exp(vc*lnr - vd*a) * Point<num_t,2>(ca,sa);
+    }
+};
+
+/*
+Curve - 2d, from flam3 var60_curve
+*/
+template <typename num_t, size_t dims>
+class Curve: public VariationFrom2D<num_t,dims>
+{
+    num_t invxl,invyl,xamp,yamp;
+public:
+    Curve(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        xamp = json["xamp"].floatValue();
+        yamp = json["yamp"].floatValue();
+        num_t xlen = json["xlen"].floatValue();
+        num_t ylen = json["ylen"].floatValue();
+        xlen *= xlen;
+        ylen *= ylen;
+        // flam3 uses 1e-20 as the minimum value for the denominator
+        invxl = 1.0 / std::max(eps<num_t>::value,xlen);
+        invyl = 1.0 / std::max(eps<num_t>::value,ylen);
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t vx = xamp*exp(-y*y*invxl);
+        num_t vy = yamp*exp(-x*x*invyl);
+        return tx + Point<num_t,2>(vx,vy);
+    }
+};
+
+/*
+E Disc - 2d, from flam3 var61_edisc
+*/
+template <typename num_t, size_t dims>
+class EDisc: public VariationFrom2D<num_t,dims>
+{
+    // constants from flam3, unused
+    static constexpr num_t flam3_constant_inv = 0.0864278365005759;
+    static constexpr num_t flam3_constant = 11.57034632;
+public:
+    EDisc(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t tmp = tx.norm2sq() + 1.0;
+        num_t tmp2 = 2.0*x;
+        num_t xmax = 0.5*(sqrt(tmp+tmp2) + sqrt(tmp-tmp2));
+        num_t a1 = log(xmax + sqrt(xmax-1.0));
+        num_t a2 = -acos(x/xmax);
+        num_t s1,c1;
+        sincosg(a1,s1,c1);
+        num_t s2 = sinh(a2);
+        num_t c2 = cosh(a2);
+        s1 *= copysign(1.0,-y);
+        return Point<num_t,2>(c2*c1,s2*s1);
+    }
+};
+
+/*
+Elliptic - 2d, from flam3 var62_elliptic
+*/
+template <typename num_t, size_t dims>
+struct Elliptic: public VariationFrom2D<num_t,dims>
+{
+    Elliptic(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t tmp = tx.norm2sq() + 1.0;
+        num_t x2 = 2.0*x;
+        num_t xmax = 0.5*(sqrt(tmp+x2) + sqrt(tmp-x2));
+        num_t a = x/xmax;
+        num_t b = 1.0 - a*a;
+        num_t ssx = xmax - 1.0;
+        // is there a way to eliminate these branches?
+        b = b < 0.0 ? 0.0 : sqrt(b);
+        ssx = ssx < 0.0 ? 0.0 : sqrt(ssx);
+        return Point<num_t,2>(atan2(a,b),copysign(1.0,y)*log(xmax+ssx));
+    }
+};
+
+/*
+Escher - 2d, from flam3 var63_escher
+*/
+template <typename num_t, size_t dims>
+class Escher: public VariationFrom2D<num_t,dims>
+{
+    num_t vc,vd;
+public:
+    Escher(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        num_t beta = json["beta"].floatValue();
+        num_t seb,ceb;
+        sincosg(beta,seb,ceb);
+        vc = 0.5*(1.0+ceb);
+        vd = 0.5*seb;
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t a = tx.angle();
+        num_t lnr = 0.5*log(tx.norm2sq());
+        num_t n = vc*a + vd*lnr;
+        num_t sn,cn;
+        sincosg(n,sn,cn);
+        return exp(vc*lnr - vd*a) * Point<num_t,2>(cn,sn);
+    }
+};
+
+/*
+Foci - 2d, from flam3 var64_foci
+*/
+template <typename num_t, size_t dims>
+struct Foci: public VariationFrom2D<num_t,dims>
+{
+    Foci(const Json& json): VariationFrom2D<num_t,dims>(json) {}
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t expx = 0.5*exp(x);
+        num_t expnx = 0.25/expx;
+        num_t sn,cn;
+        sincosg(y,sn,cn);
+        num_t tmp = 1.0 / (expx + expnx - cn);
+        return tmp * Point<num_t,2>(expx-expnx,sn);
+    }
+};
+
+/*
+Lazy Susan - 2d, from flam3 var65_lazysusan
+Uses a nonstandard variation weight
+*/
+template <typename num_t, size_t dims>
+class LazySusan: public VariationFrom2D<num_t,dims>
+{
+    num_t px,py,spin,twist,space,lsweight;
+public:
+    LazySusan(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        px = json["x"].floatValue();
+        py = json["y"].floatValue();
+        spin = json["spin"].floatValue();
+        twist = json["twist"].floatValue();
+        space = json["space"].floatValue();
+        lsweight = json["flam3_weight"].floatValue();
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t x = tx.x() - px;
+        num_t y = tx.y() + py;
+        num_t r = hypot(x,y);
+        if (r < lsweight)
+        {
+            num_t a = atan2(y,x) + spin + twist*(lsweight - r);
+            num_t sa,ca;
+            sincosg(a,sa,ca);
+            return Point<num_t,2>(r*ca+px,r*sa-py);
+        }
+        else
+        {
+            r = 1.0 + space / (r + eps<num_t>::value); // flam3 does not add eps
+            return Point<num_t,2>(r*x+px,r*y-py);
+        }
+    }
+};
+
+/*
+Loonie - 2d, from flam3 var66_loonie
+Uses a nonstandard variation weight
+*/
+template <typename num_t, size_t dims>
+class Loonie: public VariationFrom2D<num_t,dims>
+{
+    num_t loonieweight,loonieweightsq;
+public:
+    Loonie(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        loonieweight = json["flam3_weight"].floatValue();
+        loonieweightsq = loonieweight * loonieweight;
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t r2 = tx.norm2sq();
+        num_t w2 = loonieweightsq;
+        num_t r = loonieweight;
+        // flam3 does not add eps
+        if (r2 < w2) r *= sqrt(w2/(r2 + eps<num_t>::value) - 1.0);
+        return r * tx;
+    }
+};
+
+/*
+O Scope - 2d, from flam3 var69_oscope
+*/
+template <typename num_t, size_t dims>
+class OScope: public VariationFrom2D<num_t,dims>
+{
+    num_t tpf,p_amp,p_damp,sep;
+public:
+    OScope(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        num_t freq = json["frequency"].floatValue();
+        tpf = 2.0*M_PI*freq;
+        p_amp = json["amplitude"].floatValue();
+        p_damp = json["damping"].floatValue();
+        sep = json["separation"].floatValue();
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t x,y;
+        tx.getXY(x,y);
+        num_t damp = exp(-fabs(x)*p_damp);
+        num_t t = p_amp * damp * cos(tpf*x) + sep;
+        num_t yy = copysign(1.0,fabs(y)-t) * y;
+        return Point<num_t,2>(x,yy);
+    }
+};
+
+/*
+Popcorn - 2d, from flam3 var17_popcorn and var71_popcorn2
+*/
+template <typename num_t, size_t dims>
+class Popcorn: public VariationFrom2D<num_t,dims>
+{
+    num_t px,py,pc;
+public:
+    Popcorn(const Json& json): VariationFrom2D<num_t,dims>(json)
+    {
+        px = json["x"].floatValue();
+        py = json["y"].floatValue();
+        pc = json["c"].floatValue();
+    }
+    inline Point<num_t,2> calc2d(
+        rng_t<num_t>& rng, const Point<num_t,2>& tx) const
+    {
+        (void)rng;
+        num_t dx = px*sin(tan(tx.y()*pc));
+        num_t dy = py*sin(tan(tx.x()*pc));
+        return tx + Point<num_t,2>(dx,dy);
+    }
+};
+
+/*
+======= variations by tkoz =======
+*/
+
+/*
+Spherical P - tkoz, generalized from spherical
+*/
+template <typename num_t, size_t dims>
+class SphericalP: public Variation<num_t,dims>
+{
+    num_t norm;
+public:
+    SphericalP(const Json& json): Variation<num_t,dims>(json)
+    {
+        norm = json["norm"].floatValue();
+        if (norm <= 0.0)
+            throw std::runtime_error("norm <= 0");
+    }
+    inline Point<num_t,dims> calc(
+        rng_t<num_t>& rng, const Point<num_t,dims>& tx) const
+    {
+        (void)rng;
+        num_t r = 1.0 / (tx.normsum(norm) + eps<num_t>::value);
+        return r * tx;
+    }
+};
+
+/*
+Unit Sphere - tkoz
+*/
+template <typename num_t, size_t dims>
+struct UnitSphere: public Variation<num_t,dims>
+{
+    UnitSphere(const Json& json): Variation<num_t,dims>(json) {}
+    inline Point<num_t,dims> calc(
+        rng_t<num_t>& rng, const Point<num_t,dims>& tx) const
+    {
+        (void)rng;
+        num_t r = 1.0 / (tx.norm2() + eps<num_t>::value);
+        return r * tx;
+    }
+};
+
+/*
+Unit Sphere P - tkoz
+*/
+template <typename num_t, size_t dims>
+class UnitSphereP: public Variation<num_t,dims>
+{
+    num_t norm;
+public:
+    UnitSphereP(const Json& json): Variation<num_t,dims>(json)
+    {
+        norm = json["norm"].floatValue();
+        if (norm <= 0.0)
+            throw std::runtime_error("norm <= 0");
+    }
+    inline Point<num_t,dims> calc(
+        rng_t<num_t>& rng, const Point<num_t,dims>& tx) const
+    {
+        (void)rng;
+        num_t r = 1.0 / (tx.norm(norm) + eps<num_t>::value);
+        return r * tx;
+    }
+};
+
+/*
+Unit Cube - tkoz
+*/
+template <typename num_t, size_t dims>
+struct UnitCube: public Variation<num_t,dims>
+{
+    UnitCube(const Json& json): Variation<num_t,dims>(json) {}
+    inline Point<num_t,dims> calc(
+        rng_t<num_t>& rng, const Point<num_t,dims>& tx) const
+    {
+        (void)rng;
+        num_t r = 1.0 / (tx.norminf() + eps<num_t>::value);
+        return r * tx;
+    }
+};
+
+// do not include 2d variations with below 2 dimensions
+template <typename num_t, size_t dims>
+ENABLE_IF3(dims<2) Variation<num_t,dims>::parseVariation2d(const Json& json)
+{
+    (void)json;
+    return nullptr;
 }
 
+// put 2d variation factory here
+template <typename num_t, size_t dims>
+ENABLE_IF3(dims>=2) Variation<num_t,dims>::parseVariation2d(const Json& json)
+{
+    std::string name = json["name"].stringValue();
+    if (name == "swirl")
+        return new Swirl<num_t,dims>(json);
+    if (name == "horseshoe")
+        return new Horseshoe<num_t,dims>(json);
+    if (name == "polar")
+        return new Polar<num_t,dims>(json);
+    if (name == "polar2")
+        return new Polar2<num_t,dims>(json);
+    if (name == "handkerchief")
+        return new Handkerchief<num_t,dims>(json);
+    if (name == "heart")
+        return new Heart<num_t,dims>(json);
+    if (name == "disc")
+        return new Disc<num_t,dims>(json);
+    if (name == "disc2")
+        return new Disc2<num_t,dims>(json);
+    if (name == "waves")
+        return new Waves<num_t,dims>(json);
+    if (name == "fan")
+        return new Fan<num_t,dims>(json);
+    if (name == "rings")
+        return new Rings<num_t,dims>(json);
+    if (name == "spiral")
+        return new Spiral<num_t,dims>(json);
+    if (name == "hyperbolic")
+        return new Hyperbolic<num_t,dims>(json);
+    if (name == "diamond")
+        return new Diamond<num_t,dims>(json);
+    if (name == "ex")
+        return new Ex<num_t,dims>(json);
+    if (name == "julia")
+        return new Julia<num_t,dims>(json);
+    if (name == "exponential")
+        return new Exponential<num_t,dims>(json);
+    if (name == "power")
+        return new Power<num_t,dims>(json);
+    if (name == "cosine")
+        return new Cosine<num_t,dims>(json);
+    if (name == "blob")
+        return new Blob<num_t,dims>(json);
+    if (name == "pdj")
+        return new PDJ<num_t,dims>(json);
+    if (name == "cylinder")
+        return new Cylinder<num_t,dims>(json);
+    if (name == "perspective")
+        return new Perspective<num_t,dims>(json);
+    if (name == "julian")
+        return new JuliaN<num_t,dims>(json);
+    if (name == "juliascope")
+        return new JuliaScope<num_t,dims>(json);
+    if (name == "radial_blur")
+        return new RadialBlur<num_t,dims>(json);
+    if (name == "pie")
+        return new Pie<num_t,dims>(json);
+    if (name == "ngon")
+        return new NGon<num_t,dims>(json);
+    if (name == "curl")
+        return new Curl<num_t,dims>(json);
+    if (name == "arch")
+        return new Arch<num_t,dims>(json);
+    if (name == "tangent")
+        return new Tangent<num_t,dims>(json);
+    if (name == "rays")
+        return new Rays<num_t,dims>(json);
+    if (name == "blade")
+        return new Blade<num_t,dims>(json);
+    if (name == "secant")
+        return new Secant<num_t,dims>(json);
+    if (name == "twintrian")
+        return new Twintrian<num_t,dims>(json);
+    if (name == "cross")
+        return new Cross<num_t,dims>(json);
+    if (name == "exp")
+        return new Exp<num_t,dims>(json);
+    if (name == "log")
+        return new Log<num_t,dims>(json);
+    if (name == "sin")
+        return new Sin<num_t,dims>(json);
+    if (name == "cos")
+        return new Cos<num_t,dims>(json);
+    if (name == "tan")
+        return new Tan<num_t,dims>(json);
+    if (name == "sec")
+        return new Sec<num_t,dims>(json);
+    if (name == "csc")
+        return new Csc<num_t,dims>(json);
+    if (name == "cot")
+        return new Cot<num_t,dims>(json);
+    if (name == "sinh")
+        return new Sinh<num_t,dims>(json);
+    if (name == "cosh")
+        return new Cosh<num_t,dims>(json);
+    if (name == "tanh")
+        return new Tanh<num_t,dims>(json);
+    if (name == "sech")
+        return new Sech<num_t,dims>(json);
+    if (name == "csch")
+        return new Csch<num_t,dims>(json);
+    if (name == "coth")
+        return new Coth<num_t,dims>(json);
+    if (name == "auger")
+        return new Auger<num_t,dims>(json);
+    if (name == "flux")
+        return new Flux<num_t,dims>(json);
+    if (name == "mobius")
+        return new Mobius<num_t,dims>(json);
+    if (name == "scry")
+        return new Scry<num_t,dims>(json);
+    if (name == "split")
+        return new Split<num_t,dims>(json);
+    if (name == "stripes")
+        return new Stripes<num_t,dims>(json);
+    if (name == "wedge")
+        return new Wedge<num_t,dims>(json);
+    if (name == "wedge_julia")
+        return new WedgeJulia<num_t,dims>(json);
+    if (name == "wedge_sph")
+        return new WedgeSph<num_t,dims>(json);
+    if (name == "whorl")
+        return new Whorl<num_t,dims>(json);
+    if (name == "supershape")
+        return new Supershape<num_t,dims>(json);
+    if (name == "flower")
+        return new Flower<num_t,dims>(json);
+    if (name == "conic")
+        return new Conic<num_t,dims>(json);
+    if (name == "parabola")
+        return new Parabola<num_t,dims>(json);
+    if (name == "bipolar")
+        return new Bipolar<num_t,dims>(json);
+    if (name == "boarders")
+        return new Boarders<num_t,dims>(json);
+    if (name == "butterfly")
+        return new Butterfly<num_t,dims>(json);
+    if (name == "cell")
+        return new Cell<num_t,dims>(json);
+    if (name == "cpow")
+        return new CPow<num_t,dims>(json);
+    if (name == "curve")
+        return new Curve<num_t,dims>(json);
+    if (name == "edisc")
+        return new EDisc<num_t,dims>(json);
+    if (name == "elliptic")
+        return new Elliptic<num_t,dims>(json);
+    if (name == "escher")
+        return new Escher<num_t,dims>(json);
+    if (name == "foci")
+        return new Foci<num_t,dims>(json);
+    if (name == "lazysusan")
+        return new LazySusan<num_t,dims>(json);
+    if (name == "loonie")
+        return new Loonie<num_t,dims>(json);
+    if (name == "oscope")
+        return new OScope<num_t,dims>(json);
+    if (name == "popcorn")
+        return new Popcorn<num_t,dims>(json);
+    return nullptr;
+}
+
+// do not include 3d variations with below 3 dimensions
+template <typename num_t, size_t dims>
+ENABLE_IF3(dims<3) Variation<num_t,dims>::parseVariation3d(const Json& json)
+{
+    (void)json;
+    return nullptr;
+}
+
+// put 3d variation factory here
+template <typename num_t, size_t dims>
+ENABLE_IF3(dims>=3) Variation<num_t,dims>::parseVariation3d(const Json& json)
+{
+    (void)json;
+    return nullptr;
+}
+
+// put nd variation factory here
+template <typename num_t, size_t dims>
+Variation<num_t,dims> *Variation<num_t,dims>::parseVariationNd(const Json& json)
+{
+    std::string name = json["name"].stringValue();
+    if (name == "linear")
+        return new Linear<num_t,dims>(json);
+    if (name == "sinusoidal")
+        return new Sinusoidal<num_t,dims>(json);
+    if (name == "spherical")
+        return new Spherical<num_t,dims>(json);
+    if (name == "bent")
+        return new Bent<num_t,dims>(json);
+    if (name == "rectangles")
+        return new Rectangles<num_t,dims>(json);
+    if (name == "fisheye")
+        return new Fisheye<num_t,dims>(json);
+    if (name == "bubble")
+        return new Bubble<num_t,dims>(json);
+    if (name == "noise")
+        return new Noise<num_t,dims>(json);
+    if (name == "blur")
+        return new Blur<num_t,dims>(json);
+    if (name == "gaussian_blur")
+        return new GaussianBlur<num_t,dims>(json);
+    if (name == "square_noise")
+        return new SquareNoise<num_t,dims>(json);
+    if (name == "separation")
+        return new Separation<num_t,dims>(json);
+    if (name == "splits")
+        return new Splits<num_t,dims>(json);
+    if (name == "pre_blur")
+        return new PreBlur<num_t,dims>(json);
+    if (name == "modulus")
+        return new Modulus<num_t,dims>(json);
+    if (name == "celln")
+        return new CellN<num_t,dims>(json);
+    if (name == "spherical_p")
+        return new SphericalP<num_t,dims>(json);
+    if (name == "unit_sphere")
+        return new UnitSphere<num_t,dims>(json);
+    if (name == "unit_sphere_p")
+        return new UnitSphereP<num_t,dims>(json);
+    if (name == "unit_cube")
+        return new UnitCube<num_t,dims>(json);
+    return nullptr;
+}
+
+template <typename num_t, size_t dims>
+Variation<num_t,dims> *Variation<num_t,dims>::parseVariation(const Json& json)
+{
+    std::string name = json["name"].stringValue();
+    Variation<num_t,dims> *ret = nullptr;
+    ret = parseVariation2d(json);
+    if (ret) return ret;
+    ret = parseVariation3d(json);
+    if (ret) return ret;
+    ret = parseVariationNd(json);
+    if (ret) return ret;
+    throw std::runtime_error("unknown variation: "+name);
+}
+
+}
+
+#undef ENABLE_IF
+#undef ENABLE_IF2
+#undef ENABLE_IF3
 #undef likely
 #undef unlikely
-
-#undef VAR_T
-#undef STATE_T
-#undef XFORM_T
-#undef JSON_T
-#undef PARAM_T
-#undef VAR_FUNC
-#undef VAR_PARSE
-#undef VAR_RET
-#undef TX
-#undef TY
-#undef TP
-#undef EPS

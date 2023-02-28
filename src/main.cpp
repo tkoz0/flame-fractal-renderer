@@ -3,7 +3,7 @@ ffbuf: usage
 [-h --help]: show this message
 -f --flame: flame parameters JSON file (required)
 -o --output: output file (required)
-[-i --input]: buffer (default none, render new buffer)
+[-i --input]: buffers to start with (can use multiple input files)
 [-s --samples]: samples to render (default 0)
 [-t --type]: output type (png,pgm,buf) (default use file extension)
 [-b --img_bits]: bit depth for png or pgm output (8 or 16) (default 8)
@@ -16,7 +16,8 @@ planned options (not available yet):
 [-p --precision]: calculation precision (single or double) (default single)
 [-w --hist_bits]: histogram integer bit size (32 or 64) (default 32)
 [-R --rng]: random number generator (java,isaac32,isaac64) (default isaac32)
-[-r --seed]: random number generator seed seed (default random)
+[-r --seed]: random number generator seed (default random)
+[-v --verbose]: show extra information
 */
 
 #include <ctime>
@@ -27,15 +28,15 @@ planned options (not available yet):
 
 #include <boost/program_options.hpp>
 
-#include "json_small.hpp"
-#include "renderer.hpp"
-#include "types.hpp"
-#include "variations.hpp"
-#include "utils.hpp"
+#include "renderers/renderer.hpp"
+#include "utils/image.hpp"
+#include "utils/misc.hpp"
+
+const std::string VERSION = "unspecified";
 
 namespace bpo = boost::program_options;
 typedef float num_t; // can also be double (slower)
-typedef Isaac<u32,4> rand_t; // can also be JavaRandom (about same speed)
+typedef u32 hist_t; // can also be u64
 
 int main(int argc, char **argv)
 {
@@ -46,8 +47,8 @@ int main(int argc, char **argv)
             "flame parameters JSON file (required)")
         ("output,o",bpo::value<std::string>(),
             "output file (required)")
-        ("input,i",bpo::value<std::string>()->default_value(""),
-            "buffer (default none, render new buffer)")
+        ("input,i",bpo::value<std::vector<std::string>>(),
+            "buffers to add for initial histogram (default none)")
         ("samples,s",bpo::value<size_t>()->default_value(0),
             "samples to render (default 0)")
         ("type,t",bpo::value<std::string>()->default_value(""),
@@ -56,15 +57,15 @@ int main(int argc, char **argv)
             "bit depth for png or pgm output (8 or 16) (default 8)")
         ("threads,T",bpo::value<size_t>()->default_value(1),
             "number of threads to use (default 1)")
-        ("batch_size,z",bpo::value<size_t>()->default_value(250000),
-            "multithreading batch size (default 250000)")
+        ("batch_size,z",bpo::value<size_t>()->default_value(65536),
+            "multithreading batch size (default 65536)")
         ("bad_values,B",bpo::value<size_t>()->default_value(10),
             "bad value limit for terminating render (default 10)")
         ("scaler,m",bpo::value<std::string>()->default_value("log"),
             "scaling function for image render (bin,lin,log) (default log)");
     bpo::variables_map args;
     bpo::store(bpo::command_line_parser(argc,argv).options(options).run(),args);
-    if (args.count("help") || args.empty())
+    if (args.count("help") || args.empty() || argc < 2)
     {
         std::cerr << options;
         return 1;
@@ -81,7 +82,9 @@ int main(int argc, char **argv)
     }
     // cmdline values
     std::string arg_flame = args["flame"].as<std::string>();
-    std::string arg_input = args["input"].as<std::string>();
+    std::vector<std::string> args_input;
+    if (args.count("input") > 0)
+        args_input = args["input"].as<std::vector<std::string>>();
     size_t arg_samples = args["samples"].as<size_t>();
     std::string arg_output = args["output"].as<std::string>();
     std::string arg_type = args["type"].as<std::string>();
@@ -109,9 +112,9 @@ int main(int argc, char **argv)
         std::cerr << "error: must use between 1 and 128 threads" << std::endl;
         return 1;
     }
-    if (arg_batch_size < (1<<12) || arg_batch_size > (1<<30))
+    if (arg_batch_size < (1<<8) || arg_batch_size > (1<<30))
     {
-        std::cerr << "error: batch size < 2^12 or > 2^30" << std::endl;
+        std::cerr << "error: batch size < 2^8 or > 2^30" << std::endl;
         return 1;
     }
     if (arg_bad_values < 1)
@@ -138,10 +141,13 @@ int main(int argc, char **argv)
             return 1;
         }
     }
+    std::cerr << "=== FFBUF version " << VERSION << " ===" << std::endl;
     // print options
+    std::cerr << "command line arguments:" << std::endl;
     std::cerr << "ffbuf" << std::endl;
     std::cerr << "--flame: " << arg_flame << std::endl;
-    std::cerr << "--input: " << arg_input << std::endl;
+    for (std::string arg_input : args_input)
+        std::cerr << "--input: " << arg_input << std::endl;
     std::cerr << "--samples: " << arg_samples << std::endl;
     std::cerr << "--output: " << arg_output << std::endl;
     std::cerr << "--type: " << arg_type << std::endl;
@@ -157,79 +163,96 @@ int main(int argc, char **argv)
     else
         json_flame = Json(read_text_file(arg_flame));
     std::cerr << "flame json (comments removed): " << json_flame << std::endl;
-    tkoz::flame::RendererBasic<num_t,u32,rand_t> renderer(json_flame);
-    const tkoz::flame::Flame<num_t,rand_t>& flame = renderer.getFlame();
-    std::cerr << "x size: " << flame.getSizeX() << std::endl;
-    std::cerr << "y size: " << flame.getSizeY() << std::endl;
-    num_t xdiff = flame.getXMax() - flame.getXMin();
-    num_t ydiff = flame.getYMax() - flame.getYMin();
+    tkoz::flame::RendererBasic<num_t,hist_t> renderer(json_flame);
+    const tkoz::flame::Flame<num_t,2>& flame = renderer.getFlame();
+    std::cerr << "x size: " << flame.getSize()[0] << std::endl;
+    std::cerr << "y size: " << flame.getSize()[1] << std::endl;
+    std::pair<num_t,num_t> xb = flame.getBounds()[0];
+    std::pair<num_t,num_t> yb = flame.getBounds()[1];
+    num_t xdiff = xb.second - xb.first;
+    num_t ydiff = yb.second - yb.first;
     fprintf(stderr,"rect ratio (render bounds): %f\n",(float)ydiff/xdiff);
     fprintf(stderr,"size ratio (buffer): %f\n",
-        (float)flame.getSizeY()/flame.getSizeX());
-    u32 *buf = renderer.getHistogram(); // buffer to overwrite
+        (float)flame.getSize()[1]/flame.getSize()[0]);
+    hist_t *buf = renderer.getHistogram();
+    hist_t *fbuf = nullptr; // buffer for storing file contents
     // load buffer if specified
-    if (arg_input != "")
+    size_t i = 0;
+    for (std::string arg_input : args_input)
     {
+        ++i;
+        fprintf(stderr,"reading input file %s (%lu/%lu)\n",
+            arg_input.c_str(),i,args_input.size());
+        if (!fbuf) // use buffer to read from files
+            fbuf = new hist_t[renderer.getHistogramSize()];
         if (arg_input == "-") // input from stdin
         {
-            if (!std::cin.read((char*)buf,renderer.getHistogramSizeBytes()))
+            if (!std::cin.read((char*)fbuf,renderer.getHistogramSizeBytes()))
             {
                 std::cerr << "error: unable to read (enough) buffer bytes"
                     << std::endl;
                 return 1;
             }
-            if (!std::cin.eof())
+            if (std::cin.peek() != EOF)
                 std::cerr << "warn: did not reach EOF of stdin" << std::endl;
         }
         else
         {
             std::ifstream ifs(arg_input,std::ios::in|std::ios::binary);
-            if (!ifs.read((char*)buf,renderer.getHistogramSizeBytes()))
+            if (!ifs.read((char*)fbuf,renderer.getHistogramSizeBytes()))
             {
                 std::cerr << "error: unable to read (enough) buffer bytes"
                     << std::endl;
                 return 1;
             }
-            if (!ifs.eof())
+            if (ifs.peek() != EOF)
                 std::cerr << "warn: did not reach EOF of file" << std::endl;
             ifs.close();
         }
-        fprintf(stderr,"read %lu bytes\n",renderer.getHistogramSizeBytes());
+        fprintf(stderr,"read %lu bytes from %s\n",
+            renderer.getHistogramSizeBytes(),arg_input.c_str());
+        for (size_t i = 0; i < renderer.getHistogramSize(); ++i)
+            buf[i] += fbuf[i];
     }
+    if (fbuf) // clean up file buffer
+        delete[] fbuf;
     size_t buffer_sum_initial = 0;
     for (size_t i = 0; i < renderer.getHistogramSize(); ++i)
         buffer_sum_initial += buf[i];
     fprintf(stderr,"buffer sum (initial): %lu\n",buffer_sum_initial);
-    std::cerr << "flame name: " << renderer.getFlame().getName() << std::endl;
     if (arg_samples)
     {
         std::cerr << "render start" << std::endl;
         struct timespec t1,t2;
         clock_gettime(CLOCK_MONOTONIC,&t1);
-        size_t prev_percent = 0;
+        i32 prev_percent = -1;
+        size_t prev_tsec = t1.tv_sec;
         //renderer.renderBuffer(arg_samples,rng);
         renderer.renderBufferParallel(arg_samples,arg_threads,
             arg_batch_size,arg_bad_values,
-            [&prev_percent,&t1,&t2](float p)
+            [&prev_percent,&prev_tsec,&t1,&t2](float p)
             {
                 clock_gettime(CLOCK_MONOTONIC,&t2);
                 size_t nsecs = 1000000000uLL*(t2.tv_sec-t1.tv_sec)
                     +(t2.tv_nsec-t1.tv_nsec);
                 size_t secs = nsecs/1000000000;
-                size_t percent = (size_t)(100.0*p);
-                if (percent > prev_percent) // only output when it changes
+                i32 percent = (i32)(100.0*p);
+                size_t tsec = t2.tv_sec;
+                // output when % changes or every second
+                if (percent > prev_percent || tsec > prev_tsec)
                 {
-                    std::cerr << '\r' << "rendering... " << percent << "% ("
+                    std::cerr << "\r" << "rendering... " << percent << "% ("
                         << secs << " sec elapsed)";
                     prev_percent = percent;
+                    prev_tsec = tsec;
                 }
             },
             [](std::thread& thread, size_t index)
             {
                 std::cerr << "starting thread " << index << " ("
-                    << thread.get_id() << ')' << std::endl;
+                    << thread.get_id() << ")" << std::endl;
             });
-        std::cerr << '\r' << "rendering... 100%" << std::endl;
+        std::cerr << "\r" << "rendering... 100%" << std::endl;
         clock_gettime(CLOCK_MONOTONIC,&t2);
         size_t nsecs = 1000000000uLL*(t2.tv_sec-t1.tv_sec)
             +(t2.tv_nsec-t1.tv_nsec);
@@ -257,10 +280,10 @@ int main(int argc, char **argv)
         std::cerr << std::endl;
         std::cerr << "bad value points:";
         for (auto p : renderer.getBadValuePoints())
-            fprintf(stderr," (%le,%le)",p.x,p.y);
+            fprintf(stderr," (%le,%le)",p.x(),p.y());
         std::cerr << std::endl;
-        u32 sample_min = -1;
-        u32 sample_max = 0;
+        hist_t sample_min = -1;
+        hist_t sample_max = 0;
         size_t buffer_sum = 0;
         for (size_t i = 0; i < renderer.getHistogramSize(); ++i)
         {
@@ -308,15 +331,15 @@ int main(int argc, char **argv)
     std::ostream& os = arg_output != "-" ? ofs : std::cout;
     u8 *img8 = nullptr;
     u16 *img16 = nullptr;
-    size_t X = renderer.getFlame().getSizeX();
-    size_t Y = renderer.getFlame().getSizeY();
-    std::function<num_t(u32)> scale;
+    size_t X = renderer.getFlame().getSize()[0];
+    size_t Y = renderer.getFlame().getSize()[1];
+    std::function<num_t(hist_t)> scale;
     if (arg_scaler == "binary")
-        scale = [](u32 n) { return n ? 1.0 : 0.0; };
+        scale = [](hist_t n) { return n ? 1.0 : 0.0; };
     else if (arg_scaler == "linear")
-        scale = [](u32 n) { return (num_t)n; };
+        scale = [](hist_t n) { return (num_t)n; };
     else if (arg_scaler == "log")
-        scale = [](u32 n) { return log(1.0+(num_t)n); };
+        scale = [](hist_t n) { return log(1.0+(num_t)n); };
     bool success;
     if (arg_img_bits == 8)
     {

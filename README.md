@@ -12,7 +12,7 @@ Flame fractals are based on iterated function systems. They are typically
 considered in 2 dimensions for an image, but can be generalized to higher
 dimensions. In $n$ dimensions, we have a set of functions $f_i:R^n\to R^n$ with
 weights $w_i$ that sum to 1. The details in specifying these functions will come
-later. To render a flame fractal, start with a random point $x$ in the unit
+later. To render a flame fractal, start with a random point $x$ in the biunit
 square/cube/hypercube centered at the origin. Then to perform an iteration,
 randomly choose a function $f_i$ according to the weights and update $x$ to be
 $f_i(x)$. This will generate a sequence of points. For each point (except some
@@ -55,7 +55,8 @@ decided to go with ISAAC as flam3 uses ISAAC, but the code for a
 java.util.Random implementation is still included).
 
 Another reason was interest in exploring 3D flame fractals. This software has
-not been extended to support 3D yet.
+not been extended to support 3D yet. Currently the code can support higher
+dimensions but there is not yet a renderer that can make use of it.
 
 ## json format
 
@@ -65,24 +66,25 @@ eventually. The software does not give good error messages for incorrect format.
 
 ## building
 
-Simply run `make` in the directory. It will build the executable `bin/ffbuf`.
+Simply run `make` in the directory. It will build the executable `ffbuf`.
 This was only tested on Ubuntu 20.04 and 22.04.
 
 ## command line options
 
-The help message:
+The help message for `ffbuf.out` (renderer for the grid buffer, currently 2d
+only):
 
 ```
 ffbuf: usage
 [-h --help]: show this message
 -f --flame: flame parameters JSON file (required)
 -o --output: output file (required)
-[-i --input]: buffer (default none, render new buffer)
+[-i --input]: buffers to start with (can use multiple input files)
 [-s --samples]: samples to render (default 0)
 [-t --type]: output type (png,pgm,buf) (default use file extension)
 [-b --img_bits]: bit depth for png or pgm output (8 or 16) (default 8)
 [-T --threads]: number of threads to use (default 1)
-[-z --batch_size]: multithreading batch size (default 250000)
+[-z --batch_size]: multithreading batch size (default 65536)
 [-B --bad_values]: bad value limit for terminating render (default 10)
 [-m --scaler]: scaling function for image (binary,linear,log) (default log)
 ```
@@ -98,9 +100,10 @@ In more detail:
 determined automatically from the extension (.png, .pgm, or .buf, see the `-t`
 option)
 
-`-i --input` specify a buffer file, otherwise start with an empty (zeroed)
+`-i --input` specify buffer files, otherwise start with an empty (zeroed)
 buffer. This can be used to add samples to an existing buffer or convert an
-existing buffer into an image.
+existing buffer into an image. This option can be used multiple times, all
+input buffers will be added together.
 
 `-s --samples` number of samples to render
 

@@ -1,8 +1,10 @@
 .vscode
-/bin
 /nlohmann/json.hpp
+/obj
 *.o
+*.d
 *.out
 *.pgm
 *.png
 *.buf
+.prereq

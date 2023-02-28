@@ -1,3 +1,8 @@
+/*
+Random number generator designed to work exactly like java.util.Random
+It does so in everything except the Gaussian random variables
+*/
+
 #pragma once
 
 #include <cmath>
@@ -5,7 +10,7 @@
 #include <cstdlib>
 #include <ctime>
 
-#include "utils.hpp"
+#include "../utils/clock.hpp"
 
 #define likely(x)   __builtin_expect(!!(x),1)
 #define unlikely(x) __builtin_expect(!!(x),0)

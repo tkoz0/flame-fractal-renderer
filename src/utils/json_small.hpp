@@ -4,7 +4,7 @@
 #include <vector>
 #include <unordered_map>
 
-#include "../nlohmann/json.hpp"
+#include "../../nlohmann/json.hpp"
 
 class Json;
 
@@ -13,6 +13,10 @@ typedef std::vector<Json> JsonArray;
 
 // type to use for JSON objects
 typedef std::unordered_map<std::string,Json> JsonObject;
+
+typedef bool JsonBool;
+typedef int64_t JsonInt;
+typedef double JsonFloat;
 
 /*
 interface for using nlohmann::json with the features needed for this project
@@ -24,6 +28,8 @@ public:
     // create json object from input stream or string
     // create empty JSON
     Json();
+    // copy constructor
+    Json(const Json& json);
     // create JSON from input stream
     Json(std::istream& input);
     // create JSON from string
@@ -44,12 +50,14 @@ public:
     bool isArray() const;
     // is value an object
     bool isObject() const;
+    // returns the length of the value (for arrays and objects)
+    size_t length() const;
     // returns boolean value, exception if not a boolean
     bool boolValue() const;
     // returns integer value, exception if not an integer
-    int64_t intValue() const;
+    JsonInt intValue() const;
     // returns floating point value, exception if not a floating point
-    double floatValue() const;
+    JsonFloat floatValue() const;
     // returns string value, exception if not a string
     std::string stringValue() const;
     // returns array value, exception if not an array
