@@ -66,8 +66,20 @@ eventually. The software does not give good error messages for incorrect format.
 
 ## building
 
-Simply run `make` in the directory. It will build the executable `ffbuf`.
-This was only tested on Ubuntu 20.04 and 22.04.
+Make sure you have the following Ubuntu packages installed (or equivalent on
+other distros)
+
+1. `build-essential` (for `make` and `g++`)
+2. `wget`
+3. `libboost-program-options-dev`
+4. `libpng-dev`
+
+The required boost package is also part of `libboost-all-dev`. Once these are
+installed, simply run `make`. It will build the executable `ffbuf.out`.
+
+This was only tested on Ubuntu 20.04 and 22.04 since I only use Ubuntu for
+development. Help to expand this section to support other systems would be
+appreciated.
 
 ## command line options
 
