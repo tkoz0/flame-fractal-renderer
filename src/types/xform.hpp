@@ -15,7 +15,6 @@ template <typename num_t, size_t dims> class XForm;
 
 #include "point.hpp"
 #include "affine.hpp"
-#include "iter_state.hpp"
 #include "../variations.hpp"
 
 // TODO need color speed and color parameters
@@ -29,18 +28,26 @@ template <typename num_t, size_t dims>
 class XForm
 {
 private:
+    typedef Point<num_t,dims> point_t;
+    size_t id;
     num_t weight; // xform probability weight, not applicable for final xform
     typedef vars::Variation<num_t,dims> var_t;
     std::vector<std::shared_ptr<var_t>> vars;
     Affine<num_t,dims> pre; // pre affine transformation
     Affine<num_t,dims> post; // post affine transformation
     bool has_pre,has_post;
+    // optimize xform
+    void _optimize()
+    {
+    }
 public:
+    // need default constructor since final xform may not be used
     XForm(){}
     // construct from JSON data
     // throws error if something goes wrong
-    XForm(const Json& input, bool is_final = false)
+    XForm(const Json& input, size_t id, bool is_final)
     {
+        this->id = id;
         if (!is_final)
             weight = input["weight"].floatValue();
         else
@@ -60,14 +67,15 @@ public:
             post = Affine<num_t,dims>();
         for (Json varj : input["variations"].arrayValue())
             vars.push_back(std::shared_ptr<var_t>(var_t::parseVariation(varj)));
-    }
-    // optimize xform
-    void optimize()
-    {
+        _optimize();
     }
     inline num_t getWeight() const
     {
         return weight;
+    }
+    inline size_t getID() const
+    {
+        return id;
     }
     inline const Affine<num_t,dims>& getPreAffine() const
     {
@@ -82,20 +90,17 @@ public:
         return vars;
     }
     // iterate a state for the rendering process
-    inline void applyIteration(IterState<num_t,dims>& state) const
+    inline point_t applyIteration(rng_t<num_t>& rng, const point_t& p) const
     {
+        point_t t,v;
         // for 2d, faster to apply identity affine than to branch
         if (dims < 3 || has_pre)
-            state.t = pre.apply_to(state.p);
-        else
-            state.t = state.p;
-        state.v = Point<num_t,dims>();
+            t = pre.apply_to(p);
         for (auto var : vars)
-            state.v += var->getWeight() * var->calc(*state.rng,state.t);
+            v += var->getWeight() * var->calc(rng,t);
         if (dims < 3 || has_post)
-            state.p = post.apply_to(state.v);
-        else
-            state.p = state.v;
+            t = post.apply_to(v);
+        return t;
     }
 };
 

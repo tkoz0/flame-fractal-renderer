@@ -26,13 +26,53 @@ template <typename num_t, size_t dims>
 class Flame
 {
 private:
+    // number of grid samples in each dimension
     std::array<size_t,dims> size;
+    // coordinate bounds in each dimension
     std::array<std::pair<num_t,num_t>,dims> bounds;
+    // list of (non final) xforms
     std::vector<XForm<num_t,dims>> xforms;
+    size_t xform_ids;
+    // final xform
     XForm<num_t,dims> final_xform;
     bool has_final_xform;
-public:
+    // cumulative weights for xform probability selection
+    std::vector<num_t> xfcw;
+    void _setupCumulativeWeights()
+    {
+        xfcw = std::vector<num_t>(xforms.size());
+        // compute weight sum for normalizing
+        num_t normdiv = 0.0;
+        for (size_t i = 0; i < xforms.size(); ++i)
+            normdiv += xforms[i].getWeight();
+        // store normalized cumulative weights
+        num_t wsum = 0.0;
+        for (size_t i = 0; i < xforms.size(); ++i)
+        {
+            wsum += xforms[i].getWeight() / normdiv;
+            xfcw[i] = wsum;
+        }
+        // correct rounding error
+        xfcw.back() = 1.0;
+    }
+    void _optimize()
+    {
+        // remove 0 weight xforms
+        auto itr = xforms.begin();
+        while (itr != xforms.end())
+        {
+            if (itr->getWeight() == 0.0)
+                itr = xforms.erase(itr);
+            else
+                ++itr;
+        }
+        // sort by decreasing weight
+        std::sort(xforms.begin(),xforms.end(),
+            [](XForm<num_t,dims>& a, XForm<num_t,dims>& b)
+            { return a.getWeight() > b.getWeight(); });
+    }
     Flame(){}
+public:
     // construct from JSON data
     // throws error if something goes wrong
     Flame(const Json& input)
@@ -63,26 +103,29 @@ public:
                 throw std::runtime_error("flame: bound low >= bound high");
         }
         // xforms loop
+        size_t id = 0;
         for (Json xf : input["xforms"].arrayValue())
         {
-            if (xf["weight"].floatValue() == 0.0) // ignore 0 weight xforms
-                continue;
-            xforms.push_back(XForm<num_t,dims>(xf));
+            xforms.push_back(XForm<num_t,dims>(xf,id,false));
+            ++id;
         }
+        xform_ids = id;
+        if (xforms.empty())
+            throw std::runtime_error("flame: must have >= 1 xform");
         Json xf;
         has_final_xform = input.valueAt("final_xform",xf);
         if (has_final_xform)
-            final_xform = XForm<num_t,dims>(input["final_xform"],true);
+            final_xform = XForm<num_t,dims>(input["final_xform"],-1,true);
+        _optimize();
+        _setupCumulativeWeights();
     }
-    void optimize()
+    inline const XForm<num_t,dims>& getRandomXForm(rng_t<num_t>& rng) const
     {
-        // sort by decreasing weight
-        std::sort(xforms.begin(),xforms.end(),
-            [](XForm<num_t,dims>& a, XForm<num_t,dims>& b)
-            { return a.getWeight() > b.getWeight(); });
-        // optimize each xform
-        std::for_each(xforms.begin(),xforms.end(),
-            [](XForm<num_t,dims>& xf) { xf.optimize(); });
+        size_t i = 0;
+        num_t r = rng.randNum();
+        while (xfcw[i] < r)
+            ++i;
+        return xforms[i];
     }
     inline const std::array<size_t,dims>& getSize() const
     {
@@ -103,6 +146,10 @@ public:
     inline const XForm<num_t,dims>& getFinalXForm() const
     {
         return final_xform;
+    }
+    inline size_t getXFormIDCount() const
+    {
+        return xform_ids;
     }
 };
 

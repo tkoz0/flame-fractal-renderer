@@ -28,9 +28,11 @@ planned options (not available yet):
 
 #include <boost/program_options.hpp>
 
-#include "renderers/renderer.hpp"
+#include "renderers/histogram_renderer.hpp"
 #include "utils/image.hpp"
 #include "utils/misc.hpp"
+#include "utils/endian.hpp"
+#include "utils/hardware.hpp"
 
 const std::string VERSION = "unspecified";
 
@@ -141,7 +143,13 @@ int main(int argc, char **argv)
             return 1;
         }
     }
-    std::cerr << "=== FFBUF version " << VERSION << " ===" << std::endl;
+    std::cerr << "FFBUF version " << VERSION << std::endl;
+#if TKOZ_LITTLE_ENDIAN
+    std::cerr << "endianness: little" << std::endl;
+#else
+    std::cerr << "endianness: big" << std::endl;
+#endif
+    std::cerr << "number of cpus: " << number_of_threads() << std::endl;
     // print options
     std::cerr << "command line arguments:" << std::endl;
     std::cerr << "ffbuf" << std::endl;
@@ -163,7 +171,7 @@ int main(int argc, char **argv)
     else
         json_flame = Json(read_text_file(arg_flame));
     std::cerr << "flame json (comments removed): " << json_flame << std::endl;
-    tkoz::flame::RendererBasic<num_t,hist_t> renderer(json_flame);
+    tkoz::flame::HistogramRenderer<num_t,2,hist_t,true> renderer(json_flame);
     const tkoz::flame::Flame<num_t,2>& flame = renderer.getFlame();
     std::cerr << "x size: " << flame.getSize()[0] << std::endl;
     std::cerr << "y size: " << flame.getSize()[1] << std::endl;
@@ -174,7 +182,6 @@ int main(int argc, char **argv)
     fprintf(stderr,"rect ratio (render bounds): %f\n",(float)ydiff/xdiff);
     fprintf(stderr,"size ratio (buffer): %f\n",
         (float)flame.getSize()[1]/flame.getSize()[0]);
-    hist_t *buf = renderer.getHistogram();
     hist_t *fbuf = nullptr; // buffer for storing file contents
     // load buffer if specified
     size_t i = 0;
@@ -211,14 +218,11 @@ int main(int argc, char **argv)
         }
         fprintf(stderr,"read %lu bytes from %s\n",
             renderer.getHistogramSizeBytes(),arg_input.c_str());
-        for (size_t i = 0; i < renderer.getHistogramSize(); ++i)
-            buf[i] += fbuf[i];
+        renderer.addHistogram(fbuf);
     }
     if (fbuf) // clean up file buffer
         delete[] fbuf;
-    size_t buffer_sum_initial = 0;
-    for (size_t i = 0; i < renderer.getHistogramSize(); ++i)
-        buffer_sum_initial += buf[i];
+    size_t buffer_sum_initial = renderer.histogramSum();
     fprintf(stderr,"buffer sum (initial): %lu\n",buffer_sum_initial);
     if (arg_samples)
     {
@@ -228,7 +232,7 @@ int main(int argc, char **argv)
         i32 prev_percent = -1;
         size_t prev_tsec = t1.tv_sec;
         //renderer.renderBuffer(arg_samples,rng);
-        renderer.renderBufferParallel(arg_samples,arg_threads,
+        renderer.renderParallel(arg_samples,arg_threads,
             arg_batch_size,arg_bad_values,
             [&prev_percent,&prev_tsec,&t1,&t2](float p)
             {
@@ -247,7 +251,7 @@ int main(int argc, char **argv)
                     prev_tsec = tsec;
                 }
             },
-            [](std::thread& thread, size_t index)
+            [](const std::thread& thread, size_t index)
             {
                 std::cerr << "starting thread " << index << " ("
                     << thread.get_id() << ")" << std::endl;
@@ -266,13 +270,13 @@ int main(int argc, char **argv)
             /renderer.getSamplesIterated();
         fprintf(stderr,"plotted/iterated: %lf%%\n",100.0*ratio);
         std::cerr << "xform selection:";
-        for (size_t i = 0; i < renderer.getXFormsLength(); ++i)
-            std::cerr << " " << renderer.getXFormDistribution()[i];
+        for (size_t i = 0; i < flame.getXForms().size(); ++i)
+            std::cerr << " " << renderer.getXFormFrequency()[i];
         std::cerr << std::endl;
-        fprintf(stderr,"x min: %le\n",renderer.getXMin());
-        fprintf(stderr,"x max: %le\n",renderer.getXMax());
-        fprintf(stderr,"y min: %le\n",renderer.getYMin());
-        fprintf(stderr,"y max: %le\n",renderer.getYMax());
+        fprintf(stderr,"x min: %le\n",renderer.getPointExtremes()[0].first);
+        fprintf(stderr,"x max: %le\n",renderer.getPointExtremes()[0].second);
+        fprintf(stderr,"y min: %le\n",renderer.getPointExtremes()[1].first);
+        fprintf(stderr,"y max: %le\n",renderer.getPointExtremes()[1].second);
         fprintf(stderr,"bad values: %lu\n",renderer.getBadValueCount());
         std::cerr << "bad value xforms:";
         for (size_t i = 0; i < renderer.getBadValueCount(); ++i)
@@ -282,15 +286,9 @@ int main(int argc, char **argv)
         for (auto p : renderer.getBadValuePoints())
             fprintf(stderr," (%le,%le)",p.x(),p.y());
         std::cerr << std::endl;
-        hist_t sample_min = -1;
-        hist_t sample_max = 0;
-        size_t buffer_sum = 0;
-        for (size_t i = 0; i < renderer.getHistogramSize(); ++i)
-        {
-            sample_min = std::min(sample_min,buf[i]);
-            sample_max = std::max(sample_max,buf[i]);
-            buffer_sum += buf[i];
-        }
+        size_t buffer_sum;
+        hist_t sample_min,sample_max;
+        renderer.histogramStats(buffer_sum,sample_min,sample_max);
         fprintf(stderr,"sample min: %u\n",sample_min);
         fprintf(stderr,"sample max: %u\n",sample_max);
         fprintf(stderr,"buffer sum: %lu\n",buffer_sum);
@@ -305,20 +303,25 @@ int main(int argc, char **argv)
     {
         if (arg_output == "-")
         {
-            std::cout.write((char*)buf,renderer.getHistogramSizeBytes());
+            renderer.writeHistogram(std::cout);
             if (!std::cout)
             {
-                std::cerr << "error: cannot write to stdout" << std::endl;
+                std::cerr << "error: failed writing to stdout" << std::endl;
                 return 1;
             }
         }
         else
         {
             std::ofstream ofs(arg_output,std::ios::out|std::ios::binary);
-            ofs.write((char*)buf,renderer.getHistogramSizeBytes());
             if (!ofs)
             {
-                std::cerr << "error: cannot write output file" << std::endl;
+                std::cerr << "error: failed opening output file" << std::endl;
+                return 1;
+            }
+            renderer.writeHistogram(ofs);
+            if (!ofs)
+            {
+                std::cerr << "error: failed writing output file" << std::endl;
                 return 1;
             }
             ofs.close();
@@ -343,7 +346,7 @@ int main(int argc, char **argv)
     bool success;
     if (arg_img_bits == 8)
     {
-        img8 = renderer.renderImage<u8>(scale);
+        img8 = renderer.renderImageBuffer<u8>(scale);
         if (arg_type == "pgm")
             success = write_pgm(os,X,Y,img8);
         else // png
@@ -351,7 +354,7 @@ int main(int argc, char **argv)
     }
     else
     {
-        img16 = renderer.renderImage<u16>(scale);
+        img16 = renderer.renderImageBuffer<u16>(scale);
         if (arg_type == "pgm")
             success = write_pgm(os,X,Y,img16);
         else // png
