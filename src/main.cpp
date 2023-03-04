@@ -171,7 +171,7 @@ int main(int argc, char **argv)
     else
         json_flame = Json(read_text_file(arg_flame));
     std::cerr << "flame json (comments removed): " << json_flame << std::endl;
-    tkoz::flame::HistogramRenderer<num_t,2,hist_t,true> renderer(json_flame);
+    tkoz::flame::HistogramRenderer<num_t,2,hist_t,false> renderer(json_flame);
     const tkoz::flame::Flame<num_t,2>& flame = renderer.getFlame();
     std::cerr << "x size: " << flame.getSize()[0] << std::endl;
     std::cerr << "y size: " << flame.getSize()[1] << std::endl;
@@ -303,8 +303,7 @@ int main(int argc, char **argv)
     {
         if (arg_output == "-")
         {
-            renderer.writeHistogram(std::cout);
-            if (!std::cout)
+            if (!renderer.writeHistogram(std::cout))
             {
                 std::cerr << "error: failed writing to stdout" << std::endl;
                 return 1;
@@ -318,8 +317,7 @@ int main(int argc, char **argv)
                 std::cerr << "error: failed opening output file" << std::endl;
                 return 1;
             }
-            renderer.writeHistogram(ofs);
-            if (!ofs)
+            if (!renderer.writeHistogram(ofs))
             {
                 std::cerr << "error: failed writing output file" << std::endl;
                 return 1;

@@ -165,6 +165,7 @@ public:
             for (size_t i = 1; i < dims; ++i)
             {
                 index += dsize * (size_t)((pf[i]-bounds[i].first)*xmults[i]);
+                // TODO precompute these
                 dsize *= flame.getSize()[i];
             }
             // histogram increment with atomic operations
@@ -278,6 +279,7 @@ public:
             max = std::max(max,h);
             smin = std::min(smin,sh);
             smax = std::max(smax,sh);
+            // use this opportunity to add cache into the main histogram
             if (use_cache)
             {
                 histogram[i] += histcache[i];
@@ -338,6 +340,7 @@ public:
         return histsize * sizeof(hist_t);
     }
     // add another buffer array to the internal buffer
+    // length must be equal to getHistogramSize()
     inline void addHistogram(const hist_t *buf)
     {
         for (size_t i = 0; i < histsize; ++i)
@@ -381,8 +384,8 @@ public:
             max = std::max(max,h);
         }
     }
-    // write buffer, user must check if successful (os.good() or similar)
-    inline void writeHistogram(std::ostream& os) const
+    // write buffer, returns whether it is successful
+    inline bool writeHistogram(std::ostream& os) const
     {
         // add cache to main histogram
         if (use_cache)
@@ -392,6 +395,7 @@ public:
                 histcache[i] = 0;
             }
         os.write((char*)histogram,getHistogramSizeBytes());
+        return os.good();
     }
 };
 
