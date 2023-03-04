@@ -19,6 +19,7 @@ namespace tkoz::flame
 /*
 Histogram Renderer
 - renders a histogram on a rectangular region
+- probability distribution only, no color information
 */
 template <typename num_t, size_t dims, typename hist_t, bool use_cache>
 class HistogramRenderer
