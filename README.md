@@ -96,7 +96,7 @@ ffbuf: usage
 [-t --type]: output type (png,pgm,buf) (default use file extension)
 [-b --img_bits]: bit depth for png or pgm output (8 or 16) (default 8)
 [-T --threads]: number of threads to use (default number of threads available)
-[-z --batch_size]: multithreading batch size (default 65536)
+[-z --batch_size]: multithreading batch size (default 2^18)
 [-B --bad_values]: bad value limit for terminating render (default 10)
 [-m --scaler]: scaling function for image (binary,linear,log) (default log)
 ```

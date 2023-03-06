@@ -62,8 +62,8 @@ int main(int argc, char **argv)
             "bit depth for png or pgm output (8 or 16) (default 8)")
         ("threads,T",bpo::value<size_t>()->default_value(num_threads),
             "number of threads to use (default number of threads available)")
-        ("batch_size,z",bpo::value<size_t>()->default_value(1<<16),
-            "multithreading batch size (default 65536)")
+        ("batch_size,z",bpo::value<size_t>()->default_value(1<<18),
+            "multithreading batch size (default 2^18)")
         ("bad_values,B",bpo::value<size_t>()->default_value(10),
             "bad value limit for terminating render (default 10)")
         ("scaler,m",bpo::value<std::string>()->default_value("log"),
