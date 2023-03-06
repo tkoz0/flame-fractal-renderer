@@ -302,6 +302,33 @@ int main(int argc, char **argv)
         size_t missed_samples = renderer.getSamplesPlotted()
             - (buffer_sum - buffer_sum_initial);
         fprintf(stderr,"missed samples: %lu\n",missed_samples);
+#if 1
+        // show histogram frequency information
+        hist_t freq[8*sizeof(hist_t)]; // needing 1,2,3,..,32(or 64) bits
+        for (size_t i = 0; i < 8*sizeof(hist_t); ++i)
+            freq[i] = 0;
+        hist_t *histptr = renderer.getHistogram();
+        for (size_t i = 0; i < renderer.getHistogramSize(); ++i)
+        {
+            size_t j = 1;
+            hist_t bit = 1;
+            hist_t h = histptr[i];
+            while (j < 8*sizeof(hist_t) && h >= bit)
+            {
+                ++j;
+                bit <<= 1;
+            }
+            ++freq[j-1];
+        }
+        // output bit frequency with cumulative sum
+        size_t cumulative = 0;
+        for (size_t i = 0; i < 8*sizeof(hist_t); ++i)
+        {
+            cumulative += freq[i];
+            fprintf(stderr,"freq(%lu bits) = %u (%f %%)\n",i+1,freq[i],
+                100.0*((float)(cumulative)/renderer.getHistogramSize()));
+        }
+#endif
     }
     else
         std::cerr << "skipping render (0 samples)" << std::endl;

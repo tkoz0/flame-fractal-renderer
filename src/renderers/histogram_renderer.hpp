@@ -20,6 +20,12 @@ namespace tkoz::flame
 Histogram Renderer
 - renders a histogram on a rectangular region
 - probability distribution only, no color information
+
+TODO
+- consider different data structures
+- possibly u16 for histogram but store overflowed numbers in a separate map
+- output for counting histogram entries in different ranges
+  - how many need 8 bit, 16 bit, ... integer size
 */
 template <typename num_t, size_t dims, typename hist_t, bool use_cache>
 class HistogramRenderer
@@ -31,8 +37,9 @@ private:
     typedef std::pair<num_t,num_t> num_pair_t;
     // flame to render
     Flame<num_t,dims> flame;
-    // multiplier used by renderer to calculate indexes
+    // multipliers used by renderer to calculate indexes
     std::array<num_t,dims> xmults;
+    std::array<size_t,dims> dsizes;
     // histogram arrays
     hist_t *histogram;
     u8 *histcache;
@@ -71,6 +78,7 @@ public:
         samples_iterated = 0;
         samples_plotted = 0;
         histsize = 1;
+        dsizes[0] = 1;
         for (size_t i = 0; i < dims; ++i)
         {
             size_t size = flame.getSize()[i];
@@ -83,6 +91,8 @@ public:
                 throw std::runtime_error("histogram too big");
             point_extremes[i].first = INFINITY;
             point_extremes[i].second = -INFINITY;
+            if (i < dims-1)
+                dsizes[i+1] = dsizes[i] * size;
         }
         histogram = new hist_t[histsize]();
         if (use_cache)
@@ -118,7 +128,7 @@ public:
         _init_point(rng,p);
         for (size_t s = 0; s < samples; ++s)
         {
-            render_loop_1:
+            render_loop_1: // start of the main render loop
             const xform_t& xf = flame.getRandomXForm(rng);
             p = xf.applyIteration(rng,p);
             ++samples_iterated_local;
@@ -131,10 +141,13 @@ public:
                     bv_xforms.push_back(xf.getID());
                     bv_points.push_back(p);
                     lock_stats.unlock();
-                    if (bv_xforms.size() >= bv_limit)
+                    // terminate render if too many bad values
+                    if (bv_xforms.size() > bv_limit)
                         goto render_loop_2;
                     _init_point(rng,p);
                     ++s;
+                    // using goto is normally not good practice but it is sort
+                    // of needed here with the extra loop for dimensions
                     goto render_loop_1;
                 }
             // update extreme coordinates
@@ -156,18 +169,14 @@ public:
                         || pf[i] > flame.getBounds()[i].second)
                 {
                     ++s;
-                    goto render_loop_1;
+                    goto render_loop_1; // return to start of render loop
                 }
             // calculate histogram index
             const auto& bounds = flame.getBounds();
             size_t index = (pf[0]-bounds[0].first)*xmults[0];
-            size_t dsize = flame.getSize()[0]; // step size in next dimension
             for (size_t i = 1; i < dims; ++i)
-            {
-                index += dsize * (size_t)((pf[i]-bounds[i].first)*xmults[i]);
-                // TODO precompute these
-                dsize *= flame.getSize()[i];
-            }
+                index += dsizes[i]*(size_t)((pf[i]-bounds[i].first)*xmults[i]);
+#if 1
             // histogram increment with atomic operations
             if (use_cache)
             {
@@ -176,12 +185,20 @@ public:
                     __atomic_fetch_add(histogram+index,256,__ATOMIC_RELAXED);
             }
             else
-            {
                 __atomic_fetch_add(histogram+index,1,__ATOMIC_RELAXED);
+#else
+            // histogram increment without atomic operations
+            if (use_cache)
+            {
+                if (unlikely(++histcache[index] == 0))
+                    histogram[index] += 256;
             }
+            else
+                ++histogram[index];
+#endif
             ++samples_plotted_local;
         }
-        render_loop_2:
+        render_loop_2: // end of the render loop
         // update statistics
         lock_stats.lock();
         samples_iterated += samples_iterated_local;
@@ -396,6 +413,18 @@ public:
             }
         os.write((char*)histogram,getHistogramSizeBytes());
         return os.good();
+    }
+    // get a pointer to the histogram
+    // handle_cache specifies if cache needs to be combined first
+    inline hist_t *getHistogram(bool handle_cache = true)
+    {
+        if (use_cache && handle_cache)
+            for (size_t i = 0; i < histsize; ++i)
+            {
+                histogram[i] += histcache[i];
+                histcache[i] = 0;
+            }
+        return histogram;
     }
 };
 
