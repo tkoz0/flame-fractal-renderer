@@ -38,10 +38,13 @@ const std::string VERSION = "unspecified";
 
 namespace bpo = boost::program_options;
 typedef float num_t; // can also be double (slower)
+// half precision may be ok for smaller buffers
 typedef u32 hist_t; // can also be u64
+// u16 is probably too small for practical use cases
 
 int main(int argc, char **argv)
 {
+    size_t num_threads = number_of_threads();
     bpo::options_description options("ffbuf usage");
     options.add_options()
         ("help,h","show this message")
@@ -57,14 +60,15 @@ int main(int argc, char **argv)
             "output type (png,pgm,buf) (default use file extension)")
         ("img_bits,b",bpo::value<size_t>()->default_value(8),
             "bit depth for png or pgm output (8 or 16) (default 8)")
-        ("threads,T",bpo::value<size_t>()->default_value(1),
-            "number of threads to use (default 1)")
-        ("batch_size,z",bpo::value<size_t>()->default_value(65536),
+        ("threads,T",bpo::value<size_t>()->default_value(num_threads),
+            "number of threads to use (default number of threads available)")
+        ("batch_size,z",bpo::value<size_t>()->default_value(1<<16),
             "multithreading batch size (default 65536)")
         ("bad_values,B",bpo::value<size_t>()->default_value(10),
             "bad value limit for terminating render (default 10)")
         ("scaler,m",bpo::value<std::string>()->default_value("log"),
-            "scaling function for image render (bin,lin,log) (default log)");
+            "scaling function for image render "
+            "(binary,linear,log) (default log)");
     bpo::variables_map args;
     bpo::store(bpo::command_line_parser(argc,argv).options(options).run(),args);
     if (args.count("help") || args.empty() || argc < 2)
@@ -74,12 +78,12 @@ int main(int argc, char **argv)
     }
     if (!args.count("flame")) // required argument
     {
-        std::cerr << "error: flame JSON not specified" << std::endl;
+        std::cerr << "ERROR: flame JSON not specified" << std::endl;
         return 1;
     }
     if (!args.count("output")) // required argument
     {
-        std::cerr << "error: output file not specified" << std::endl;
+        std::cerr << "ERROR: output file not specified" << std::endl;
         return 1;
     }
     // cmdline values
@@ -101,32 +105,32 @@ int main(int argc, char **argv)
     if (arg_type != "" && arg_type != "png" && arg_type != "pgm"
         && arg_type != "buf")
     {
-        std::cerr << "error: invalid output type" << std::endl;
+        std::cerr << "ERROR: invalid output type" << std::endl;
         return 1;
     }
     if (arg_img_bits != 8 && arg_img_bits != 16)
     {
-        std::cerr << "error: invalid image bits per pixel" << std::endl;
+        std::cerr << "ERROR: invalid image bits per pixel" << std::endl;
         return 1;
     }
-    if (arg_threads < 1 || arg_threads > 128)
+    if (arg_threads < 1 || arg_threads > 256)
     {
-        std::cerr << "error: must use between 1 and 128 threads" << std::endl;
+        std::cerr << "ERROR: must use between 1 and 256 threads" << std::endl;
         return 1;
     }
     if (arg_batch_size < (1<<8) || arg_batch_size > (1<<30))
     {
-        std::cerr << "error: batch size < 2^8 or > 2^30" << std::endl;
+        std::cerr << "ERROR: batch size < 2^8 or > 2^30" << std::endl;
         return 1;
     }
     if (arg_bad_values < 1)
     {
-        std::cerr << "error: bad values must be positive" << std::endl;
+        std::cerr << "ERROR: bad values must be positive" << std::endl;
         return 1;
     }
     if (arg_scaler != "binary" && arg_scaler != "linear" && arg_scaler != "log")
     {
-        std::cerr << "error: scaler must be binary/linear/log" << std::endl;
+        std::cerr << "ERROR: scaler must be binary/linear/log" << std::endl;
         return 1;
     }
     if (arg_type == "") // find type from extension
@@ -139,7 +143,7 @@ int main(int argc, char **argv)
             arg_type = "buf";
         else
         {
-            std::cerr << "error: unable to infer output type" << std::endl;
+            std::cerr << "ERROR: unable to infer output type" << std::endl;
             return 1;
         }
     }
@@ -164,6 +168,9 @@ int main(int argc, char **argv)
     std::cerr << "--batch_size: " << arg_batch_size << std::endl;
     std::cerr << "--bad_values: " << arg_bad_values << std::endl;
     std::cerr << "--" << std::endl;
+    if (arg_threads > num_threads)
+        std::cerr << "WARN: using more threads than the system supports"
+            << std::endl;
     // parse flame file
     Json json_flame;
     if (arg_flame == "-") // input from stdin
@@ -171,7 +178,7 @@ int main(int argc, char **argv)
     else
         json_flame = Json(read_text_file(arg_flame));
     std::cerr << "flame json (comments removed): " << json_flame << std::endl;
-    tkoz::flame::HistogramRenderer<num_t,2,hist_t,false> renderer(json_flame);
+    tkoz::flame::HistogramRenderer<num_t,2,hist_t,true> renderer(json_flame);
     const tkoz::flame::Flame<num_t,2>& flame = renderer.getFlame();
     std::cerr << "x size: " << flame.getSize()[0] << std::endl;
     std::cerr << "y size: " << flame.getSize()[1] << std::endl;
@@ -196,24 +203,24 @@ int main(int argc, char **argv)
         {
             if (!std::cin.read((char*)fbuf,renderer.getHistogramSizeBytes()))
             {
-                std::cerr << "error: unable to read (enough) buffer bytes"
+                std::cerr << "ERROR: unable to read (enough) buffer bytes"
                     << std::endl;
                 return 1;
             }
             if (std::cin.peek() != EOF)
-                std::cerr << "warn: did not reach EOF of stdin" << std::endl;
+                std::cerr << "WARN: did not reach EOF of stdin" << std::endl;
         }
         else
         {
             std::ifstream ifs(arg_input,std::ios::in|std::ios::binary);
             if (!ifs.read((char*)fbuf,renderer.getHistogramSizeBytes()))
             {
-                std::cerr << "error: unable to read (enough) buffer bytes"
+                std::cerr << "ERROR: unable to read (enough) buffer bytes"
                     << std::endl;
                 return 1;
             }
             if (ifs.peek() != EOF)
-                std::cerr << "warn: did not reach EOF of file" << std::endl;
+                std::cerr << "WARN: did not reach EOF of file" << std::endl;
             ifs.close();
         }
         fprintf(stderr,"read %lu bytes from %s\n",
@@ -305,7 +312,7 @@ int main(int argc, char **argv)
         {
             if (!renderer.writeHistogram(std::cout))
             {
-                std::cerr << "error: failed writing to stdout" << std::endl;
+                std::cerr << "ERROR: failed writing to stdout" << std::endl;
                 return 1;
             }
         }
@@ -314,12 +321,12 @@ int main(int argc, char **argv)
             std::ofstream ofs(arg_output,std::ios::out|std::ios::binary);
             if (!ofs)
             {
-                std::cerr << "error: failed opening output file" << std::endl;
+                std::cerr << "ERROR: failed opening output file" << std::endl;
                 return 1;
             }
             if (!renderer.writeHistogram(ofs))
             {
-                std::cerr << "error: failed writing output file" << std::endl;
+                std::cerr << "ERROR: failed writing output file" << std::endl;
                 return 1;
             }
             ofs.close();
@@ -360,7 +367,7 @@ int main(int argc, char **argv)
     }
     if (!success)
     {
-        std::cerr << "error: cannot write image" << std::endl;
+        std::cerr << "ERROR: cannot write image" << std::endl;
         return 1;
     }
     std::cerr << "output done" << std::endl;

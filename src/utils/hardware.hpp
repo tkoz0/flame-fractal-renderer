@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <thread>
 
+// get number of threads supported
 inline size_t number_of_threads()
 {
     size_t n = std::thread::hardware_concurrency();
