@@ -186,15 +186,6 @@ public:
             ret[dims-1] = randGaussian();
         return ret/ret.norm2();
     }
-    // select a random xform index using cumulative weights
-    inline size_t randXFI(num_t *cw)
-    {
-        size_t ret = 0;
-        num_t r = randNum();
-        while (cw[ret] < r)
-            ++ret;
-        return ret;
-    }
 };
 
 }

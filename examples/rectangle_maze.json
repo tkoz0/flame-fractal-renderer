@@ -23,8 +23,7 @@
             "variations": [
                 {"name":"sinusoidal","weight":1.0}
             ],
-            "pre_affine": {"A":[[1,-1],[0,0]],"b":[0,0]},
-            "comment": "map onto x axis to form grid pattern"
+            "pre_affine": {"A":[[1,-1],[0,0]],"b":[0,0]}
         }
     ]
 }

@@ -1,13 +1,13 @@
 {
     "dimensions": 2,
-    "size": [512,512],
-    "bounds": [[-5,5],[-5,5]],
+    "size": [500,200],
+    "bounds": [[-5,5],[-2,2]],
     "xforms": [
         {
             "weight": 1.0,
             "variations": [
                 {"name":"linear","weight":1.0},
-                {"name":"fisheye","weight":0.0}
+                {"name":"fisheye","weight":0.0,"addval":1.0}
             ],
             "pre_affine": {"A":[[-0.75,0.0],[0.0,-0.75]],"b":[-0.75,-0.75]}
         },
@@ -15,7 +15,7 @@
             "weight": 0.2,
             "variations": [
                 {"name":"linear","weight":1.0},
-                {"name":"bubble","weight":0.0},
+                {"name":"bubble","weight":0.0,"addval":4.0},
                 {"name":"blob","weight":0,"low":0,"high":2,"waves":10}
             ],
             "pre_affine": {"A":[[0.5,0.0],[0.0,0.5]],"b":[0.0,0.75]}

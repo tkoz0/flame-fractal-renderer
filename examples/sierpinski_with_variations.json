@@ -10,7 +10,7 @@
             "variations": [
                 {"name":"linear","weight":1.0},
                 {"name":"spherical","weight":-1.0},
-                {"name":"fisheye","weight":1.0}
+                {"name":"fisheye","weight":1.0,"addval":1.0}
             ],
             "pre_affine": {"A":[[0.5,0],[0,0.5]],"b":[0,0]}
         },

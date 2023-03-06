@@ -2,6 +2,8 @@
 
 #include <iostream>
 
+#include "endian.hpp"
+
 // write 8 bit pgm image
 bool write_pgm(std::ostream& os, size_t X, size_t Y, uint8_t *img);
 
