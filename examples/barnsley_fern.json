@@ -1,0 +1,36 @@
+{
+    "name": "barnsley_fern",
+    "dimensions": 2,
+    "size": [512,512],
+    "bounds": [[-5,5],[0,10]],
+    "xforms": [
+        {
+            "weight": 0.01,
+            "variations": [
+                {"name":"linear","weight":1.0}
+            ],
+            "pre_affine": {"A":[[0,0],[0,0.16]],"b":[0,0]}
+        },
+        {
+            "weight": 0.85,
+            "variations": [
+                {"name":"linear","weight":1.0}
+            ],
+            "pre_affine": {"A":[[0.85,0.04],[-0.04,0.85]],"b":[0,1.6]}
+        },
+        {
+            "weight": 0.07,
+            "variations": [
+                {"name":"linear","weight":1.0}
+            ],
+            "pre_affine": {"A":[[0.20,-0.26],[0.23,0.22]],"b":[0,1.6]}
+        },
+        {
+            "weight": 0.07,
+            "variations": [
+                {"name":"linear","weight":1.0}
+            ],
+            "pre_affine": {"A":[[-0.15,0.28],[0.26,0.24]],"b":[0,0.44]}
+        }
+    ]
+}
