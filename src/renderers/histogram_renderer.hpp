@@ -16,6 +16,21 @@
 namespace tkoz::flame
 {
 
+// type generic interface to allow runtime template selection
+// without duplicating a lot of code
+template <typename num_t, typename hist_t, bool use_cache = false>
+class HistogramRendererInterface
+{
+public:
+    virtual void render(size_t samples, size_t threads, size_t batch_size,
+        size_t bv_limit, std::function<void(float)> cb_batch = nullptr,
+        std::function<void(const std::thread&,size_t)> cb_thread = nullptr) = 0;
+    virtual inline size_t getDimensions() const = 0;
+    virtual bool writeHistogram(std::ostream& os) const = 0;
+    // TODO output for stats
+    // what to do about return types depending on the dimension parameter
+};
+
 /*
 Histogram Renderer
 - renders a histogram on a rectangular region
@@ -27,8 +42,9 @@ TODO
 - output for counting histogram entries in different ranges
   - how many need 8 bit, 16 bit, ... integer size
 */
-template <typename num_t, size_t dims, typename hist_t, bool use_cache>
-class HistogramRenderer
+template <typename num_t, size_t dims, typename hist_t, bool use_cache = false>
+class HistogramRenderer:
+    public HistogramRendererInterface<num_t,hist_t,use_cache>
 {
     static_assert(!use_cache || sizeof(hist_t) > sizeof(u8));
 private:
@@ -72,39 +88,6 @@ private:
             ret += histcache[i];
         return ret;
     }
-public:
-    HistogramRenderer(const Flame<num_t,dims>& flame): flame(flame)
-    {
-        samples_iterated = 0;
-        samples_plotted = 0;
-        histsize = 1;
-        dsizes[0] = 1;
-        for (size_t i = 0; i < dims; ++i)
-        {
-            size_t size = flame.getSize()[i];
-            const num_pair_t& bounds = flame.getBounds()[i];
-            xmults[i] = (num_t)size / (bounds.second - bounds.first);
-            // correction for ensuring indexing is in bounds
-            xmults[i] *= scale_adjust<num_t>::value;
-            histsize *= size;
-            if (histsize >= (1uLL << 48))
-                throw std::runtime_error("histogram too big");
-            point_extremes[i].first = INFINITY;
-            point_extremes[i].second = -INFINITY;
-            if (i < dims-1)
-                dsizes[i+1] = dsizes[i] * size;
-        }
-        histogram = new hist_t[histsize]();
-        if (use_cache)
-            histcache = new u8[histsize]();
-        xf_freq = std::vector<hist_t>(flame.getXFormIDCount(),0);
-    }
-    ~HistogramRenderer()
-    {
-        delete[] histogram;
-        if (use_cache)
-            delete[] histcache;
-    }
     /*
     render samples into the histogram
     - samples = number of samples to render
@@ -115,7 +98,7 @@ public:
       - bv_limit = 10
       - rng = random initialized by time
     */
-    void render(size_t samples, size_t bv_limit, rng_t<num_t>& rng)
+    void _render_thread(size_t samples, size_t bv_limit, rng_t<num_t>& rng)
     {
         if (bv_xforms.size() >= bv_limit)
             return;
@@ -209,6 +192,39 @@ public:
         // cleanup
         delete[] xf_freq_local;
     }
+public:
+    HistogramRenderer(const Flame<num_t,dims>& flame): flame(flame)
+    {
+        samples_iterated = 0;
+        samples_plotted = 0;
+        histsize = 1;
+        dsizes[0] = 1;
+        for (size_t i = 0; i < dims; ++i)
+        {
+            size_t size = flame.getSize()[i];
+            const num_pair_t& bounds = flame.getBounds()[i];
+            xmults[i] = (num_t)size / (bounds.second - bounds.first);
+            // correction for ensuring indexing is in bounds
+            xmults[i] *= scale_adjust<num_t>::value;
+            histsize *= size;
+            if (histsize >= (1uLL << 48))
+                throw std::runtime_error("histogram too big");
+            point_extremes[i].first = INFINITY;
+            point_extremes[i].second = -INFINITY;
+            if (i < dims-1)
+                dsizes[i+1] = dsizes[i] * size;
+        }
+        histogram = new hist_t[histsize]();
+        if (use_cache)
+            histcache = new u8[histsize]();
+        xf_freq = std::vector<hist_t>(flame.getXFormIDCount(),0);
+    }
+    ~HistogramRenderer()
+    {
+        delete[] histogram;
+        if (use_cache)
+            delete[] histcache;
+    }
     /*
     render samples into the histogram using multiple threads
     - samples = number of samples to render
@@ -223,7 +239,7 @@ public:
       - batch_size = 1 << 16
       - bv_limit = 10
     */
-    void renderParallel(size_t samples, size_t threads, size_t batch_size,
+    void render(size_t samples, size_t threads, size_t batch_size,
         size_t bv_limit, std::function<void(float)> cb_batch = nullptr,
         std::function<void(const std::thread&,size_t)> cb_thread = nullptr)
     {
@@ -248,7 +264,7 @@ public:
                 lock_wu.unlock();
                 if (batch_samples == 0)
                     break;
-                render(batch_samples,bv_limit,rng);
+                _render_thread(batch_samples,bv_limit,rng);
                 if (cb_batch)
                 {
                     lock_wu.lock();
@@ -358,13 +374,13 @@ public:
     }
     // add another buffer array to the internal buffer
     // length must be equal to getHistogramSize()
-    inline void addHistogram(const hist_t *buf)
+    void addHistogram(const hist_t *buf)
     {
         for (size_t i = 0; i < histsize; ++i)
             histogram[i] += buf[i];
     }
     // number of samples rendered in the histogram
-    inline size_t histogramSum() const
+    size_t histogramSum() const
     {
         size_t ret = 0;
         for (size_t i = 0; i < histsize; ++i)
@@ -372,7 +388,7 @@ public:
         return ret;
     }
     // minimum value in the histogram
-    inline hist_t histogramMin() const
+    hist_t histogramMin() const
     {
         hist_t ret = -1;
         for (size_t i = 0; i < histsize; ++i)
@@ -380,7 +396,7 @@ public:
         return ret;
     }
     // maximum value in the histogram
-    inline hist_t histogramMax() const
+    hist_t histogramMax() const
     {
         hist_t ret = 0;
         for (size_t i = 0; i < histsize; ++i)
@@ -388,7 +404,7 @@ public:
         return ret;
     }
     // simultaneously compute sum,min,max
-    inline void histogramStats(size_t& sum, hist_t& min, hist_t& max) const
+    void histogramStats(size_t& sum, hist_t& min, hist_t& max) const
     {
         sum = 0;
         min = -1;
@@ -402,7 +418,7 @@ public:
         }
     }
     // write buffer, returns whether it is successful
-    inline bool writeHistogram(std::ostream& os) const
+    bool writeHistogram(std::ostream& os) const
     {
         // add cache to main histogram
         if (use_cache)
@@ -425,6 +441,10 @@ public:
                 histcache[i] = 0;
             }
         return histogram;
+    }
+    inline size_t getDimensions() const
+    {
+        return dims;
     }
 };
 

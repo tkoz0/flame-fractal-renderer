@@ -48,9 +48,9 @@ int main(int argc, char **argv)
     bpo::options_description options("ffbuf usage");
     options.add_options()
         ("help,h","show this message")
-        ("flame,f",bpo::value<std::string>(),
+        ("flame,f",bpo::value<std::string>()->required(),
             "flame parameters JSON file (required)")
-        ("output,o",bpo::value<std::string>(),
+        ("output,o",bpo::value<std::string>()->required(),
             "output file (required)")
         ("input,i",bpo::value<std::vector<std::string>>(),
             "buffers to add for initial histogram (default none)")
@@ -238,8 +238,7 @@ int main(int argc, char **argv)
         clock_gettime(CLOCK_MONOTONIC,&t1);
         i32 prev_percent = -1;
         size_t prev_tsec = t1.tv_sec;
-        //renderer.renderBuffer(arg_samples,rng);
-        renderer.renderParallel(arg_samples,arg_threads,
+        renderer.render(arg_samples,arg_threads,
             arg_batch_size,arg_bad_values,
             [&prev_percent,&prev_tsec,&t1,&t2](float p)
             {
