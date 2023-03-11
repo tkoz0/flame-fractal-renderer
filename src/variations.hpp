@@ -1785,7 +1785,7 @@ public:
         sizex = json["xsize"].floatValue() * M_PI;
         sizey = json["ysize"].floatValue() * M_PI;
     }
-    inline Point<num_t,dims> calc2d(
+    inline Point<num_t,2> calc2d(
         rng_t<num_t>& rng, const Point<num_t,2>& tx) const
     {
         (void)rng;

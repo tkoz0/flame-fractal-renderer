@@ -32,7 +32,7 @@ struct _ihr_helper<num_t,1,hist_t,use_cache>
 
 // instantiate an instance of a HistogramRenderer based on number of dimensions
 // returns a pointer to newly allocated memory or nullptr if failure
-template <typename num_t, typename hist_t, bool use_cache>
+template <typename num_t, typename hist_t, bool use_cache = false>
 HistogramRendererInterface<num_t,hist_t,use_cache>*
 instantiateHistogramRenderer(const Json& j)
 {

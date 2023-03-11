@@ -1,5 +1,7 @@
 /*
-ffbuf: usage
+Renderer for 2d buffers and 2d images.
+
+ffr-basic: usage
 [-h --help]: show this message
 -f --flame: flame parameters JSON file (required)
 -o --output: output file (required)
@@ -39,13 +41,13 @@ const std::string VERSION = "unspecified";
 namespace bpo = boost::program_options;
 typedef float num_t; // can also be double (slower)
 // half precision may be ok for smaller buffers
-typedef u32 hist_t; // can also be u64
-// u16 is probably too small for practical use cases
+typedef uint32_t hist_t; // can also be uint64_t
+// uint16_t is probably too small for practical use cases
 
 int main(int argc, char **argv)
 {
     size_t num_threads = number_of_threads();
-    bpo::options_description options("ffbuf usage");
+    bpo::options_description options("ffr-basic usage");
     options.add_options()
         ("help,h","show this message")
         ("flame,f",bpo::value<std::string>()->required(),
@@ -99,8 +101,6 @@ int main(int argc, char **argv)
     size_t arg_batch_size = args["batch_size"].as<size_t>();
     size_t arg_bad_values = args["bad_values"].as<size_t>();
     std::string arg_scaler = args["scaler"].as<std::string>();
-    //std::string arg_precision = args["precision"].as<std::string>();
-    //size_t arg_hist_bits = args["hist_bits"].as<size_t>();
     // check args
     if (arg_type != "" && arg_type != "png" && arg_type != "pgm"
         && arg_type != "buf")
@@ -147,7 +147,7 @@ int main(int argc, char **argv)
             return 1;
         }
     }
-    std::cerr << "FFBUF version " << VERSION << std::endl;
+    std::cerr << "ffr-basic version " << VERSION << std::endl;
 #if TKOZ_LITTLE_ENDIAN
     std::cerr << "endianness: little" << std::endl;
 #else

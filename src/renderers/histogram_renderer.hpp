@@ -27,8 +27,12 @@ public:
         std::function<void(const std::thread&,size_t)> cb_thread = nullptr) = 0;
     virtual inline size_t getDimensions() const = 0;
     virtual bool writeHistogram(std::ostream& os) const = 0;
-    // TODO output for stats
-    // what to do about return types depending on the dimension parameter
+    virtual inline size_t getSamplesIterated() const = 0;
+    virtual inline size_t getSamplesPlotted() const = 0;
+    virtual inline size_t getBadValueCount() const = 0;
+    virtual inline size_t getHistogramSize() const = 0;
+    virtual inline size_t getHistogramSizeBytes() const = 0;
+    virtual void addHistogram(const hist_t *buf) = 0;
 };
 
 /*

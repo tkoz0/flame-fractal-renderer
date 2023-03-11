@@ -1,5 +1,5 @@
 {
-    "dimensions": 2, // number of dimensions for point iteration
+    "dimensions": 2,
     "size": [512,512],
     "bounds": [[-10,10],[-10,10]],
     "xforms": [
@@ -10,13 +10,8 @@
                 {"name":"spiral","weight":-0.5},
                 {"name":"disc","weight":-1.0},
                 {"name":"ex","weight":1.0}
-                //{"name":"bent","weight":-0.5,"params":[0.2,3.0]}
-                //{"name":"blob","weight":1.0,"low":0,"high":1,"waves":25}
             ],
-            // affine can be excluded, use identity affine in that case
             "pre_affine": {"A":[[-0.75,0.0],[0.0,-0.75]],"b":[-0.75,-0.75]}
-            //"pre_affine": {"A":[[0.5,0.0],[0.0,0.5]],"b":[0.0,0.0]}
-            //"post_affine": {"A":[[1,0],[0,1]],"b":[0,0]}
         },
         {
             "weight": 0.2,

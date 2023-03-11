@@ -18,11 +18,21 @@ SRCS_ALL = $(shell find src/ -name "*.cpp")
 # dependency and object files
 DEPS = $(subst src/,obj/,$(subst .cpp,.d,$(SRCS_ALL)))
 OBJS = $(subst src/,obj/,$(subst .cpp,.o,$(SRCS_ALL)))
+OBJS_NONMAIN = $(subst src/,obj/,$(subst .cpp,.o,$(SRCS_NONMAIN)))
 
-all: ffbuf.out
+# executable names
+FFR_BASIC = ffr-basic.out
+FFR_BUFFER = ffr-buffer.out
 
-ffbuf.out: $(DEPS) $(OBJS)
-	$(CXX) $(CXXFLAGS) $(INCLUDES) -o ffbuf.out $(OBJS) $(LFLAGS) $(LIBS)
+all: $(FFR_BASIC) $(FFR_BUFFER)
+
+$(FFR_BASIC): $(DEPS) $(OBJS)
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $(FFR_BASIC) \
+		$(OBJS_NONMAIN) obj/ffr_basic.o $(LFLAGS) $(LIBS)
+
+$(FFR_BUFFER): $(DEPS) $(OBJS)
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $(FFR_BUFFER) \
+		$(OBJS_NONMAIN) obj/ffr_buffer.o $(LFLAGS) $(LIBS)
 
 # json library
 nlohmann/json.hpp:
@@ -49,7 +59,7 @@ clean:
 	$(RM) .prereq
 	$(RM) $(OBJS)
 	$(RM) $(DEPS)
-	$(RM) ffbuf.out
+	$(RM) *.out
 
 # so make is not confused if there is a file named "all" or "clean"
 .PHONY: all clean
