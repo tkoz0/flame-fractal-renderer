@@ -94,6 +94,8 @@ public:
     {
 #if 1 // box muller transform
         num_t u1 = randNum();
+        // TODO generate u2 by dividing the integer by approx max_int/2pi
+        // or is it faster to divide by the power of 2 and then multiply 2pi
         num_t u2 = (2.0*M_PI)*randNum();
         num_t r = sqrt(-2.0*log(u1));
         num_t s,c;
