@@ -289,7 +289,7 @@ public:
         std::for_each(tl.begin(),tl.end(),[](std::thread& t){ t.join(); });
     }
     /*
-    render as grayscale image (only supported for 2d buffer currenty)
+    render as grayscale image (only supported for 2d buffer currently)
     if buf is null, allocates one, otherwise use existing buffer
     returns the buffer storing the resulting image
     the scaling function must map onto nonnegative numbers
@@ -323,10 +323,12 @@ public:
                 histcache[i] = 0;
             }
         }
-        if (smax <= 0.0)
-            throw std::runtime_error("maximum scaled bin not positive");
+        num_t mult;
+        if (smax <= 0.0) // render as all black image in this case
+            mult = 0.0;
+        else
+            mult = pix_scale<pix_t,num_t>::value / smax;
         // fill buffer with scaled values
-        num_t mult = pix_scale<pix_t,num_t>::value / smax;
         pix_t *p = buf;
         for (size_t y = ny; y--;)
             for (size_t x = 0; x < nx; ++x)
