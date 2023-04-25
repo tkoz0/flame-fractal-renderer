@@ -1,6 +1,6 @@
 {
     "dimensions": 2,
-    "size": [1280,720],
+    "size": [1920,1080],
     "bounds": [[-8,8],[-4.5,4.5]],
     // variations implemented in the project
     // linear,sinusoidal,spherical,swirl,horseshoe,polar
