@@ -1,0 +1,39 @@
+{
+    "dimensions": 3,
+    "size": [512,512,512],
+    "bounds": [[0,1],[0,1],[0,1]],
+    "xforms": [
+        {
+            // point (0,0,0)
+            "weight": 1.0,
+            "variations": [
+                {"name":"linear","weight":1.0}
+            ],
+            "pre_affine": {"A":[[0.5,0,0],[0,0.5,0],[0,0,0.5]],"b":[0,0,0]}
+        },
+        {
+            // point (0,0,1)
+            "weight": 1.0,
+            "variations": [
+                {"name":"linear","weight":1.0}
+            ],
+            "pre_affine": {"A":[[0.5,0,0],[0,0.5,0],[0,0,0.5]],"b":[0,0,0.5]}
+        },
+        {
+            // point (0,1,0)
+            "weight": 1.0,
+            "variations": [
+                {"name":"linear","weight":1.0}
+            ],
+            "pre_affine": {"A":[[0.5,0,0],[0,0.5,0],[0,0,0.5]],"b":[0,0.5,0]}
+        },
+        {
+            // point (1,0,0)
+            "weight": 1.0,
+            "variations": [
+                {"name":"linear","weight":1.0}
+            ],
+            "pre_affine": {"A":[[0.5,0,0],[0,0.5,0],[0,0,0.5]],"b":[0.5,0,0]}
+        }
+    ]
+}

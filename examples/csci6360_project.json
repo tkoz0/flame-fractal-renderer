@@ -1,0 +1,66 @@
+{
+    "dimensions": 2,
+    "size": [1920,1080],
+    "bounds": [[-8,8],[-4.5,4.5]],
+    // variations implemented in the project
+    // linear,sinusoidal,spherical,swirl,horseshoe,polar
+    // handkerchief,heart,disc,spiral,hyperbolic,diamond,ex
+    "xforms": [
+        {
+            "weight": 1,
+            "variations": [
+                {"name":"linear","weight":0.4},
+                {"name":"sinusoidal","weight":-0.8},
+                {"name":"horseshoe","weight":-0.3}
+            ],
+            "pre_affine": {"A":[[0.9,0.2],[-0.2,0.6]],"b":[0.4,-0.8]},
+            "post_affine": {"A":[[0,1],[1,0]],"b":[-0.2,-0.2]}
+        },
+        {
+            "weight": 2,
+            "variations": [
+                {"name":"linear","weight":-0.1},
+                {"name":"spherical","weight":1.5},
+                {"name":"ex","weight":-1}
+            ],
+            "pre_affine": {"A":[[-0.9,0.4],[-0.2,-0.6]],"b":[-1.6,0.9]}
+        },
+        {
+            "weight": 0.6,
+            "variations": [
+                {"name":"diamond","weight":1},
+                {"name":"spherical","weight":-2},
+                {"name":"disc","weight":0.7},
+                {"name":"ex","weight":-0.5}
+            ],
+            "pre_affine": {"A":[[0.6,-1.1],[-1.9,0.4]],"b":[-0.32,0.71]}
+        },
+        {
+            "weight": 0.95,
+            "variations": [
+                {"name":"horseshoe","weight":0.85},
+                {"name":"polar","weight":-0.55},
+                {"name":"handkerchief","weight":-1.1}
+            ],
+            "pre_affine": {"A":[[0.8,2],[2.7,-0.53]],"b":[0,0]}
+        },
+        {
+            "weight": 2.2,
+            "variations": [
+                {"name":"hyperbolic","weight":1},
+                {"name":"spiral","weight":-2},
+                {"name":"heart","weight":-0.2}
+            ],
+            "post_affine": {"A":[[0.86,-0.13],[-1.13,0.41]],"b":[0.35,-0.35]}
+        }
+    ],
+    "final_xform": {
+        "variations": [
+            {"name":"linear","weight":0.45},
+            {"name":"swirl","weight":-0.005},
+            {"name":"ex","weight":0.05}
+        ],
+        "pre_affine": {"A":[[1.5,1.2],[-1.5,1.2]],"b":[0,0]},
+        "post_affine": {"A":[[1,0.4],[-0.4,1]],"b":[0,0]}
+    }
+}

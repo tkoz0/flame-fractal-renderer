@@ -49,14 +49,11 @@ It expanded a bit when I decided to write a whole renderer that I would try to
 optimize decently, although that is difficult to do when trying to support
 arbitrary functions to be specified in JSON files. I ended up switching from C
 to C++ and making the whole thing templated to be able to support different
-precision (currently single precision is sufficient), pixel counter bit size
-(there is not much reason to go past 32 bit), and random number generator (I
-decided to go with ISAAC as flam3 uses ISAAC, but the code for a
-java.util.Random implementation is still included).
+compile time parameters while maintaining better performance.
 
-Another reason was interest in exploring 3D flame fractals. This software has
-not been extended to support 3D yet. Currently the code can support higher
-dimensions but there is not yet a renderer that can make use of it.
+Another reason was interest in exploring 3D flame fractals. Higher dimensions
+are supported, but no tools have been created for displaying the results in a
+meaningful way yet.
 
 ## json format
 
@@ -75,7 +72,7 @@ other distros)
 4. `libpng-dev`
 
 The required boost package is also part of `libboost-all-dev`. Once these are
-installed, simply run `make`. It will build the executable `ffbuf.out`.
+installed, simply run `make`.
 
 This was only tested on Ubuntu 20.04 and 22.04 since I only use Ubuntu for
 development. Help to expand this section to support other systems would be
@@ -83,34 +80,20 @@ appreciated.
 
 ## command line options
 
-The help message for `ffbuf.out` (renderer for the grid buffer, currently 2d
-only):
+Currently there are 2 executables: `ffr-basic.out` and `ffr-buffer.out`. The
+first is for 2d flame fractals and image output (grayscale currently). The
+second creates the probability distribution buffer, supporting higher
+dimensions.
 
-```
-ffbuf: usage
-[-h --help]: show this message
--f --flame: flame parameters JSON file (required)
--o --output: output file (required)
-[-i --input]: buffers to start with (can use multiple input files)
-[-s --samples]: samples to render (default 0)
-[-t --type]: output type (png,pgm,buf) (default use file extension)
-[-b --img_bits]: bit depth for png or pgm output (8 or 16) (default 8)
-[-T --threads]: number of threads to use (default number of threads available)
-[-z --batch_size]: multithreading batch size (default 2^18)
-[-B --bad_values]: bad value limit for terminating render (default 10)
-[-m --scaler]: scaling function for image (binary,linear,log) (default log)
-```
+Below is an explanation of the options. Note that not all options are present in
+every executable.
 
 You can use `-` for stdin/stdout with `-f`, `-o`, and `-i`, but should not use
 it for both `-f` and `-i` in the same command.
 
-In more detail:
-
 `-f --flame` specifies the JSON file with the flame fractal parameters
 
-`-o --output` specifies the output file to write. The type of output is
-determined automatically from the extension (.png, .pgm, or .buf, see the `-t`
-option)
+`-o --output` specifies the output file to write
 
 `-i --input` specify buffer files, otherwise start with an empty (zeroed)
 buffer. This can be used to add samples to an existing buffer or convert an
@@ -139,25 +122,20 @@ is recommended by Draves's paper
 
 Render a flame with 1000000 samples and save as an image
 
-`ffbuf -f flame.json -o flame.png -s 1000000`
+`ffr-basic.out -f flame.json -o flame.png -s 1000000`
 
 Save the probability distribution buffer instead of an image
 
-`ffbuf -f flame.json -o flame.buf -s 1000000`
+`ffr-basic.out -f flame.json -o flame.buf -s 1000000`
 
 Add additional rendered samples to an existing buffer
 
-`ffbuf -f flame.json -i flame1.buf -o flame2.buf -s 1000000`
+`ffr-basic.out -f flame.json -i flame1.buf -o flame2.buf -s 1000000`
 
 Convert the probability distribution buffer to an image
 
-`ffbuf -f flame.json -i flame.buf -o flame.png`
+`ffr-basic.out -f flame.json -i flame.buf -o flame.png`
 
 Multithreaded render with linear scaling instead of logarithmic
 
-`ffbuf -f flame.json -o flame.png -s 1000000 -T 2 -m linear`
-
-## explanation of the output
-
-Rendering statistics are written to standard error. This section needs to be
-expanded.
+`ffr-basic.out -f flame.json -o flame.png -s 1000000 -T 2 -m linear`

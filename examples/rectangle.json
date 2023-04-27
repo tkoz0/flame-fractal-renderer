@@ -1,5 +1,4 @@
 {
-    "name": "rectangle",
     "dimensions": 2,
     "size": [512,512],
     "bounds": [[-3,3],[-3,3]],

@@ -1,5 +1,4 @@
 {
-    "name": "sierpinski_with_variations",
     "dimensions": 2,
     "size": [512,512],
     "bounds": [[-2,2],[-2,2]],

@@ -1,6 +1,4 @@
-// test flame from flam3
 {
-    "name": "flam3_test_2",
     "dimensions": 2,
     "size": [512,512],
     "bounds": [[-2,2],[-2,2]],

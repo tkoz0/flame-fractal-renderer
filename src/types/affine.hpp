@@ -72,7 +72,6 @@ public:
     {
         return b;
     }
-    // TODO ensure loop is unrolled for small N
     inline Point<T,N> apply_to(const Point<T,N>& x) const
     {
         Point<T,N> ret(b);

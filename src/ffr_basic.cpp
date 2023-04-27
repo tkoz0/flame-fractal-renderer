@@ -1,5 +1,7 @@
 /*
-ffbuf: usage
+Renderer for 2d buffers and 2d images.
+
+ffr-basic: usage
 [-h --help]: show this message
 -f --flame: flame parameters JSON file (required)
 -o --output: output file (required)
@@ -39,18 +41,18 @@ const std::string VERSION = "unspecified";
 namespace bpo = boost::program_options;
 typedef float num_t; // can also be double (slower)
 // half precision may be ok for smaller buffers
-typedef u32 hist_t; // can also be u64
-// u16 is probably too small for practical use cases
+typedef uint32_t hist_t; // can also be uint64_t
+// uint16_t is probably too small for practical use cases
 
 int main(int argc, char **argv)
 {
     size_t num_threads = number_of_threads();
-    bpo::options_description options("ffbuf usage");
+    bpo::options_description options("ffr-basic usage");
     options.add_options()
         ("help,h","show this message")
-        ("flame,f",bpo::value<std::string>(),
+        ("flame,f",bpo::value<std::string>()->required(),
             "flame parameters JSON file (required)")
-        ("output,o",bpo::value<std::string>(),
+        ("output,o",bpo::value<std::string>()->required(),
             "output file (required)")
         ("input,i",bpo::value<std::vector<std::string>>(),
             "buffers to add for initial histogram (default none)")
@@ -99,8 +101,6 @@ int main(int argc, char **argv)
     size_t arg_batch_size = args["batch_size"].as<size_t>();
     size_t arg_bad_values = args["bad_values"].as<size_t>();
     std::string arg_scaler = args["scaler"].as<std::string>();
-    //std::string arg_precision = args["precision"].as<std::string>();
-    //size_t arg_hist_bits = args["hist_bits"].as<size_t>();
     // check args
     if (arg_type != "" && arg_type != "png" && arg_type != "pgm"
         && arg_type != "buf")
@@ -147,7 +147,7 @@ int main(int argc, char **argv)
             return 1;
         }
     }
-    std::cerr << "FFBUF version " << VERSION << std::endl;
+    std::cerr << "ffr-basic version " << VERSION << std::endl;
 #if TKOZ_LITTLE_ENDIAN
     std::cerr << "endianness: little" << std::endl;
 #else
@@ -178,7 +178,7 @@ int main(int argc, char **argv)
     else
         json_flame = Json(read_text_file(arg_flame));
     std::cerr << "flame json (comments removed): " << json_flame << std::endl;
-    tkoz::flame::HistogramRenderer<num_t,2,hist_t,true> renderer(json_flame);
+    tkoz::flame::HistogramRenderer<num_t,2,hist_t,false> renderer(json_flame);
     const tkoz::flame::Flame<num_t,2>& flame = renderer.getFlame();
     std::cerr << "x size: " << flame.getSize()[0] << std::endl;
     std::cerr << "y size: " << flame.getSize()[1] << std::endl;
@@ -238,8 +238,7 @@ int main(int argc, char **argv)
         clock_gettime(CLOCK_MONOTONIC,&t1);
         i32 prev_percent = -1;
         size_t prev_tsec = t1.tv_sec;
-        //renderer.renderBuffer(arg_samples,rng);
-        renderer.renderParallel(arg_samples,arg_threads,
+        renderer.render(arg_samples,arg_threads,
             arg_batch_size,arg_bad_values,
             [&prev_percent,&prev_tsec,&t1,&t2](float p)
             {
@@ -302,7 +301,7 @@ int main(int argc, char **argv)
         size_t missed_samples = renderer.getSamplesPlotted()
             - (buffer_sum - buffer_sum_initial);
         fprintf(stderr,"missed samples: %lu\n",missed_samples);
-#if 1
+#if 0
         // show histogram frequency information
         hist_t freq[8*sizeof(hist_t)]; // needing 1,2,3,..,32(or 64) bits
         for (size_t i = 0; i < 8*sizeof(hist_t); ++i)

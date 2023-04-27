@@ -1,5 +1,4 @@
 {
-    "name": "barnsley_fern",
     "dimensions": 2,
     "size": [512,512],
     "bounds": [[-5,5],[0,10]],
