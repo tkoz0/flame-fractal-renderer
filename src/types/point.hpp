@@ -37,7 +37,7 @@ namespace tkoz::flame
 template <typename T, size_t N>
 class Point
 {
-    static_assert(N > 0 && N < 100);
+    static_assert(N < 100);
 private:
     std::array<T,N> vec;
     typedef Point<T,N> self_type; // for ENABLE_IF macro
