@@ -18,7 +18,7 @@ namespace tkoz::flame
 
 // type generic interface to allow runtime template selection
 // without duplicating a lot of code
-template <typename num_t, typename hist_t, bool use_cache = false>
+template <typename num_t, typename hist_t>
 class HistogramRendererInterface
 {
 public:
@@ -32,7 +32,7 @@ public:
     virtual inline size_t getBadValueCount() const = 0;
     virtual inline size_t getHistogramSize() const = 0;
     virtual inline size_t getHistogramSizeBytes() const = 0;
-    virtual void addHistogram(const hist_t *buf) = 0;
+    virtual bool addHistogram(const hist_t *buf) = 0;
 };
 
 /*
@@ -42,15 +42,21 @@ Histogram Renderer
 
 TODO
 - consider different data structures
-- possibly u16 for histogram but store overflowed numbers in a separate map
 - output for counting histogram entries in different ranges
   - how many need 8 bit, 16 bit, ... integer size
+- remove use_cache feature
+  - performance improvement was tiny
+  - expected to become worse with increasing buffer size for color
+- consider adding a template parameter for number of color dimensions
+- modify to support the added color parameters
+- remove num_t,hist_t templating, just use double,uint64_t
 */
 template <typename num_t, size_t dims, typename hist_t, bool use_cache = false>
 class HistogramRenderer:
-    public HistogramRendererInterface<num_t,hist_t,use_cache>
+    public HistogramRendererInterface<num_t,hist_t>
 {
     static_assert(!use_cache || sizeof(hist_t) > sizeof(u8));
+    static_assert(1 <= dims && dims <= 10);
 private:
     typedef Point<num_t,dims> point_t;
     typedef XForm<num_t,dims> xform_t;
@@ -380,10 +386,16 @@ public:
     }
     // add another buffer array to the internal buffer
     // length must be equal to getHistogramSize()
-    void addHistogram(const hist_t *buf)
+    // returns false if overflow occurs, otherwise true
+    bool addHistogram(const hist_t *buf)
     {
+        bool overflow = false;
         for (size_t i = 0; i < histsize; ++i)
+        {
             histogram[i] += buf[i];
+            overflow |= histogram[i] < buf[i];
+        }
+        return not overflow;
     }
     // number of samples rendered in the histogram
     size_t histogramSum() const
