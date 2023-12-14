@@ -38,6 +38,9 @@ private:
     bool has_final_xform;
     // cumulative weights for xform probability selection
     std::vector<num_t> xfcw;
+    // color information
+    size_t color_dims;
+    num_t color_speed;
     void _setupCumulativeWeights()
     {
         xfcw = std::vector<num_t>(xforms.size());
@@ -66,6 +69,8 @@ private:
             else
                 ++itr;
         }
+        if (xforms.empty())
+            throw std::runtime_error("flame: optimize removed all xforms");
         // sort by decreasing weight
         std::sort(xforms.begin(),xforms.end(),
             [](XForm<num_t,dims>& a, XForm<num_t,dims>& b)
@@ -102,20 +107,37 @@ public:
             if (lo >= hi)
                 throw std::runtime_error("flame: bound low >= bound high");
         }
+        Json fxf;
+        has_final_xform = input.valueAt("final_xform",fxf);
+        JsonArray xfs = input["xforms"].arrayValue();
+        // color initial
+        Json cd,cs;
+        if (input.valueAt("color_dimensions",cd))
+            color_dims = cd.intValue();
+        else
+            color_dims = 0;
+        if (color_dims > 127)
+            throw std::runtime_error("flame: too many color dimensions");
+        if (input.valueAt("color_speed",cs))
+            color_speed = cs.floatValue();
+        else
+            color_speed = 0.5;
+        if (color_speed < 0.0 || color_speed > 1.0)
+            throw std::runtime_error("flame: color speed out of range");
         // xforms loop
         size_t id = 0;
-        for (Json xf : input["xforms"].arrayValue())
+        for (Json xf : xfs)
         {
-            xforms.push_back(XForm<num_t,dims>(xf,id,false));
+            xforms.push_back(XForm<num_t,dims>(xf,id,false,color_dims));
             ++id;
         }
         xform_ids = id;
         if (xforms.empty())
             throw std::runtime_error("flame: must have >= 1 xform");
-        Json xf;
-        has_final_xform = input.valueAt("final_xform",xf);
         if (has_final_xform)
-            final_xform = XForm<num_t,dims>(input["final_xform"],-1,true);
+        {
+            final_xform = XForm<num_t,dims>(fxf,-1,true,color_dims);
+        }
         _optimize();
         _setupCumulativeWeights();
     }
@@ -150,6 +172,14 @@ public:
     inline size_t getXFormIDCount() const
     {
         return xform_ids;
+    }
+    inline size_t getColorDims() const
+    {
+        return color_dims;
+    }
+    inline num_t getColorSpeed() const
+    {
+        return color_speed;
     }
 };
 

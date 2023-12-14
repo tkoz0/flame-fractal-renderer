@@ -1,5 +1,6 @@
 /*
 Representation of an xform
+This class is coupled with Flame and not designed to be used independently
 */
 
 #pragma once
@@ -17,9 +18,6 @@ template <typename num_t, size_t dims> class XForm;
 #include "affine.hpp"
 #include "../variations.hpp"
 
-// TODO need color speed and color parameters
-// perhaps generalized in some way
-
 namespace tkoz::flame
 {
 
@@ -36,24 +34,35 @@ private:
     Affine<num_t,dims> pre; // pre affine transformation
     Affine<num_t,dims> post; // post affine transformation
     bool has_pre,has_post;
+    // color vector, length info from flame object
+    std::vector<num_t> color;
     // optimize xform
     void _optimize()
     {
+        // remove 0 weight variations
+        auto itr = vars.begin();
+        while (itr != vars.end())
+        {
+            if (fabs((*itr)->getWeight()) == 0.0)
+                itr = vars.erase(itr);
+            else
+                ++itr;
+        }
     }
 public:
     // need default constructor since final xform may not be used
     XForm(){}
     // construct from JSON data
     // throws error if something goes wrong
-    XForm(const Json& input, size_t id, bool is_final)
+    XForm(const Json& input, size_t id, bool is_final, size_t color_dims)
     {
         this->id = id;
         if (!is_final)
             weight = input["weight"].floatValue();
         else
             weight = 1.0; // unused
-        if (weight <= 0.0)
-            throw std::runtime_error("weights must be positive");
+        if (weight < 0.0)
+            throw std::runtime_error("weights must be nonnegative");
         Json affine;
         has_pre = input.valueAt("pre_affine",affine);
         if (has_pre)
@@ -67,6 +76,20 @@ public:
             post = Affine<num_t,dims>();
         for (Json varj : input["variations"].arrayValue())
             vars.push_back(std::shared_ptr<var_t>(var_t::parseVariation(varj)));
+        Json colorj;
+        if (color_dims && input.valueAt("color",colorj))
+        {
+            JsonArray colorja = colorj.arrayValue();
+            if (colorja.size() != color_dims)
+                throw std::runtime_error("color length incorrect");
+            color.resize(color_dims);
+            for (size_t i = 0; i < color_dims; ++i)
+            {
+                color[i] = colorja[i].floatValue();
+                if (color[i] < 0.0 || color[i] > 1.0)
+                    throw std::runtime_error("color coordinate out of range");
+            }
+        }
         _optimize();
     }
     inline num_t getWeight() const
@@ -101,6 +124,14 @@ public:
         if (dims < 3 || has_post)
             t = post.apply_to(v);
         return t;
+    }
+    inline const std::vector<num_t>& getColor() const
+    {
+        return color;
+    }
+    inline bool hasColor() const
+    {
+        return !color.empty();
     }
 };
 
