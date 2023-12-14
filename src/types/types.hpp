@@ -29,7 +29,24 @@ typedef int64_t  i64;
 // state size is 2^rparam of word_t
 // word_t can be u32 for isaac32 or u64 for isaac64
 template <typename num_t>
-using rng_t = FlameRNG<num_t,u32,4>;
+using rng_t = FlameRNG<num_t,u64,4>;
+
+// number type
+// double - slower, unnecessary
+// float - faster, reasonable
+// (not an option but half precision may be ok for smaller buffers)
+typedef double num_t;
+// histogram counter type
+// uint64_t - big enough for plenty
+// uint32_t - reasonable choice for most renders
+// uint16_t - too small to be practical (not supported)
+typedef uint64_t hist_t;
+
+static_assert(std::is_same<num_t,float>::value
+           || std::is_same<num_t,double>::value);
+static_assert(std::is_same<hist_t,uint32_t>::value
+           || std::is_same<hist_t,uint64_t>::value);
+static_assert(sizeof(num_t) == sizeof(hist_t));
 
 // image typenames
 template <typename Pixel> struct image_gray;
