@@ -41,15 +41,16 @@ function sum. Finally, apply the post-affine transformation to this sum.
 ## why another renderer when others exist?
 
 I initially created this because I wanted to create the probability distribution
-buffer and then render images based on that (since the probability distribution
-buffer is the most computationally expensive part to generate, it makes sense to
-save it and then do the image conversion/filtering later).
+buffer and then render images based on that with various post-processing and
+filtering algorithms. Since the probability distribution buffer is the most
+computationally expensive part to generate, it makes sense to save its results
+and spend more effort optimizing its computation.
 
 It expanded a bit when I decided to write a whole renderer that I would try to
 optimize decently, although that is difficult to do when trying to support
 arbitrary functions to be specified in JSON files. I ended up switching from C
 to C++ and making the whole thing templated to be able to support different
-compile time parameters while maintaining better performance.
+compile time parameters while maintaining good performance.
 
 Another reason was interest in exploring 3D flame fractals. Higher dimensions
 are supported, but no tools have been created for displaying the results in a
@@ -58,8 +59,12 @@ meaningful way yet.
 ## json format
 
 Flames fractals for this software are specified in JSON. See the example flames
-for a good idea of how to write them. This documentation should be expanded
-eventually. The software does not give good error messages for incorrect format.
+for a good idea of how to write them. Comments are allowed in JSON files used
+for this program.
+
+This documentation should be expanded eventually. The software does not give
+good error messages for incorrect format. Different variations take various
+parameters and details on that need documentation as well.
 
 ## building
 
@@ -108,7 +113,7 @@ input buffers will be added together.
 
 `-T --threads` number of threads for multithreading
 
-`-z ---batch_size` number of samples to render per work unit on a thread, higher
+`-z --batch_size` number of samples to render per work unit on a thread, higher
 means less multithreading overhead
 
 `-B --bad_values` number of bad values before considering a render to be bad
