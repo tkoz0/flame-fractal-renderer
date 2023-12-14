@@ -16,7 +16,7 @@ template <typename T> struct eps {};
 template <> struct eps<float>
 { static constexpr float value = 1e-10; };
 template <> struct eps<double>
-{ static constexpr double value = 1e-50; };
+{ static constexpr double value = 1e-20; };
 
 // machine epsilon (difference between 1 and the smallest greater number)
 template <typename T> struct emach {};
@@ -44,7 +44,7 @@ template <typename T> struct bad_value_threshold {};
 template <> struct bad_value_threshold<float>
 { static constexpr float value = 1e10; };
 template <> struct bad_value_threshold<double>
-{ static constexpr double value = 1e50; };
+{ static constexpr double value = 1e20; };
 
 // multiplier to adjust numbers for scaling
 template <typename T> struct scale_adjust {};
