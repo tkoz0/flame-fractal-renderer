@@ -93,7 +93,6 @@ int main(int argc, char **argv)
     std::cerr << "number of cpus: " << number_of_threads() << std::endl;
     // print options
     std::cerr << "command line arguments:" << std::endl;
-    std::cerr << "ffbuf" << std::endl;
     std::cerr << "--flame: " << arg_flame << std::endl;
     for (std::string arg_input : args_input)
         std::cerr << "--input: " << arg_input << std::endl;

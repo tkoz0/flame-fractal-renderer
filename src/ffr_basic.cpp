@@ -10,7 +10,7 @@ ffr-basic: usage
 [-t --type]: output type (png,pgm,buf) (default use file extension)
 [-b --img_bits]: bit depth for png or pgm output (8 or 16) (default 8)
 [-T --threads]: number of threads to use (default 1)
-[-z --batch_size]: multithreading batch size (default 250000)
+[-z --batch_size]: multithreading batch size (default 2^18)
 [-B --bad_values]: bad value limit for terminating render (default 10)
 [-m --scaler]: scaling function for image (binary,linear,log) (default log)
 
@@ -31,6 +31,7 @@ planned options (not available yet):
 #include <boost/program_options.hpp>
 
 #include "renderers/histogram_renderer.hpp"
+#include "types/types.hpp"
 #include "utils/image.hpp"
 #include "utils/misc.hpp"
 #include "utils/endian.hpp"
@@ -39,10 +40,9 @@ planned options (not available yet):
 const std::string VERSION = "unspecified";
 
 namespace bpo = boost::program_options;
-typedef float num_t; // can also be double (slower)
-// half precision may be ok for smaller buffers
-typedef uint32_t hist_t; // can also be uint64_t
-// uint16_t is probably too small for practical use cases
+
+using num_t = tkoz::flame::num_t;
+using hist_t = tkoz::flame::hist_t;
 
 int main(int argc, char **argv)
 {
@@ -153,10 +153,9 @@ int main(int argc, char **argv)
 #else
     std::cerr << "endianness: big" << std::endl;
 #endif
-    std::cerr << "number of cpus: " << number_of_threads() << std::endl;
+    std::cerr << "number of cpus: " << num_threads << std::endl;
     // print options
     std::cerr << "command line arguments:" << std::endl;
-    std::cerr << "ffbuf" << std::endl;
     std::cerr << "--flame: " << arg_flame << std::endl;
     for (std::string arg_input : args_input)
         std::cerr << "--input: " << arg_input << std::endl;
@@ -225,7 +224,8 @@ int main(int argc, char **argv)
         }
         fprintf(stderr,"read %lu bytes from %s\n",
             renderer.getHistogramSizeBytes(),arg_input.c_str());
-        renderer.addHistogram(fbuf);
+        if (!renderer.addHistogram(fbuf))
+            std::cerr << "WARN: overflow adding input buffers" << std::endl;
     }
     if (fbuf) // clean up file buffer
         delete[] fbuf;
@@ -273,7 +273,7 @@ int main(int argc, char **argv)
         fprintf(stderr,"samples plotted: %lu\n",renderer.getSamplesPlotted());
         fprintf(stderr,"samples/sec: %lf\n",renderer.getSamplesIterated()/secs);
         double ratio = (double)renderer.getSamplesPlotted()
-            /renderer.getSamplesIterated();
+            / renderer.getSamplesIterated();
         fprintf(stderr,"plotted/iterated: %lf%%\n",100.0*ratio);
         std::cerr << "xform selection:";
         for (size_t i = 0; i < flame.getXForms().size(); ++i)
@@ -295,8 +295,8 @@ int main(int argc, char **argv)
         size_t buffer_sum;
         hist_t sample_min,sample_max;
         renderer.histogramStats(buffer_sum,sample_min,sample_max);
-        fprintf(stderr,"sample min: %u\n",sample_min);
-        fprintf(stderr,"sample max: %u\n",sample_max);
+        fprintf(stderr,"sample min: %lu\n",sample_min);
+        fprintf(stderr,"sample max: %lu\n",sample_max);
         fprintf(stderr,"buffer sum: %lu\n",buffer_sum);
         size_t missed_samples = renderer.getSamplesPlotted()
             - (buffer_sum - buffer_sum_initial);
@@ -324,7 +324,7 @@ int main(int argc, char **argv)
         for (size_t i = 0; i < 8*sizeof(hist_t); ++i)
         {
             cumulative += freq[i];
-            fprintf(stderr,"freq(%lu bits) = %u (%f %%)\n",i+1,freq[i],
+            fprintf(stderr,"freq(%lu bits) = %lu (%f %%)\n",i+1,freq[i],
                 100.0*((float)(cumulative)/renderer.getHistogramSize()));
         }
 #endif
