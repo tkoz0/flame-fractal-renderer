@@ -208,7 +208,7 @@ int run_renderer()
                     << " (" << t.get_id() << ")" << std::endl;;
             });
         clock_gettime(CLOCK_MONOTONIC,&t2);
-        std::cout << std::endl;
+        std::cerr << std::endl;
         size_t nsecs = 1000000000uLL * (t2.tv_sec - t1.tv_sec)
             + (t2.tv_nsec - t1.tv_nsec);
         double secs = nsecs / 1e9;
