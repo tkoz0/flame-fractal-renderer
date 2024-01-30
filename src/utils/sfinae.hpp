@@ -1,5 +1,6 @@
 /*
 SFINAE code
+for some complicated stuff with advanced features
 */
 
 #pragma once
@@ -13,9 +14,11 @@ template <bool...> struct bool_pack{};
 template <typename...Ts>
 using vconj = std::is_same<bool_pack<true,Ts::value...>,
                            bool_pack<Ts::value...,true>>;
+
 // all of Ts same as T
 template <typename T, typename...Ts>
 using vallsame = vconj<std::is_same<T,Ts>...>;
+
 // all of Ts convertible to T
 template <typename T, typename...Ts>
 using vallconv = vconj<std::is_convertible<T,Ts>...>;
