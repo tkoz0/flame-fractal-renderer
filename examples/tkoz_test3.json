@@ -1,0 +1,65 @@
+{
+    "dimensions": 2,
+    //"size": [3840,2160],
+    //"size": [2560,1440],
+    //"size": [1920,1080],
+    //"size": [1600,900],
+    "size": [1280,720],
+    //"size": [854,480],
+    //"size": [640,360],
+    //"size": [426,240],
+    //"size": [256,144],
+    //"size": [160,90],
+    "bounds": [[-48,48],[-27,27]],
+    "color_dimensions": 3,
+    "color_speed": 0.3,
+    "xforms": [
+        {
+            "weight": 1.0,
+            //"color": [1,0,0],
+            "color": [0,1,1],
+            "variations": [
+                {"name":"linear","weight":1.0},
+                {"name":"spiral","weight":-0.5},
+                {"name":"disc","weight":-1.0},
+                {"name":"ex","weight":1.0}
+            ],
+            "pre_affine": {"A":[[-0.75,0.0],[0.0,-0.75]],"b":[-0.75,-0.75]}
+        },
+        {
+            "weight": 0.2,
+            //"color": [0,1,0],
+            "color": [1,0,1],
+            "color_speed": 0.7,
+            "variations": [
+                {"name":"linear","weight":1.0},
+                {"name":"disc","weight":0.5},
+                {"name":"horseshoe","weight":1.0},
+                {"name":"spherical","weight":0.5}
+            ],
+            "pre_affine": {"A":[[0.5,0.0],[0.0,0.5]],"b":[0.0,0.75]}
+        },
+        {
+            "weight": 1.0,
+            //"color": [0,0,1],
+            "color": [1,1,0],
+            "variations": [
+                {"name":"linear","weight":1.0},
+                {"name":"swirl","weight":0.5},
+                {"name":"disc","weight":1.0},
+                {"name":"spiral","weight":0.5}
+            ],
+            "pre_affine": {"A":[[0.5,0.0],[0.0,0.5]],"b":[0.75,0.0]}
+        }
+    ],
+    "final_xform": {
+        "color": [1,1,1],
+        "color_speed": 0.5,
+        "variations": [
+            {"name":"linear","weight":4.0},
+            {"name":"sinusoidal","weight":-1.0}
+        ],
+        "pre_affine": {"A":[[0.1,-0.995],[0.995,0.1]],"b":[0,0]},
+        "post_affine": {"A":[[1,0],[0,1]],"b":[-2,4]}
+    }
+}
