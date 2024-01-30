@@ -55,17 +55,18 @@ nlohmann/json.hpp:
 	wget -O nlohmann/json.hpp \
 	https://github.com/nlohmann/json/releases/download/v3.11.3/json.hpp
 
+
 # need later version of boost because
 # the version in Ubuntu 22 does not compile with C++20
-boost:
-	mkdir -p boost/
-	cd boost
-	wget https://boostorg.jfrog.io/artifactory/main/release/1.84.0/source/boost_1_84_0.tar.bz2
-	tar -xvf boost_1_84_0.tar.bz2
-	cd boost_1_84_0/
-	./bootstrap.sh
-	./b2
-	cd ../..
+#boost:
+#	mkdir -p boost/
+#	cd boost
+#	wget https://boostorg.jfrog.io/artifactory/main/release/1.84.0/source/boost_1_84_0.tar.bz2
+#	tar -xvf boost_1_84_0.tar.bz2
+#	cd boost_1_84_0/
+#	./bootstrap.sh
+#	./b2
+#	cd ../..
 # need to run "sudo ./b2 install --prefix=/usr/local"
 # static linking is not a good solution for development
 # because glibc shows memory errors in valgrind
@@ -81,7 +82,7 @@ obj/%.d: src/%.cpp .prereq
 include $(DEPS)
 
 # prerequisites for entire project
-.prereq: nlohmann/json.hpp boost
+.prereq: nlohmann/json.hpp
 	mkdir -p $(shell dirname $(OBJS))
 	touch .prereq
 
