@@ -1,10 +1,13 @@
 .vscode
 /nlohmann/json.hpp
+/boost
 /obj
 *.o
 *.d
 *.out
+*.pbm
 *.pgm
+*.ppm
 *.png
 *.buf
 .prereq
