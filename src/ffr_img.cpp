@@ -149,6 +149,11 @@ int main(int argc, char **argv)
         return 1;
     }
     // add input buffers
+    if (arg_input.empty())
+    {
+        std::cerr << "ERROR: no input buffer files specified" << std::endl;
+        return 1;
+    }
     for (auto& s : arg_input)
     {
         std::cerr << "adding input file " << s << std::endl;
@@ -165,7 +170,7 @@ int main(int argc, char **argv)
             input_file.close();
         }
     }
-    std::cerr << "writing output" << std::endl;
+    std::cerr << "processing buffer" << std::endl;
     bool write_success;
     if (arg_output == "-")
         write_success = render_image(std::cout,img_ren);
@@ -183,13 +188,23 @@ int main(int argc, char **argv)
 bool render_image(std::ostream& os, tkoz::flame::ImageRenderer<>& img_ren)
 {
     using num_t = tkoz::flame::num_t;
+    using hist_t = tkoz::flame::hist_t;
     using u8 = tkoz::flame::u8;
     using u16 = tkoz::flame::u16;
     using buf_elem_t = tkoz::flame::buf_elem_t;
     using num_t3 = std::tuple<num_t,num_t,num_t>;
     //using cf_bool = tkoz::flame::cell_func_t<bool>;
+    using cf_hist_t = tkoz::flame::cell_func_t<hist_t>;
     using cf_num_t = tkoz::flame::cell_func_t<num_t>;
     using cf_num_t3 = tkoz::flame::cell_func_t<num_t3>;
+    // histogram min/max calculation
+    cf_hist_t funch = [](const buf_elem_t *cell, size_t r) -> hist_t
+    {
+        (void)r;
+        return cell->uintval;
+    };
+    auto [minh,maxh] = img_ren.getValueBounds(funch);
+    std::cerr << "histogram bounds: " << minh << " " << maxh << std::endl;
     // log scaler
     cf_num_t func1 = [](const buf_elem_t *cell, size_t r) -> num_t
     {
@@ -198,6 +213,7 @@ bool render_image(std::ostream& os, tkoz::flame::ImageRenderer<>& img_ren)
     };
     // compute max with log scaling
     auto [min,max] = img_ren.getValueBounds(func1);
+    std::cerr << "scaler bounds: " << min << " " << max << std::endl;
     if (max < tkoz::flame::eps<num_t>::value)
         throw std::runtime_error("histogram is (probably) empty");
     // gamma value
