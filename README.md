@@ -6,6 +6,11 @@
 <img src="examples/tkoz_test3.png" alt="Image 3" height="180" />
 </p>
 
+Sample images. From left to right:
+1. The Sierpinski Triangle, a well known fractal.
+2. A flame fractal I created for a project in a parallel computing class.
+3. Another flame fractal I created while testing color implementation.
+
 ## what are flame fractals?
 
 Flame fractals are fractals created by certain iterated function systems. They
