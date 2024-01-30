@@ -1,8 +1,10 @@
 # flame fractal renderer
 
-![Image 1](examples/sierpinski_triangle.png)
-![Image 2](examples/csci6360_project.png)
-![Image 3](examples/tkoz_test3.png)
+<p float="left">
+<img src="examples/sierpinski_triangle.png" alt="Image 1" height="180" />
+<img src="examples/csci6360_project.png" alt="Image 2" height="180" />
+<img src="examples/tkoz_test3.png" alt="Image 3" height="180" />
+</p>
 
 ## what are flame fractals?
 
