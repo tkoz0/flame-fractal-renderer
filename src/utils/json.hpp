@@ -1,26 +1,45 @@
 #pragma once
 
 #include <iostream>
+#include <string>
 #include <vector>
 #include <unordered_map>
 
 #include "../../nlohmann/json.hpp"
 
+namespace tkoz::flame
+{
+
+class JsonError : public std::exception
+{
+private:
+    std::string msg;
+public:
+    JsonError() {}
+    JsonError(const std::string& s): msg(s) {}
+    JsonError(const char *s): msg(s) {}
+    inline const char *what() const noexcept
+    {
+        return msg.c_str();
+    }
+};
+
 class Json;
 
-// type to use for JSON arrays
+// JSON data types
+// (null is not included and must be handled separately)
 typedef std::vector<Json> JsonArray;
-
-// type to use for JSON objects
 typedef std::unordered_map<std::string,Json> JsonObject;
-
 typedef bool JsonBool;
 typedef int64_t JsonInt;
 typedef double JsonFloat;
+typedef std::string JsonString;
 
 /*
-interface for using nlohmann::json with the features needed for this project
-supports comments in JSON
+wrapper for nlohmann::json that can be compiled just once for this project,
+because nlohmann's library adds a lot to the compile time
+- supports comments in JSON
+- read only / immutable
 */
 class Json: private nlohmann::json
 {
@@ -37,21 +56,22 @@ public:
     // convert a nlohmann::json object into this type
     Json(const nlohmann::json& input);
     // is value null
-    bool isNull() const;
+    bool isNull() const noexcept;
     // is value true or false
-    bool isBool() const;
+    bool isBool() const noexcept;
     // is value an integer
-    bool isInt() const;
+    bool isInt() const noexcept;
     // is value a floating point
-    bool isFloat() const;
+    bool isFloat() const noexcept;
     // is value a string
-    bool isString() const;
+    bool isString() const noexcept;
     // is value an array
-    bool isArray() const;
+    bool isArray() const noexcept;
     // is value an object
-    bool isObject() const;
-    // returns the length of the value (for arrays and objects)
-    size_t length() const;
+    bool isObject() const noexcept;
+    // returns the length of the array/object
+    // throws an exception for other types
+    size_t size() const;
     // returns boolean value, exception if not a boolean
     bool boolValue() const;
     // returns integer value, exception if not an integer
@@ -65,11 +85,11 @@ public:
     // returns object value, exception if not an object
     JsonObject objectValue() const;
     // if this is a long enough array, sets value and returns true
-    bool valueAt(size_t index, Json& value) const;
+    bool valueAt(size_t index, Json& value) const noexcept;
     // if this is an object with the given key, sets value and returns true
-    bool valueAt(const std::string& key, Json& value) const;
+    bool valueAt(const std::string& key, Json& value) const noexcept;
     // if this is an object with the given key, sets value and returns true
-    bool valueAt(const char *key, Json& value) const;
+    bool valueAt(const char *key, Json& value) const noexcept;
     // access array index, exception if not an array or not long enough
     Json operator[](size_t index) const;
     // access object key, exception if not an object or does not have key
@@ -83,3 +103,5 @@ public:
     // use nlohmann::json output stream operator
     friend std::ostream& operator<<(std::ostream& os, const Json& json);
 };
+
+}
