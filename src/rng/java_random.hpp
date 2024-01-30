@@ -1,6 +1,7 @@
 /*
 Random number generator designed to work exactly like java.util.Random
 It does so in everything except the Gaussian random variables
+(not used)
 */
 
 #pragma once
@@ -14,6 +15,9 @@ It does so in everything except the Gaussian random variables
 
 #define likely(x)   __builtin_expect(!!(x),1)
 #define unlikely(x) __builtin_expect(!!(x),0)
+
+namespace tkoz::flame
+{
 
 /*
 Template version of java.util.Random that allows changing some parameters
@@ -166,6 +170,8 @@ int64_t JavaRandomGeneric<multiplier,addend,state_size,seed_uniquifier_init,
     seed_uniquifier_mult>::seed_uniquifier = seed_uniquifier_init;
 
 typedef JavaRandomGeneric<> JavaRandom;
+
+}
 
 #undef likely
 #undef unlikely
