@@ -5,8 +5,8 @@ Flame fractals are specified with JSON files with comments allowed.
 ## flame object (root)
 
 An object with the following keys:
-- `"dimensions"`: an integer $n\in[1,10]$. The C++ classes have to be compiled
-for each value used. 10 is an arbitrary limit chosen for practical reasons.
+- `"dimensions"`: an integer $n$ (currently compiled for $n=1,2,3$).
+The C++ classes have to be compiled for each value used.
 - `"size"`: list of $n$ positive integers $[N_1,N_2,\ldots,N_n]$ for the number
 of pixels/buckets in each dimension. Each $N_i$ must be below $2^{16}$. This
 limit may make sense to increase for 2D or 3D. The product of all must be below
@@ -16,7 +16,7 @@ $2^{64}$, although 64 bit address space means the limit is much smaller
 plotting points on dimension $i$ as $B_{i,0}\leq x_i\leq B_{i,1}$
 (where $x\in\mathbb{R}^n$)
 - `"color_dimensions"`: size of color vectors. In practice, this might be 1
-(single dimension color palette) or 2 (hue+sat for HSL color space) or 3
+(single dimension color palette) or 2 (hue+sat for HSL/HSV color space) or 3
 (full color per xform), but there is also reason to make this equal to the
 number of xforms. These are only some ideas, there may be more useful ones.
 If not specified or is 0, color is disabled. An arbitrary limit of 127 is chosen
@@ -46,4 +46,4 @@ numbers. These describe the affine transformation $Ax+b$.
 
 Every variation has a `"name"` which is a string for the name of the variation
 and a `"weight"` which is a floating point number. Some variations have
-additional parameters described below.
+additional parameters which may be optional or required.
