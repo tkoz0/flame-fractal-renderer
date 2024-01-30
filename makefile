@@ -5,10 +5,12 @@
 # options for commands
 RM = rm -f
 CXX = g++
-# compile with optimization
-CXXFLAGS = -Wall -Werror -Wextra -std=gnu++20 -O3 -static
-# compile without optimization
-#CXXFLAGS = -Wall -Werror -Wextra -std=gnu++20 -g
+# compile with optimization and no debugging
+#CXXFLAGS = -Wall -Werror -Wextra -std=gnu++20 -O3 -static
+# compile with debugging and optimization
+CXXFLAGS = -Wall -Werror -Wextra -std=gnu++20 -g -O3 -static
+# compile with debugging and no optimization
+#CXXFLAGS = -Wall -Werror -Wextra -std=gnu++20 -g -static
 
 # flags for boost 1.84 (downloaded by this makefile)
 #INCLUDES = -I boost/boost_1_84_0
