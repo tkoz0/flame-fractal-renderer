@@ -37,7 +37,8 @@ a final xform. The original flame fractal algorithm uses 1 dimension for these,
 but we allow this to vary for more possibilities. Each coordinate on these
 vectors should be in $[0,1]$. Let $r$ be the number of dimensions in the color
 vectors. Also let $s$ be a color speed parameter for exponential averaging where
-$s\in[0,1]$. To generalize, we allow color specification to be optional.
+$s\in[0,1]$. To generalize, we allow color specification to be optional and for
+each xform to have its own color speed parameter.
 
 The many parameters allow a lot of freedom in defining flame fractals. In
 practice, we need the functions to be contractive on average to generate a good
@@ -81,7 +82,10 @@ so using $k$ dimensions for color information is not bad.
 ## creating a 2d image
 
 Here, we describe some ways to create an image from a rendering of a 2D flame
-fractal. Each cell in the 2D buffer would correspond to a single pixel.
+fractal. Each cell in the 2D buffer would correspond to a single pixel, or they
+can be downsampled to combine multiple rendering cells into a single pixel for
+improved quality. There is a lot of complexity in what is possible with creating
+images from the rendering buffer.
 
 The methods described here may differ from that of the original flam3 software.
 
@@ -89,22 +93,28 @@ Usually brightness is determined from the counter. Because of the high range,
 the most aesthetic value is brought out by log scaling the counter to show
 differences in density at various scales, which brings out more detail in an
 image. The densest parts are usually exponentially more dense than the lower
-density parts.
+density parts. Some other scaling function ideas are linear and nth roots.
 
-Let $\alpha'$ be the maximum $\alpha$ value over all the pixels. For each pixel,
-we have the counter $\alpha$ and color vector $\beta$. We use
-$b=\log(1+\alpha)/\log(1+\alpha')$ as the brightness and $\beta/\alpha$, the
-average color vector, to determine color. Brightness $b$ is also adjusted to
-$b'=b^{1/\gamma}$ for a correction paramater $\gamma$. Two possible methods are:
+Let a pixel have counter $\alpha$ and color vector $\beta$ (the color vector is
+the average color of iterations that reached that pixel). Let $\alpha'$ be the
+maximum $\alpha$ over all the pixels. Then we scale the $\alpha$ value as
+$b=\log(1+\alpha)/\log(1+\alpha')\in[0,1]$ for the brightness parameter.
+Next, let $b'=b^{1/\gamma}\in[0,1]$ be the brightness adjusted with a gamma
+parameter where $\gamma>0$. Now, there are several methods to determine color.
+A few possibilities are:
 
-1. Determine an RGB color from $\beta/\alpha$ and multiply each by the chosen
-brightness factor.
-2. Determine hue and saturation from $\beta/\alpha$ and set brightness.
+1. If $\beta$ is 1D, use a color palette to select a color and determine
+brightness with $b'$.
+2. If $\beta$ is 2D use the HSL/HSV color spaces. Determine hue and saturation
+from $\beta$ and lightness/value from $b'$.
+3. If $\beta$ is 3D, use $\beta$ as an RGB color and multiply it by $b'$ to
+adjust brightness.
 
-Lower density parts of the image can benefit from blurring, by using a blur
+Lower density parts of the image can also benefit from blurring, by using a blur
 radius that varies depending on how dense part of the buffer is. Another option
 is oversampling and determining density of pixels as an average of several
-histogram points.
+histogram points. The lower density parts of the fractal get smoother as the
+number of rendering samples increases.
 
 ## compile time constants
 
@@ -113,7 +123,7 @@ for point iteration and calculations.
 
 Histogram counter type `tkoz::flame::hist_t`: either `uint32_t` or `uint64_t`.
 The type used for histogram frequency counting. This must be the same size in
-bytes as `num_t` due to memory alignment design choices.
+bytes as `num_t` due to memory alignment design of the rendering buffer.
 
 Small epsilon to avoid division by zero `tkoz::flame::eps`: $10^{-10}$ for
 `float` and $10^{-20}$ for `double`. flam3 uses `1e-10`.
@@ -127,6 +137,7 @@ in pixels/buckets along any dimension. This limit may make sense to change.
 
 Maximum coordinate of rendering box `tkoz::flame::max_rect`: absolute values of
 rendering bounds must be less than this limit. This may make sense to change.
+Currentnly $10^5$ for `float` and $10^{10}$ for `double`.
 
 Settle iterations `tkoz::flame::settle_iters`: number of iterations to skip for
 iteration to converge to the attractor. 24 for `float` and 53 for `double`.
@@ -137,10 +148,6 @@ dimensions.
 Bad value threshold `tkoz::flame::bad_value_threshold`: threshold for which a
 point is assumed to diverge to infinity. $10^{10}$ for `float` and $10^{20}$
 for `double`. flam3 uses `1e10`.
-
-Scale adjustment multiplier `tkoz::flame::scale_adjust`: multiplier to ensure
-values stay in bounds when we need to use the interval $[0,1)$ instead of
-$[0,1]$. Using $1-2\epsilon_{mach}$.
 
 ## sources
 

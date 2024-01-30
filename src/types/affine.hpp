@@ -14,7 +14,7 @@ namespace tkoz::flame
 template <typename T, size_t N> class Affine;
 }
 
-#include "../utils/json_small.hpp"
+#include "../utils/json.hpp"
 #include "point.hpp"
 
 namespace tkoz::flame
@@ -24,13 +24,14 @@ namespace tkoz::flame
 template <typename T, size_t N>
 class Affine
 {
-    static_assert(N > 0 && N < 100);
+    static_assert(N > 0 && N < 65536);
 private:
     std::array<Point<T,N>,N> A; // linear transformation A*x + b
     Point<T,N> b;               // A as array of its rows
 public:
     Affine(): A(), b()
     {
+        // identity transformation
         for (size_t i = 0; i < N; ++i)
             A[i][i] = 1;
     }
@@ -42,6 +43,8 @@ public:
     }
     Affine(const Json& j) // {"A": [2d array], "b": [1d array]}}
     {
+        if (!j.isObject())
+            throw JsonError("Affine(Json&): not an object");
         JsonObject jo = j.objectValue();
         if (jo.find("A") == jo.end()) // use identity matrix
         {
@@ -53,16 +56,38 @@ public:
         }
         else
         {
+            if (!jo["A"].isArray())
+                throw JsonError("Affine(Json&): A is not an array");
             JsonArray ja = jo["A"].arrayValue();
             if (ja.size() != N)
-                throw std::runtime_error("affine: incorrect size");
+                throw JsonError("Affine(Json&): A is wrong size");
             for (size_t i = 0; i < N; ++i)
-                A[i] = Point<T,N>(ja[i]);
+            {
+                try
+                {
+                    A[i] = Point<T,N>(ja[i]);
+                }
+                catch (const std::exception& e)
+                {
+                    throw JsonError("Affine(Json&): error parsing A["
+                        + std::to_string(i) + "]: " + e.what());
+                }
+            }
         }
         if (jo.find("b") == jo.end()) // use 0
             b = Point<T,N>();
         else
-            b = Point<T,N>(jo["b"]);
+        {
+            try
+            {
+                b = Point<T,N>(jo["b"]);
+            }
+            catch (const std::exception& e)
+            {
+                throw JsonError("Affine(Json&): error parsing b: "
+                    + std::string(e.what()));
+            }
+        }
     }
     inline const std::array<Point<T,N>,N>& getA() const
     {

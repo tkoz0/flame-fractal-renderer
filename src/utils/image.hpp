@@ -2,16 +2,148 @@
 
 #include <iostream>
 
-#include "endian.hpp"
+#include <boost/gil.hpp>
+#include <boost/gil/extension/io/png.hpp>
 
-// write 8 bit pgm image
-bool write_pgm(std::ostream& os, size_t X, size_t Y, uint8_t *img);
+#include "../types/types.hpp"
 
-// write 16 bit pgm image
-bool write_pgm(std::ostream& os, size_t X, size_t Y, uint16_t *img);
+namespace tkoz::flame
+{
 
-// write 8 bit grayscale png image
-bool write_png(std::ostream& os, size_t X, size_t Y, uint8_t *img);
+// boost monochrome image type
+//typedef boost::gil::gray1_image_t mono_img;
+typedef boost::gil::gray1_image_t mono_img;
 
-// write 16 bit grayscale png image
-bool write_png(std::ostream& os, size_t X, size_t Y, uint16_t *img);
+// boost gray image type
+template <typename Pixel> struct gray_img;
+template <> struct gray_img<u8> { typedef boost::gil::gray8_image_t type; };
+template <> struct gray_img<u16> { typedef boost::gil::gray16_image_t type; };
+
+// boost rgb image type
+template <typename Pixel> struct rgb_img;
+template <> struct rgb_img<u8> { typedef boost::gil::rgb8_image_t type; };
+template <> struct rgb_img<u16> { typedef boost::gil::rgb16_image_t type; };
+
+template <typename IMG>
+bool writePng(const IMG& img, std::ostream& os)
+{
+    auto view = boost::gil::const_view(img);
+    boost::gil::write_view(os,view,boost::gil::png_tag());
+    return os.good();
+}
+
+bool writePbm(const mono_img& img, std::ostream& os)
+{
+    size_t X = img.dimensions().x;
+    size_t Y = img.dimensions().y;
+    auto view = boost::gil::const_view(img);
+    os << "P4\n" << X << " " << Y << "\n";
+    for (size_t y = 0; y < Y; ++y)
+    {
+        auto row = view.row_begin(y);
+        size_t x = 0;
+        // write groups of 8 pixels as 1 byte each
+        for (; x+7 < X; x += 8)
+        {
+            u8 c = 0;
+            u8 b = (1 << 7);
+            for (size_t i = x; i < x+8; ++i)
+            {
+                if (row[i] == 0)
+                    c |= b;
+                b >>= 1;
+            }
+            os.put(c);
+        }
+        // extra pixels
+        if (x < X)
+        {
+            u8 c = 0;
+            u8 b = (1 << 7);
+            for (; x < X; ++x)
+            {
+                if (row[x] == 0)
+                    c |= b;
+                b >>= 1;
+            }
+            os.put(c);
+        }
+    }
+    return os.good();
+}
+
+template <typename pix_t>
+bool writePgm(const typename gray_img<pix_t>::type& img, std::ostream& os)
+{
+    size_t X = img.dimensions().x;
+    size_t Y = img.dimensions().y;
+    auto view = boost::gil::const_view(img);
+    os << "P5\n" << X << " " << Y << "\n";
+    if (std::is_same<pix_t,u8>::value) // 8 bit
+    {
+        os << "255\n";
+        for (size_t y = 0; y < Y; ++y)
+        {
+            auto row = view.row_begin(y);
+            for (size_t x = 0; x < X; ++x)
+                os.put(row[x]);
+        }
+    }
+    else // 16 bit
+    {
+        os << "65535\n";
+        for (size_t y = 0; y < Y; ++y)
+        {
+            auto row = view.row_begin(y);
+            for (size_t x = 0; x < X; ++x)
+            {
+                os.put(row[x] >> 8);
+                os.put(row[x]);
+            }
+        }
+    }
+    return os.good();
+}
+
+template <typename pix_t>
+bool writePpm(const typename rgb_img<pix_t>::type& img, std::ostream& os)
+{
+    size_t X = img.dimensions().x;
+    size_t Y = img.dimensions().y;
+    auto view = boost::gil::const_view(img);
+    os << "P6\n" << X << " " << Y << "\n";
+    if (std::is_same<pix_t,u8>::value) // 8 bit
+    {
+        os << "255\n";
+        for (size_t y = 0; y < Y; ++y)
+        {
+            auto row = view.row_begin(y);
+            for (size_t x = 0; x < X; ++x)
+            {
+                os.put(row[x][0]);
+                os.put(row[x][1]);
+                os.put(row[x][2]);
+            }
+        }
+    }
+    else // 16 bit
+    {
+        os << "65535\n";
+        for (size_t y = 0; y < Y; ++y)
+        {
+            auto row = view.row_begin(y);
+            for (size_t x  = 0; x < X; ++x)
+            {
+                os.put(row[x][0] >> 8);
+                os.put(row[x][0]);
+                os.put(row[x][1] >> 8);
+                os.put(row[x][1]);
+                os.put(row[x][2] >> 8);
+                os.put(row[x][2]);
+            }
+        }
+    }
+    return os.good();
+}
+
+}

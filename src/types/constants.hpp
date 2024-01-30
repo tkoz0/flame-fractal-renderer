@@ -6,6 +6,8 @@ Constants for flame fractal rendering
 
 #include <cstdlib>
 
+#include <boost/gil.hpp>
+
 #include "types.hpp"
 
 namespace tkoz::flame
@@ -14,7 +16,7 @@ namespace tkoz::flame
 // small epsilon value for avoiding division by zero, flam3 uses 1e-10
 template <typename T> struct eps {};
 template <> struct eps<float>
-{ static constexpr float value = 1e-10; };
+{ static constexpr float  value = 1e-10; };
 template <> struct eps<double>
 { static constexpr double value = 1e-20; };
 
@@ -28,7 +30,7 @@ template <> struct emach<double> // 2.220446049250313e-16
 // some limits for flame parameters
 static const size_t max_dim = 65535;
 template <typename T> struct max_rect {};
-template <> struct max_rect<float> { static constexpr float value = 1e5F; };
+template <> struct max_rect<float>  { static constexpr float  value = 1e5F; };
 template <> struct max_rect<double> { static constexpr double value = 1e10; };
 
 // iterations to let point converge to the attractor
@@ -42,28 +44,37 @@ template <> struct settle_iters<double>
 // bad value threshold, flam3 uses 1e10
 template <typename T> struct bad_value_threshold {};
 template <> struct bad_value_threshold<float>
-{ static constexpr float value = 1e10; };
+{ static constexpr float  value = 1e10; };
 template <> struct bad_value_threshold<double>
 { static constexpr double value = 1e20; };
 
 // multiplier to adjust numbers for scaling
-template <typename T> struct scale_adjust {};
-template <> struct scale_adjust<float>
-{ static constexpr float value = 1.0F - 2.0F*emach<float>::value; };
-template <> struct scale_adjust<double>
-{ static constexpr double value = 1.0 - 2.0*emach<double>::value; };
+template <typename T> struct scale_adjust_down {};
+template <> struct scale_adjust_down<float>
+{ static constexpr float  value = 1.0F - emach<float>::value; };
+template <> struct scale_adjust_down<double>
+{ static constexpr double value = 1.0 - emach<double>::value; };
+template <typename T> struct scale_adjust_up {};
+template <> struct scale_adjust_up<float>
+{ static constexpr float  value = 1.0F + emach<float>::value; };
+template <> struct scale_adjust_up<double>
+{ static constexpr double value = 1.0 + emach<double>::value; };
 
 // image scaling multiplier for [0.0,1.0] scale
 // it is made to be slightly smaller than 2^bits so rounded down
 // the range is [0,255] for 8 bit and [0,65535] for 16 bit
 template <typename Pixel, typename Number> struct pix_scale;
 template <> struct pix_scale<u8,float>
-{ static constexpr float value = 256.0F * scale_adjust<float>::value; };
+{ static constexpr float value = 256.0F * scale_adjust_down<float>::value; };
 template <> struct pix_scale<u16,float>
-{ static constexpr float value = 65536.0F * scale_adjust<float>::value; };
+{ static constexpr float value = 65536.0F * scale_adjust_down<float>::value; };
+template <> struct pix_scale<u32,float>
+{ static constexpr float value = 4294967296.0F * scale_adjust_down<float>::value; };
 template <> struct pix_scale<u8,double>
-{ static constexpr double value = 256.0 * scale_adjust<double>::value; };
+{ static constexpr double value = 256.0 * scale_adjust_down<double>::value; };
 template <> struct pix_scale<u16,double>
-{ static constexpr double value = 65536.0 * scale_adjust<double>::value; };
+{ static constexpr double value = 65536.0 * scale_adjust_down<double>::value; };
+template <> struct pix_scale<u32,double>
+{ static constexpr double value = 4294967296.0 * scale_adjust_down<double>::value; };
 
 }

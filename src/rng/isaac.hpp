@@ -13,6 +13,7 @@ See https://www.burtleburtle.net/bob/rand/isaacafa.html
 #include <type_traits>
 
 #include "../utils/clock.hpp"
+#include "../types/types.hpp"
 
 #define likely(x)   __builtin_expect(!!(x),1)
 #define unlikely(x) __builtin_expect(!!(x),0)
@@ -23,15 +24,8 @@ See https://www.burtleburtle.net/bob/rand/isaacafa.html
 //#define VAR_ENABLE_IF(T1,T2,TYPE) template <typename dummy = T1>
 //static const typename std::enable_if<std::is_same<dummy,T2>::value,TYPE>::type
 
-// integer types
-typedef uint8_t  u8;
-typedef uint16_t u16;
-typedef uint32_t u32;
-typedef uint64_t u64;
-typedef int8_t   i8;
-typedef int16_t  i16;
-typedef int32_t  i32;
-typedef int64_t  i64;
+namespace tkoz::flame
+{
 
 // golden ratio constant based on word type
 template <typename T> struct golden_ratio {};
@@ -323,6 +317,8 @@ public:
         return std::make_tuple(randa,randb,randc);
     }
 };
+
+}
 
 #undef FUNC_ENABLE_IF
 #undef likely

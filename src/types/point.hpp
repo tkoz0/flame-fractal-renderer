@@ -20,7 +20,7 @@ namespace tkoz::flame
 template <typename T, size_t N> class Point;
 }
 
-#include "../utils/json_small.hpp"
+#include "../utils/json.hpp"
 #include "../utils/sfinae.hpp"
 #include "types.hpp"
 
@@ -37,7 +37,7 @@ namespace tkoz::flame
 template <typename T, size_t N>
 class Point
 {
-    static_assert(N < 100);
+    static_assert(N > 0 && N < 65536);
 private:
     std::array<T,N> vec;
     typedef Point<T,N> self_type; // for ENABLE_IF macro
@@ -58,9 +58,12 @@ public:
     // initialize from JSON array
     inline Point(const Json& j)
     {
+        if (!j.isArray())
+            throw JsonError("Point(Json&): not an array");
         JsonArray a = j.arrayValue();
         if (a.size() != N)
-            throw std::runtime_error("point: incorrect size");
+            throw JsonError("Point(Json&): incorrect array size: "
+                + std::to_string(a.size()));
         for (size_t i = 0; i < N; ++i)
         {
             if (a[i].isInt())
@@ -68,7 +71,7 @@ public:
             else if (a[i].isFloat())
                 vec[i] = (T) a[i].floatValue();
             else
-                throw std::runtime_error("point: not a number");
+                throw JsonError("Point(Json&): entry is not a number");
         }
     }
     // initialize from std::array object
@@ -175,7 +178,7 @@ public:
                                        const Point<T,N>& b)
     {
         Point<T,N> ret = a;
-        ret -= b;
+        ret += b;
         return ret;
     }
     friend inline Point<T,N> operator-(const Point<T,N>& a,
@@ -233,7 +236,7 @@ public:
         return init;
     }
     /* === vector norm functions === */
-    // vector p-norms (p == 0 means infinity norm)
+    // templated vector p-norms (p == 0 means infinity norm)
     template <u32 p> inline T norm() const
     {
         T ret;
@@ -254,16 +257,19 @@ public:
             return pow(normsum<p>(),1/p);
         }
     }
+    // untemplated vector p-norms
     inline T norm(T p) const
     {
         return pow(normsum(p),1/p);
     }
-    // vector p-norms before taking the root (p != 0)
+    // templated vector p-norms before taking the root
     template <u32 p> inline T normsum() const
     {
         T ret;
         switch (p)
         {
+        case 0:
+            return N;
         case 1: // l1 norm
             ret = std::abs(x());
             for (size_t i = 1; i < N; ++i)
@@ -281,6 +287,7 @@ public:
             return ret;
         }
     }
+    // untemplated vector p-norms before taking the root
     inline T normsum(T p) const
     {
         T ret = pow(std::abs(x()),p);

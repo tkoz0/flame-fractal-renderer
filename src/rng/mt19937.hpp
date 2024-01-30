@@ -1,5 +1,6 @@
 /*
 MT19937 Mersenne twister implementation
+(not used)
 */
 
 #pragma once
@@ -9,6 +10,7 @@ MT19937 Mersenne twister implementation
 #include <ctime>
 
 #include "../utils/clock.hpp"
+#include "../types/types.hpp"
 
 #define likely(x)   __builtin_expect(!!(x),1)
 #define unlikely(x) __builtin_expect(!!(x),0)
@@ -16,15 +18,8 @@ MT19937 Mersenne twister implementation
 #define FUNC_ENABLE_IF(T1,T2,RET) template <typename dummy = T1> \
     typename std::enable_if<std::is_same<dummy,T2>::value,RET>::type
 
-// integer types
-typedef uint8_t  u8;
-typedef uint16_t u16;
-typedef uint32_t u32;
-typedef uint64_t u64;
-typedef int8_t   i8;
-typedef int16_t  i16;
-typedef int32_t  i32;
-typedef int64_t  i64;
+namespace tkoz::flame
+{
 
 template <typename T> struct mt_params {};
 template <> struct mt_params<u32>
@@ -129,6 +124,8 @@ public:
         return (_get() >> 11) / (double) 0x20000000000000L;
     }
 };
+
+}
 
 #undef likely
 #undef unlikely
