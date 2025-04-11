@@ -38,23 +38,30 @@ template <typename T, size_t N>
 class Point
 {
     static_assert(N > 0 && N < 65536);
+
 private:
+
     std::array<T,N> vec;
     typedef Point<T,N> self_type; // for ENABLE_IF macro
+
 public:
+
     /* === constructors === */
+
     // initialize the point to the zero vector
     inline Point()
     {
         for (size_t i = 0; i < N; ++i)
             vec[i] = 0;
     }
+
     // initialize from length N array
     inline Point(const T x_[N])
     {
         for (size_t i = 0; i < N; ++i)
             vec[i] = x_[i];
     }
+
     // initialize from JSON array
     inline Point(const Json& j)
     {
@@ -74,8 +81,10 @@ public:
                 throw JsonError("Point(Json&): entry is not a number");
         }
     }
+
     // initialize from std::array object
     inline Point(const std::array<T,N>& x_): vec(x_) {}
+
     // Variadic templated constructor with N arguments
     // U,Us... to require >= 1 argument so no ambiguity results
     // argumuent types can be anything that can be casted to type T
@@ -91,89 +100,108 @@ public:
         // explicitly cast all to type T for initializer list
         vec = {(T) u, (T) us...};
     }
+
     // copy constructor
     inline Point(const Point<T,N>& p)
     {
         for (size_t i = 0; i < N; ++i)
             vec[i] = p.vec[i];
     }
+
     /* === assignment operators === */
+
     inline Point<T,N>& operator=(const Point<T,N>& p)
     {
         for (size_t i = 0; i < N; ++i)
             vec[i] = p.vec[i];
         return *this;
     }
+
     inline Point<T,N>& operator+=(const Point<T,N>& p)
     {
         for (size_t i = 0; i < N; ++i)
             vec[i] += p.vec[i];
         return *this;
     }
+
     inline Point<T,N>& operator-=(const Point<T,N>& p)
     {
         for (size_t i = 0; i < N; ++i)
             vec[i] -= p.vec[i];
         return *this;
     }
+
     inline Point<T,N>& operator*=(T k)
     {
         for (size_t i = 0; i < N; ++i)
             vec[i] *= k;
         return *this;
     }
+
     inline Point<T,N>& operator/=(T k)
     {
         // is it faster to divide instead of precomputing this to multiply?
         return *this *= (1/k);
     }
+
     /* === element access === */
+
     inline T operator[](size_t i) const
     {
         return vec[i];
     }
+
     inline T& operator[](size_t i)
     {
         return vec[i];
     }
+
     // x value (1st component)
     ENABLE_IF(N>=1,T) inline x() const
     {
         return vec[0];
     }
+
     // y value (2nd component) (requires 2D)
     ENABLE_IF(N>=2,T) inline y() const
     {
         return vec[1];
     }
+
     // z value (3rd component) (requires 3D)
     ENABLE_IF(N>=3,T) inline z() const
     {
         return vec[2];
     }
+
     // set first 2 components with references
     ENABLE_IF(N>=2,void) inline getXY(T& x_, T& y_) const
     {
         x_ = x();
         y_ = y();
     }
+
     // set first 3 components with references
     ENABLE_IF(N>=3,void) inline getXYZ(T& x_, T& y_, T& z_) const
     {
         getXY(x_,y_);
         z_ = z();
     }
+
     // return the ith component (0 indexed)
     inline T get(size_t i) const
     {
         return vec[i];
     }
+
     // return interval array
     inline const std::array<T,N>& getArray() const
     {
         return vec;
     }
+
     /* === arithmetic operators === */
+
     friend inline Point<T,N> operator+(const Point<T,N>& a,
                                        const Point<T,N>& b)
     {
@@ -181,6 +209,7 @@ public:
         ret += b;
         return ret;
     }
+
     friend inline Point<T,N> operator-(const Point<T,N>& a,
                                        const Point<T,N>& b)
     {
@@ -188,16 +217,19 @@ public:
         ret -= b;
         return ret;
     }
+
     friend inline Point<T,N> operator*(const Point<T,N>& a, T k)
     {
         Point<T,N> ret = a;
         ret *= k;
         return ret;
     }
+
     friend inline Point<T,N> operator*(T k, const Point<T,N>& a)
     {
         return a*k;
     }
+
     // dot product
     friend inline T operator*(const Point<T,N>& a, const Point<T,N>& b)
     {
@@ -206,13 +238,16 @@ public:
             ret += a[i] * b[i];
         return ret;
     }
+
     friend inline Point<T,N> operator/(const Point<T,N>& a, T k)
     {
         Point<T,N> ret = a;
         ret /= k;
         return ret;
     }
+
     /* === functional programming stuff === */
+
     // map each coordinate under the same function
     inline Point<T,N> map(std::function<T(T)> func) const
     {
@@ -221,6 +256,7 @@ public:
             ret[i] = func(vec[i]);
         return ret;
     }
+
     // fold left
     inline T foldl(std::function<T(T,T)> func, T init = 0) const
     {
@@ -228,6 +264,7 @@ public:
             init = func(init,vec[i]);
         return init;
     }
+
     // fold right
     inline T foldr(std::function<T(T,T)> func, T init = 0) const
     {
@@ -235,7 +272,9 @@ public:
             init = func(vec[i],init);
         return init;
     }
+
     /* === vector norm functions === */
+
     // templated vector p-norms (p == 0 means infinity norm)
     template <u32 p> inline T norm() const
     {
@@ -254,14 +293,16 @@ public:
         case 2: // l2 norm
             return sqrt(normsum<p>());
         default: // p-norm
-            return pow(normsum<p>(),1/p);
+            return pow(normsum<p>(),1.0/p);
         }
     }
+
     // untemplated vector p-norms
     inline T norm(T p) const
     {
-        return pow(normsum(p),1/p);
+        return pow(normsum(p),1.0/p);
     }
+
     // templated vector p-norms before taking the root
     template <u32 p> inline T normsum() const
     {
@@ -287,6 +328,7 @@ public:
             return ret;
         }
     }
+
     // untemplated vector p-norms before taking the root
     inline T normsum(T p) const
     {
@@ -295,21 +337,30 @@ public:
             ret += pow(std::abs(vec[i]),p);
         return ret;
     }
+
     // 1-norm
     inline T norm1() const { return norm<1>(); }
+
     // 2-norm
     inline T norm2() const { return norm<2>(); }
+
     // infinity-norm
     inline T norminf() const { return norm<0>(); }
+
+    // infinity-norm
     inline T normmax() const { return norm<0>(); }
+
     // 2-norm squared
     inline T norm2sq() const { return normsum<2>(); }
+
     /* === coordinate systems === */
+
     // angle in a plane [0,2pi)
     inline T angle(size_t d1 = 0, size_t d2 = 1) const
     {
         return atan2(vec[d2],vec[d1]);
     }
+
     // alternative angle in a plane [-pi,pi]
     inline T angle2(size_t d1 = 0, size_t d2 = 1) const
     {
@@ -317,12 +368,14 @@ public:
         static const T signtable[2] = {1,-1};
         return signtable[sign] * acos(vec[d1]/hypot(vec[d1],vec[d2]));
     }
+
     // polar coordinates in 2d (standard polar system)
     ENABLE_IF(N==2,void) inline getPolar(T& radius, T& theta) const
     {
         radius = norm2();
         theta = angle(); // [0,2pi)
     }
+
     // spherical coordinates in 3d (system commonly used in physics)
     ENABLE_IF(N==3,void) inline getSpherical(T& radius, T& theta, T& phi) const
     {
@@ -330,6 +383,7 @@ public:
         theta = acos(z()/radius); // [0,pi]
         phi = angle(); // [0,2pi)
     }
+
     // generalized spherical coordinates (see wikipedia, x_i order reversed)
     // ret[0] = radius, ret[1..N-2] in [0,pi], ret[N-1] in [-pi,pi]
     ENABLE_IF(N>=2,self_type) inline toSpherical() const
@@ -347,6 +401,7 @@ public:
         ret[0] = sqrt(sqsum);
         return ret;
     }
+
     // set this point based on spherical coordinates
     ENABLE_IF(N>=2,void) inline setFromSpherical(const Point<T,N>& c)
     {
@@ -359,7 +414,9 @@ public:
         }
         vec[0] = rsinprod * sin(c[N-1]);
     }
+
     /* === calculate parameters for use in variation functions === */
+
     // get radius and sin,cos of angle
     ENABLE_IF(N==2,void) inline getRadiusSinCos(T& r, T& s, T& c) const
     {
@@ -367,6 +424,7 @@ public:
         s = y() / r;
         c = x() / r;
     }
+
     // get sin,cos of angle
     ENABLE_IF(N==2,void) inline getSinCos(T& s, T& c) const
     {
@@ -395,4 +453,4 @@ std::ostream& operator<<(std::ostream& os, const Point<T,N>& p)
     return os;
 }
 
-}
+} // namespace tkoz::flame

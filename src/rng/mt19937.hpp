@@ -16,7 +16,7 @@ MT19937 Mersenne twister implementation
 #define unlikely(x) __builtin_expect(!!(x),0)
 
 #define FUNC_ENABLE_IF(T1,T2,RET) template <typename dummy = T1> \
-    typename std::enable_if<std::is_same<dummy,T2>::value,RET>::type
+    typename std::enable_if_t<std::is_same<dummy,T2>::value,RET>
 
 namespace tkoz::flame
 {
@@ -61,11 +61,13 @@ template <> struct mt_params<u64>
 template <typename T> class MT19937
 {
 private:
+
     typedef mt_params<T> params;
     std::array<T,params::n> MT;
     size_t index;
     static const T mask_lo = (((T)1) << params::r) - 1;
     static const T mask_hi = ~mask_lo;
+
     // seed must be nonzero
     inline void _seed(T seed)
     {
@@ -74,6 +76,7 @@ private:
         for (size_t i = 1; i < params::n; ++i)
             MT[i] = params::f * (MT[i-1] ^ (MT[i-1] >> (params::w - 2))) + i;
     }
+
     inline void _twist()
     {
         for (size_t i = 0; i < params::n; ++i)
@@ -84,6 +87,7 @@ private:
         }
         index = 0;
     }
+
     inline T _get()
     {
         if (unlikely(index >= params::n))
@@ -95,11 +99,14 @@ private:
         y ^= y >> params::l;
         return y;
     }
+
 public:
+
     inline MT19937(T seed = 0)
     {
         setSeed(seed);
     }
+
     inline void setSeed(T seed = 0)
     {
         static T seed_uniq = params::seed_uniq;
@@ -111,21 +118,24 @@ public:
             _seed(clock_nanotime() ^ seed_uniq ^ time(NULL));
         }
     }
+
     inline T nextWord()
     {
         return _get();
     }
+
     FUNC_ENABLE_IF(T,u32,float) inline nextFloat()
     {
         return (_get() >> 8) / (float) 0x1000000;
     }
+
     FUNC_ENABLE_IF(T,u64,double) inline nextFloat()
     {
         return (_get() >> 11) / (double) 0x20000000000000L;
     }
 };
 
-}
+} // namespace tkoz::flame
 
 #undef likely
 #undef unlikely

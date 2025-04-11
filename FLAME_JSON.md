@@ -46,4 +46,5 @@ numbers. These describe the affine transformation $Ax+b$.
 
 Every variation has a `"name"` which is a string for the name of the variation
 and a `"weight"` which is a floating point number. Some variations have
-additional parameters which may be optional or required.
+additional parameters which may be optional or required. This section needs to
+be expanded.

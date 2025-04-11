@@ -26,6 +26,7 @@ template <size_t dims>
 class Flame
 {
 private:
+
     // number of grid samples in each dimension
     std::array<size_t,dims> size;
     // coordinate bounds in each dimension
@@ -43,6 +44,7 @@ private:
     // color information
     size_t color_dims;
     num_t color_speed;
+
     // cumulative weights for selecting xform by random number in [0,1)
     void _setupCumulativeWeights()
     {
@@ -61,6 +63,7 @@ private:
         // correct rounding error
         xfcw.back() = 1.0;
     }
+
     // make some changes to optimize xform a bit
     void _optimize()
     {
@@ -83,8 +86,11 @@ private:
             [](XForm<dims>& a, XForm<dims>& b)
             { return a.getWeight() > b.getWeight(); });
     }
+
     Flame(){}
+
 public:
+
     // construct from JSON data
     // throws error if something goes wrong
     Flame(const Json& input)
@@ -207,6 +213,7 @@ public:
         _optimize();
         _setupCumulativeWeights();
     }
+
     inline const XForm<dims>& getRandomXForm(rng_t& rng) const
     {
         size_t i = 0;
@@ -215,46 +222,56 @@ public:
             ++i;
         return xforms[i];
     }
+
     inline const std::array<size_t,dims>& getSize() const
     {
         return size;
     }
+
     inline const std::array<std::pair<num_t,num_t>,dims>& getBounds() const
     {
         return bounds;
     }
+
     inline const std::vector<XForm<dims>>& getXForms() const
     {
         return xforms;
     }
+
     inline const std::vector<XForm<dims>>& getRemovedXForms() const
     {
         return xforms_removed;
     }
+
     inline size_t getXFormIDCount() const
     {
         return xform_ids;
     }
+
     inline const XForm<dims>& getFinalXForm() const
     {
         return final_xform;
     }
+
     inline bool hasFinalXForm() const
     {
         return has_final_xform;
     }
+
     inline const std::vector<num_t>& getCumulativeWeights() const
     {
         return xfcw;
     }
+
     inline size_t getColorDims() const
     {
         return color_dims;
     }
+
     inline num_t getDefaultColorSpeed() const
     {
         return color_speed;
     }
 };
 
-}
+} // namespace tkoz::flame

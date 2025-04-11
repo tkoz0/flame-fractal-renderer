@@ -26,6 +26,7 @@ template <size_t dims>
 class XForm
 {
 private:
+
     typedef Point<num_t,dims> point_t;
     typedef vars::Variation<dims> var_t;
     // xform id unique to the flame (using order of input file)
@@ -44,6 +45,7 @@ private:
     std::vector<num_t> color;
     // color speed
     num_t color_speed;
+
     // optimize xform
     void _optimize()
     {
@@ -57,9 +59,12 @@ private:
                 ++itr;
         }
     }
+
 public:
+
     // need default constructor since final xform may not be used
     XForm(){}
+
     // construct from JSON data
     // throws error if something goes wrong
     // input = json data to parse
@@ -168,34 +173,42 @@ public:
             color_speed = default_color_speed;
         _optimize();
     }
+
     inline num_t getWeight() const
     {
         return weight;
     }
+
     inline size_t getID() const
     {
         return id;
     }
+
     inline const Affine<num_t,dims>& getPreAffine() const
     {
         return pre;
     }
+
     inline const Affine<num_t,dims>& getPostAffine() const
     {
         return post;
     }
+
     inline const std::vector<std::shared_ptr<var_t>>& getVariations() const
     {
         return vars;
     }
+
     inline bool hasPreAffine() const
     {
         return has_pre;
     }
+
     inline bool hasPostAffine() const
     {
         return has_post;
     }
+
     // iterate a state for the rendering process
     inline point_t applyIteration(rng_t& rng, const point_t& p) const
     {
@@ -213,18 +226,21 @@ public:
             t = v;
         return t;
     }
+
     inline const std::vector<num_t>& getColor() const
     {
         return color;
     }
+
     inline bool hasColor() const
     {
         return color.size() != 0;
     }
+
     inline num_t getColorSpeed() const
     {
         return color_speed;
     }
 };
 
-}
+} // namespace tkoz::flame

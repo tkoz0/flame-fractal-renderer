@@ -295,4 +295,4 @@ inline color_oklab::color_oklab(color_lrgb z)
     b = 0.0259040371*l + 0.7827717662*m - 0.8086757660*s;
 }
 
-}
+} // namespace tkoz::flame

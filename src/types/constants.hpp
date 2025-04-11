@@ -77,4 +77,4 @@ template <> struct pix_scale<u16,double>
 template <> struct pix_scale<u32,double>
 { static constexpr double value = 4294967296.0 * scale_adjust_down<double>::value; };
 
-}
+} // namespace tkoz::flame

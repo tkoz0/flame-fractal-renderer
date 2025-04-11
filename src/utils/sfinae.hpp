@@ -28,4 +28,5 @@ template <size_t N1, size_t N2, typename T = void>
 struct enable_if_eq {};
 template <size_t N, typename T>
 struct enable_if_eq<N,N,T> { typedef T type; };
-
+template <size_t N1, size_t N2, typename T = void>
+using enable_if_eq_t = enable_if_eq<N1,N2,T>::type;

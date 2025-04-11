@@ -206,4 +206,4 @@ std::ostream& operator<<(std::ostream& os, const Json& json)
     return os;
 }
 
-}
+} // namespace tkoz::flame

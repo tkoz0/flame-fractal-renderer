@@ -24,13 +24,16 @@ template <size_t dims, bool enable_color = true>
 class RenderIterator
 {
 private:
+
     static_assert(dims > 0);
+
     // some typedefs
     typedef Point<num_t,dims> point_t;
     typedef vars::Variation<dims> var_t;
     typedef XForm<dims> xform_t;
     typedef Flame<dims> flame_t;
     typedef std::pair<num_t,num_t> num_pair_t;
+
     // iterating point
     point_t p,pf;
     // iterating color
@@ -41,6 +44,7 @@ private:
     size_t r;
     // random number generator
     rng_t& rng;
+
     // initialize the iterating state (point and possibly color)
     inline void _init()
     {
@@ -51,6 +55,7 @@ private:
             for (size_t i = 0; i < r; ++i)
                 c[i] = rng.randNum();
     }
+
     // check point for bad value
     inline static bool _bad_value(const point_t& x)
     {
@@ -59,6 +64,7 @@ private:
                 return true;
         return false;
     }
+
     // check if point is within rectangle bounds
     inline bool _in_bounds(const point_t& x) const
     {
@@ -68,7 +74,9 @@ private:
                 return false;
         return true;
     }
+
 public:
+
     RenderIterator(const flame_t& flame, rng_t& rng): flame(flame), rng(rng)
     {
         r = enable_color ? flame.getColorDims() : 0;
@@ -81,6 +89,7 @@ public:
             c = cf = nullptr;
         _init();
     }
+
     ~RenderIterator()
     {
         if (c)
@@ -88,6 +97,7 @@ public:
         if (cf)
             delete[] cf;
     }
+
     // perform an iteration to the next point (and possibly color)
     // store the selected xform id in xf_id
     inline void iterate(size_t& xf_id)
@@ -124,66 +134,78 @@ public:
                     cf[i] = c[i];
         }
     }
+
     // perform an iteration to the next point (and possibly color)
     inline void iterate()
     {
         size_t xf_id;
         iterate(xf_id);
     }
+
     // initialize point again for starting
     inline void init()
     {
         _init();
     }
+
     // check if point has reached a bad value
     inline bool badValue() const
     {
         return _bad_value(p);
     }
+
     // check if final point has reached a bad value
     inline bool badValueFinal() const
     {
         return _bad_value(pf);
     }
+
     // check if point is in bounds
     inline bool inBounds() const
     {
         return _in_bounds(p);
     }
+
     // check if final point is in bounds
     inline bool inBoundsFinal() const
     {
         return _in_bounds(pf);
     }
+
     inline const point_t& getPoint() const
     {
         return p;
     }
+
     inline const point_t& getPointFinal() const
     {
         return pf;
     }
+
     // should not use this if color is disabled
     inline const num_t *getColor() const
     {
         return c;
     }
+
     // should not use this if color is disabled
     inline const num_t *getColorFinal() const
     {
         return cf;
     }
+
     inline const flame_t& getFlame() const
     {
         return flame;
     }
+
     inline size_t getColorDims() const
     {
         return r;
     }
 };
 
-}
+} // namespace tkoz::flame
 
 #undef likely
 #undef unlikely

@@ -41,6 +41,7 @@ template <size_t dims, bool enable_color = true>
 class BufferRenderer
 {
 private:
+
     static_assert(dims > 0);
     static_assert(sizeof(num_t) == sizeof(hist_t));
     // some typedefs
@@ -57,6 +58,7 @@ private:
     size_t buffer_cells;
     // size of a cell (1 for the histogram + 1 for each color dimension)
     size_t buffer_cell_size;
+
     // get pointer to first element of a buffer cell
     inline buf_elem_t *_buf_cell(size_t i)
     {
@@ -65,6 +67,7 @@ private:
         else
             return buffer.data() + i;
     }
+
     // get const pointer to first element of a buffer cell
     inline const buf_elem_t *_buf_cell(size_t i) const
     {
@@ -73,6 +76,7 @@ private:
         else
             return buffer.data() + i;
     }
+
     // rendering statistics
     struct
     {
@@ -96,10 +100,12 @@ private:
         inline void unlock() { mutex.unlock(); }
     }
     stats;
+
     // multipliers for index in a single dimension
     std::array<num_t,dims> mult_d;
     // multipliers for calculating indexes
     std::array<size_t,dims> mult_i;
+
     // shared constructor stuff for initializing things from the flame params
     void _init()
     {
@@ -128,6 +134,7 @@ private:
         std::for_each(buffer.begin(),buffer.end(),
             [](buf_elem_t& b) { b.uintval = 0; });
     }
+
     /*
     render a batch into the buffer
     - multithreaded = handle safe access to shared resources
@@ -238,9 +245,13 @@ private:
         delete[] xf_dist;
         return samples == 0;
     }
+
 public:
+
     BufferRenderer(const flame_t& flame): flame(flame) { _init(); }
+
     BufferRenderer(const Json& json): flame(json) { _init(); }
+
     /*
     render samples into the buffer
     - num_samples = number of samples to render
@@ -322,6 +333,7 @@ public:
             [](std::thread& t) { t.join(); });
         return success;
     }
+
     /*
     render samples into buffer deterministically
     uses a single thread and provided rng object
@@ -355,6 +367,7 @@ public:
         }
         return true;
     }
+
     // add another buffer from pointer, must match the same buffer format
     template <typename T>
     void addBuffer(const T *buf)
@@ -374,6 +387,7 @@ public:
             }
         }
     }
+
     // add another buffer from vector, must match the same buffer format
     template <typename T>
     void addBuffer(const std::vector<T>& buf)
@@ -384,6 +398,7 @@ public:
                 "BufferRenderer::addBuffer(): sizes do not match");
         addBuffer(buf.data());
     }
+
     // add buffer from another renderer, must match the same buffer format
     void addBuffer(const BufferRenderer<dims,enable_color>& renderer)
     {
@@ -393,6 +408,7 @@ public:
                 "BufferRenderer::addBuffer(): formats do not match");
         addBuffer(renderer.buffer);
     }
+
     // add buffer from a file, must match the same buffer format
     // returns true if successful
     // the buffer may be partially overwritten if this fails
@@ -431,6 +447,7 @@ public:
         }
         return true;
     }
+
     // overwrite the current buffer, return true if successful
     // the buffer may be partially overwritten if this fails
     // use alloc_tmp = true to avoid this by storing the input buffer first
@@ -451,12 +468,14 @@ public:
             return is.good();
         }
     }
+
     // write the buffer data to an output stream, return true if successful
     bool writeBuffer(std::ostream& os) const
     {
         os.write((char*)buffer.data(),buffer.size()*sizeof(hist_t));
         return os.good();
     }
+
     // the total number of samples rendered in this buffer
     size_t histogramSum() const
     {
@@ -465,6 +484,7 @@ public:
             ret += _buf_cell(i)->uintval;
         return ret;
     }
+
     // the minimum cell value in the buffer histogram
     hist_t histogramMin() const
     {
@@ -473,6 +493,7 @@ public:
             ret = std::min(ret,_buf_cell(i)->uintval);
         return ret;
     }
+
     // the maximum cell value in the buffer histogram
     hist_t histogramMax() const
     {
@@ -481,69 +502,84 @@ public:
             ret = std::max(ret,_buf_cell(i)->uintval);
         return ret;
     }
+
     inline const flame_t& getFlame() const
     {
         return flame;
     }
+
     inline const std::vector<buf_elem_t>& getBuffer() const
     {
         return buffer;
     }
+
     inline const buf_elem_t *getBufferCell(size_t i) const
     {
         return _buf_cell(i);
     }
+
     inline size_t getBufferNumCells() const
     {
         return buffer_cells;
     }
+
     inline size_t getBufferCellSize() const
     {
         return buffer_cell_size;
     }
+
     inline size_t getSamplesIterated() const
     {
         return stats.s_iter;
     }
+
     inline size_t getSamplesPlotted() const
     {
         return stats.s_plot;
     }
+
     inline const std::vector<size_t>& getXFormDistribution() const
     {
         return stats.xf_dist;
     }
+
     inline const std::vector<size_t>& getBadValueXForms() const
     {
         return stats.bv_xfs;
     }
+
     inline const std::vector<point_t>& getBadValuePoints() const
     {
         return stats.bv_pts;
     }
+
     inline const std::array<num_pair_t,dims>& getPointExtremes() const
     {
         return stats.pt_max;
     }
+
     inline const std::array<num_t,dims>& getDimMults() const
     {
         return mult_d;
     }
+
     inline const std::array<size_t,dims>& getIndexMults() const
     {
         return mult_i;
     }
+
     inline size_t getDims() const
     {
         return dims;
     }
+
     inline size_t getColorDims() const
     {
         return enable_color ? flame.getColorDims() : 0;
     }
 };
 
-}
+} // namnespace tkoz::flame
 
 #undef likely
 #undef unlikely

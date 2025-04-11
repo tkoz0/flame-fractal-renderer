@@ -43,6 +43,7 @@ private:
     typedef XForm<2> xform_t;
     typedef Flame<2> flame_t;
     typedef std::pair<num_t,num_t> num_pair_t;
+
     // renderer object with buffer
     BufferRenderer<2,enable_color> buf_ren;
     // buffer viewer object for the filtered
@@ -59,37 +60,47 @@ private:
             cellsize = r+1;
         }
     };
+
 public:
+
     ImageRenderer(const flame_t& flame): buf_ren(flame) {}
+
     ImageRenderer(const Json& json): buf_ren(json) {}
+
     inline BufferRenderer<2,enable_color>& getBufferRenderer()
     {
         return buf_ren;
     }
+
     inline const BufferRenderer<2,enable_color>& getBufferRenderer() const
     {
         return buf_ren;
     }
+
     // buffer length in columns (X)
     inline size_t getBufferSizeX() const
     {
         return buf_ren.getFlame().getSize()[0];
     }
+
     // buffer length in rows (Y)
     inline size_t getBufferSizeY() const
     {
         return buf_ren.getFlame().getSize()[1];
     }
+
     // buffer size (both dimensions)
     inline std::pair<size_t,size_t> getBufferSize() const
     {
         return std::make_pair(getBufferSizeX(),getBufferSizeY());
     }
+
     // number of color dimensions
     inline size_t getColorDims() const
     {
         return buf_ren.getColorDims();
     }
+
     // get min and max value of a function over all pixels
     template <typename T>
     std::pair<T,T> getValueBounds(cell_func_t<T> func) const
@@ -106,12 +117,13 @@ public:
         }
         return std::make_pair(min,max);
     }
+
     // render binary image (monochrome bitmap)
     // bool function determines which points are white
-    mono_img renderBinaryImage(cell_func_t<bool> white) const
+    mono_img_t renderBinaryImage(cell_func_t<bool> white) const
     {
         buf_view_t v(buf_ren);
-        mono_img ret(v.xl,v.yl);
+        mono_img_t ret(v.xl,v.yl);
         auto view = boost::gil::view(ret);
         for (size_t y = 0; y < v.yl; ++y)
         {
@@ -124,6 +136,7 @@ public:
         }
         return ret;
     }
+
     // render gray image
     template <typename pix_t>
     typename gray_img<pix_t>::type renderGrayImage(
@@ -144,6 +157,7 @@ public:
         }
         return ret;
     }
+
     // render color image
     template <typename pix_t>
     typename rgb_img<pix_t>::type renderColorImageRGB(
@@ -169,7 +183,7 @@ public:
     }
 };
 
-}
+} // namespace tkoz::flame
 
 #undef likely
 #undef unlikely

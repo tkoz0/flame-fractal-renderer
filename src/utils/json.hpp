@@ -104,4 +104,4 @@ public:
     friend std::ostream& operator<<(std::ostream& os, const Json& json);
 };
 
-}
+} // namespace tkoz::flame

@@ -61,6 +61,7 @@ public:
 };
 
 // class for generalizing 2d variation to higher dimensions
+// specify axes to operate on with index keys axis_x and axis_y
 template <size_t dims>
 class VariationFrom2D: public Variation<dims>
 {
@@ -108,6 +109,7 @@ public:
 };
 
 // class for generalizing 3d variation to higher dimensions
+// specify axes to operate on with index keys axis_x and axis_y and axis_z
 template <size_t dims>
 class VariationFrom3D: public Variation<dims>
 {

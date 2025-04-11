@@ -1,52 +1,75 @@
 # flame fractal algorithm
 
-## defining the functions
+Flame fractals are an extension of (linear) iterated function systems. They can
+be generalized to higher dimensions but to keep things simple, we consider 2D
+for now. To generate a flame fractal we create some functions that map a point
+in the plane to another point in the plane (more on these later).
 
-Flame fractals are an extension of (linear) iterated function systems. Each
-flame fractal is defined by a number of dimensions $n$ and $k$ xforms, or
-transformation functions $F_1,F_2,\ldots,F_k:\mathbb{R}^n\to\mathbb{R}^n$, we
-require $k\geq1$. Optionally, there may be a final xform $F_0$. First we
-describe how to create these xforms $F_0,F_1,F_2,\ldots,F_k$.
+For rendering, we divide the plane into a grid of squares and pick a random
+point near $(0,0)$. Then we randomly apply functions to it and iterate a
+sequence of points $x_0,x_1,x_2,\ldots$. Each time the point lands in one of
+those squares on our grid, we increment a counter.
 
-We first have a set of (possibly nonlinear) variation functions. There may be
-arbitrarily many and we can always create more. We will represent them as
-$V_1,V_2,\ldots,V_m:\mathbb{R}^n\to\mathbb{R}^n$ supposing we have created $m$
-variation functions. A few examples in 2D are:
-$$V_0(x,y)=(x,y)$$
-$$V_1(x,y)=(\sin(x),\sin(y))$$
-$$V_2(x,y)=\frac{1}{r^2}(x,y),\quad r=\sqrt{x^2+y^2}$$
+The rendering result is a probability distribution and can be plotted in
+grayscale. For better detail, it should be logarithmically scaled. Color is
+usually added by associating the functions with colors and measuring which grid
+squares are associated with which functions.
 
-Now, for each xform $F_i$, we create them as a composition of a pre-affine
-function, followed by a sum of variation functions, followed by a post-affine
-function. Let $g_i$ and $h_i$ be affine functions, that is, expressible as
-$Ax+b$ for some $n\times n$ matrix $A$ and $n$-vector $b$. Then an xform is
-defined as
-$$F_i(x)=h_i\left(\sum_{j=1}^{m}v_{ij}V_j(g_i(x))\right)$$
-where each $v_{ij}\in\mathbb{R}$ are weights chosen as a representation of how
-much to use the variation function. In practice, many will be $0$, and a small
-number of variations will be selected with nonzero weights to be used. Each
-$g_i$ and $h_i$ can be arbitrary affine functions.
+Images can be enhanced with postprocessing such as gamma brightness adjustment
+and variable radius blurring.
 
-Additionally, we assign probabilities $w_i\geq0$ to the xforms
-$F_1,F_2,\ldots,F_k$. These describe relative weights for selecting xforms and
-are normalized to sum to $1$.
+## functions and parameters
 
-For color, we assign color vectors $c_1,c_2,\ldots,c_k$ to each of the xforms,
-and possibly a final color $c_0$ which may be specified whether or not there is
-a final xform. The original flame fractal algorithm uses 1 dimension for these,
-but we allow this to vary for more possibilities. Each coordinate on these
-vectors should be in $[0,1]$. Let $r$ be the number of dimensions in the color
-vectors. Also let $s$ be a color speed parameter for exponential averaging where
-$s\in[0,1]$. To generalize, we allow color specification to be optional and for
-each xform to have its own color speed parameter.
+In $n$ dimensional space $\mathbb{R}^n$, we need some variation functions
+$$ V_1,V_2,\ldots,V_m:\mathbb{R}^n\to\mathbb{R}^n $$
+These functions can be defined in many different ways, even depending on
+randomness. The goal is to have many options to give lots of possible variation
+to flame fractals. The following are a few examples:
+$$ V_1(x,y)=(x,y),\quad V_2(x,y)=(\sin(x),\cos(x)) $$
+$$ V_3={1\over x^2+y^2}(x,y),\quad V_4(x,y)
+={1\over\sqrt{x^2+y^2}}((x-y)(x+y),2xy) $$
+Some variation functions can even have their own configurable parameters which
+give even more options for variation in fractals that can be created.
+
+Next we construct functions (also called xforms in flam3) $F_1,F_2,\ldots,F_k$
+with weights $w_1,w_2,\ldots,w_k>0$ which we will assume are normalized
+($w_1+w_2+\ldots+w_k=1$). For each $F_i$, we need a pre-affine function $G_i$
+and post-affine function $H_i$. Affine functions are $Ax+b$ for some
+$n\times n$ matrix $A$ and $n$-vector $b$. Finally, we need variation weights
+$v_{i1},v_{i2},\ldots,v_{im}$. Then define
+$$ F_i(x)=H_i \left( \sum_{j=1}^m v_{ij} V_j(G_i(x)) \right) $$
+In practice, most $v_{ij}$ will be $0$, choosing only a small number of
+variation functions to use.
+
+Optionally, we can also define a final xform $F_f$ similarly, but it does not
+have an associated weight.
+
+For color, we assign $r$-dimensional color vectors to the xforms:
+$$ c_1,c_2,\ldots,c_k\in[0,1]^r $$
+There can also optionally be a final color $c_f$. We also choose a color speed
+parameter $0\leq s\leq1$ which is used for exponential averaging. The color
+vectors can be mapped to a color space in many different ways. A few are
+
+- map 1D values to a color palette
+- map 2D values to hue and saturation
+- map 3D values to red, green, and blue
+
+Usually the brightness is determined from the logarithmically scaled probability
+distribution, but there can be other ways to use that information.
+
+Full xform weight information can be found by using $r=k$ and choosing each
+color vector to be a standard basis vector ($c_i=e_i$). The color iteration is
+$$ c = sc_i + (1-s)c $$
+which converges to a vector whose component sum (or 1-norm) is $1$.
 
 The many parameters allow a lot of freedom in defining flame fractals. In
 practice, we need the functions to be contractive on average to generate a good
 image. Poor choice of parameters will result in degenerate images. Finding good
 images is a matter of running Monte-Carlo simulations for various parameters and
-selecting those that that have aesthetic value.
+selecting those that that have aesthetic value. One way to easily identify some
+bad images is when the point iterates outside a large chosen bound often.
 
-## the rendering algorithm
+## rendering algorithm
 
 To render a flame fractal, we first zero-initialize a buffer corresponding to a
 grid in $\mathbb{R}^n$. For each cell in the grid (which would be pixels in 2D),
@@ -58,14 +81,14 @@ we have a counter ($\alpha$) and a color vector ($\beta$).
     1. Choose an xform $F_i$ (where $1\leq i\leq k$).
     2. Set $x$ to $F_i(x)$.
     3. Set $c$ to $sc_i+(1-s)c$ if $F_i$ has a color $c_i$.
-    3. Set $x'=F_0(x)$ if a final xform is present, otherwise $x'=x$.
-    4. Set $c'=sc_0+(1-s)c$ if a final color is present, otherwise $c'=c$.
+    3. Set $x'=F_f(x)$ if a final xform is present, otherwise $x'=x$.
+    4. Set $c'=sc_f+(1-s)c$ if a final color is present, otherwise $c'=c$.
     4. Plot $x'$ and $c'$ except during the first few iterations.
         - Increment the counter ($\alpha$) for the cell $x'$ lands in.
-        - Add the color vector $c'$ to the cell's color value.
+        - Add the color vector $c'$ to the cell's color value ($\beta$).
 
 Skipping plotting in the first few iterations allows the generated sequence to
-approach the actual solution of the iterated function system.
+converge to the actual solution of the iterated function system.
 
 The colors are blended with exponential averaging which mixes the colors
 according to the most recently used xforms. This allows cells to be colored
@@ -77,7 +100,7 @@ color, we can use $c_1=e_1,c_2=e_2,\ldots,c_k=e_k$ where
 $e_1,e_2,\ldots,e_k\in\mathbb{R}^k$ form the standard basis. This does require
 choosing a color speed parameter. Being able to generalize from the color speed
 requires using a lot more memory. Flames generally have a small number of xforms
-so using $k$ dimensions for color information is not bad.
+so using $k$ dimensions for color information is not too bad.
 
 ## creating a 2d image
 
@@ -93,7 +116,8 @@ Usually brightness is determined from the counter. Because of the high range,
 the most aesthetic value is brought out by log scaling the counter to show
 differences in density at various scales, which brings out more detail in an
 image. The densest parts are usually exponentially more dense than the lower
-density parts. Some other scaling function ideas are linear and nth roots.
+density parts. Some other scaling function ideas are linear and nth roots, or
+even binary.
 
 Let a pixel have counter $\alpha$ and color vector $\beta$ (the color vector is
 the average color of iterations that reached that pixel). Let $\alpha'$ be the

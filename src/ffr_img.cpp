@@ -1,5 +1,6 @@
 /*
 Renderer for the image output
+TODO this would be better as a GUI to adjust and see immedeiate results
 
 options:
 -h,--help         show usage help message
@@ -59,6 +60,7 @@ bool render_image(std::ostream&,tkoz::flame::ImageRenderer<>&);
 
 int main(int argc, char **argv)
 {
+    // setup the argument parsing with boost
     bpo::options_description options("ffr-img usage");
     options.add_options()
         ("help,h","show this help message")
@@ -72,12 +74,14 @@ int main(int argc, char **argv)
         ("bits,b",bpo::value<size_t>()->default_value(arg_bits),"bits per color channel");
     bpo::variables_map args_map;
     bpo::store(bpo::command_line_parser(argc,argv).options(options).run(),args_map);
+
     // show help message
     if (args_map.count("help") || args_map.empty() || argc < 2)
     {
         std::cerr << options;
         return 1;
     }
+
     // parse arguments
     arg_flame = args_map["flame"].as<std::string>();
     arg_output = args_map["output"].as<std::string>();
@@ -92,6 +96,7 @@ int main(int argc, char **argv)
     arg_bits = args_map["bits"].as<size_t>();
     if (arg_bits != 8 && arg_bits != 16)
         throw std::runtime_error("bits per channel must be 8 or 16");
+
     // print options
     std::cerr << "ffr-img version " << VERSION << std::endl;
     std::cerr << "--flame " << arg_flame << std::endl;
@@ -107,6 +112,7 @@ int main(int argc, char **argv)
         std::cerr << "--color" << std::endl;
     std::cerr << "--bits " << arg_bits << std::endl;
     std::cerr << "--" << std::endl;
+
     // read and print flame data
     if (arg_flame == "-")
         json_flame = tkoz::flame::Json(std::cin);
@@ -123,6 +129,7 @@ int main(int argc, char **argv)
         std::cerr << "ERROR: only 2D flames supported" << std::endl;
         return 1;
     }
+
     // create image renderer
     tkoz::flame::Flame<2> flame(json_flame);
     tkoz::flame::ImageRenderer<> img_ren(flame);
@@ -137,6 +144,7 @@ int main(int argc, char **argv)
     std::cerr << sizeof(tkoz::flame::hist_t) << " byte numbers" << std::endl;
     size_t color_dims = buf_ren.getColorDims();
     std::cerr << "color: " << color_dims << " dimensions" << std::endl;
+
     // check color type
     size_t color_flag_count = 0;
     if (arg_m) ++color_flag_count;
@@ -148,6 +156,7 @@ int main(int argc, char **argv)
             << "(--monochrome, --grayscale, --color)" << std::endl;
         return 1;
     }
+
     // add input buffers
     if (arg_input.empty())
     {
@@ -170,6 +179,8 @@ int main(int argc, char **argv)
             input_file.close();
         }
     }
+
+    // render image and output
     std::cerr << "processing buffer" << std::endl;
     bool write_success;
     if (arg_output == "-")
@@ -197,6 +208,7 @@ bool render_image(std::ostream& os, tkoz::flame::ImageRenderer<>& img_ren)
     using cf_hist_t = tkoz::flame::cell_func_t<hist_t>;
     using cf_num_t = tkoz::flame::cell_func_t<num_t>;
     using cf_num_t3 = tkoz::flame::cell_func_t<num_t3>;
+
     // histogram min/max calculation
     cf_hist_t funch = [](const buf_elem_t *cell, size_t r) -> hist_t
     {
@@ -205,19 +217,23 @@ bool render_image(std::ostream& os, tkoz::flame::ImageRenderer<>& img_ren)
     };
     auto [minh,maxh] = img_ren.getValueBounds(funch);
     std::cerr << "histogram bounds: " << minh << " " << maxh << std::endl;
+
     // log scaler
     cf_num_t func1 = [](const buf_elem_t *cell, size_t r) -> num_t
     {
         (void)r;
         return std::log(1 + (num_t)(cell->uintval));
     };
+
     // compute max with log scaling
     auto [min,max] = img_ren.getValueBounds(func1);
     std::cerr << "scaler bounds: " << min << " " << max << std::endl;
     if (max < tkoz::flame::eps<num_t>::value)
         throw std::runtime_error("histogram is (probably) empty");
+
     // gamma value
     num_t gp = 1.0 / arg_gamma;
+
     // log scaler to range [0,1]
     cf_num_t func2 = [max,gp](const buf_elem_t *cell, size_t _r) -> num_t
     {
@@ -225,6 +241,7 @@ bool render_image(std::ostream& os, tkoz::flame::ImageRenderer<>& img_ren)
         num_t l = std::log(1 + (num_t)(cell->uintval)) / max;
         return std::pow(l,gp);
     };
+
     if (arg_m)
     {
         /*

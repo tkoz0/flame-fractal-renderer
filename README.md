@@ -47,7 +47,7 @@ Each of these is a linear transformation that can be defined as $Ax+b$ for some
 $n\times n$ matrix $A$ and $n$-vector $b$. Between these, we apply a sum of
 variation functions. Then to apply $f_i$ to a point $x$, we first apply the
 pre-affine transformation. Next, use this point to compute the variation
-function sum. Finally, apply the post-affine transformation to this sum. 
+function sum. Finally, apply the post-affine transformation to this sum.
 
 ## why another renderer when others exist?
 
@@ -135,11 +135,11 @@ to an existing buffer), used once per input file, `-` for stdin
 `-t,--threads` threads for multithreading, default is the number of logical
 CPU cores
 
-`-b,--batch_size` number of samples per thread work unit, if 0 or unspecified
+`-b,--batch-size` number of samples per thread work unit, if 0 or unspecified
 then a reasonable size is calculated, larger means less overhead
 
-`-z,--bad_values` number of bad values allowed before render terminates,
-default is 16, bad values are indicative of degenerate flame parameters
+`-z,--bad-values` number of bad values allowed before render terminates,
+default is 256, bad values are indicative of degenerate flame parameters
 
 The options for `ffr-img.out` are:
 
@@ -179,3 +179,9 @@ Perform a single threaded render and directly feed the buffer with stdout/stdin
 to render a color image with gamma=2.5.
 
 `ffr-buf.out -f flame.json -o - -s 1000000 -t 1 | ffr-img.out -f flame.json -i - -o flame.png -c -y 2.5`
+
+## todo
+
+- improve compile times by making not header only
+- support both float and double
+- split variations into separate files

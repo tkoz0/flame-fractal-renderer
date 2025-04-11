@@ -7,8 +7,9 @@
 namespace tkoz::flame
 {
 
-template <typename RET>
-using cell_func_t = std::function<RET(const buf_elem_t*,size_t r)>;
+// function type for operating on a buffer cell
+template <typename ret_t>
+using cell_func_t = std::function<ret_t(const buf_elem_t*,size_t r)>;
 
 // scaler function type, map hist_t to num_t
 // must be nondecreasing and have range [0, max num_t value]
@@ -65,4 +66,4 @@ x -> x^(1/p) + c
 maybe allow functions to be decreasing or not even monotonic
 */
 
-}
+} // namespace tkoz::flame

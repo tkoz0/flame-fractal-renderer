@@ -25,22 +25,28 @@ template <typename T, size_t N>
 class Affine
 {
     static_assert(N > 0 && N < 65536);
+
 private:
+
     std::array<Point<T,N>,N> A; // linear transformation A*x + b
     Point<T,N> b;               // A as array of its rows
+
 public:
-    Affine(): A(), b()
+
+    Affine(): A(), b() // default is identity transformation
     {
         // identity transformation
         for (size_t i = 0; i < N; ++i)
             A[i][i] = 1;
     }
+
     Affine(const T *A_, const T *b_) // from length N*N and N arrays
     {
         b = Point<T,N>(b_);
         for (size_t i = 0; i < N; ++i)
             A[i] = Point<T,N>(A_+(N*i));
     }
+
     Affine(const Json& j) // {"A": [2d array], "b": [1d array]}}
     {
         if (!j.isObject())
@@ -89,14 +95,17 @@ public:
             }
         }
     }
+
     inline const std::array<Point<T,N>,N>& getA() const
     {
         return A;
     }
+
     inline const Point<T,N>& getB() const
     {
         return b;
     }
+
     inline Point<T,N> apply_to(const Point<T,N>& x) const
     {
         Point<T,N> ret(b);
@@ -116,4 +125,4 @@ std::ostream& operator<<(std::ostream& os, const Affine<T,N>& a)
     return os;
 }
 
-}
+} // namespace tkoz::flame

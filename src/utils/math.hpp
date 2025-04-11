@@ -12,9 +12,7 @@ Math functions
 
 #include "../types/types.hpp"
 
-namespace tkoz
-{
-namespace flame
+namespace tkoz::flame
 {
 
 // type generic sincos with function overloading
@@ -44,5 +42,4 @@ const num_t c_log10 = 2.302585092994046;
 
 const num_t c_e = 2.718281828459045;
 
-}
-}
+} // namespace tkoz::flame

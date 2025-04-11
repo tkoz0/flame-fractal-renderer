@@ -12,9 +12,9 @@ options:
                   can use - for stdout
 -s,--samples      number of samples to render
 -t,--threads      number of threads to use for rendering
--b,--batch_size   number of samples to render per thread work unit
+-b,--batch-size   number of samples to render per thread work unit
                   if 0 or unspecified, a reasonable size is calculated
--z,--bad_values   number of bad values allowed before terminating render
+-z,--bad-values   number of bad values allowed before terminating render
                   bad values indicate that the flame is not contractive
 
 TODO
@@ -49,7 +49,7 @@ std::string arg_output;
 std::vector<std::string> arg_input;
 size_t arg_samples = 0;
 size_t arg_batch_size = 0;
-size_t arg_bad_values = 1 << 4;
+size_t arg_bad_values = 1 << 8;
 
 // parsed data
 tkoz::flame::Json json_flame;
@@ -69,16 +69,18 @@ int main(int argc, char **argv)
         ("output,o",bpo::value<std::string>()->required(),"output file")
         ("samples,s",bpo::value<size_t>()->default_value(0),"samples to render")
         ("threads,t",bpo::value<size_t>()->default_value(arg_threads),"threads to use")
-        ("batch_size,b",bpo::value<size_t>()->default_value(arg_batch_size),"batch size")
-        ("bad_values,z",bpo::value<size_t>()->default_value(arg_bad_values),"bad values limit");
+        ("batch-size,b",bpo::value<size_t>()->default_value(arg_batch_size),"batch size")
+        ("bad-values,z",bpo::value<size_t>()->default_value(arg_bad_values),"bad values limit");
     bpo::variables_map args_map;
     bpo::store(bpo::command_line_parser(argc,argv).options(options).run(),args_map);
+
     // show help message
     if (args_map.count("help") || args_map.empty() || argc < 2)
     {
         std::cerr << options;
         return 1;
     }
+
     // parse arguments
     arg_threads = args_map["threads"].as<size_t>();
     arg_flame = args_map["flame"].as<std::string>();
@@ -86,8 +88,9 @@ int main(int argc, char **argv)
     if (args_map.find("input") != args_map.end())
         arg_input = args_map["input"].as<std::vector<std::string>>();
     arg_samples = args_map["samples"].as<size_t>();
-    arg_batch_size = args_map["batch_size"].as<size_t>();
-    arg_bad_values = args_map["bad_values"].as<size_t>();
+    arg_batch_size = args_map["batch-size"].as<size_t>();
+    arg_bad_values = args_map["bad-values"].as<size_t>();
+
     // calculate an appropriate batch size if it is 0
     bool calculated_batch_size = false;
     if (arg_batch_size == 0)
@@ -96,6 +99,7 @@ int main(int argc, char **argv)
         arg_batch_size = std::clamp<size_t>(guess_batch_size,1<<12,1<<20);
         calculated_batch_size = true;
     }
+
     // print options
     std::cerr << "ffr-buf version " << VERSION << std::endl;
     std::cerr << "--flame " << arg_flame << std::endl;
@@ -113,6 +117,7 @@ int main(int argc, char **argv)
         std::cerr << "--batch_size " << arg_batch_size << std::endl;
     std::cerr << "--bad_values " << arg_bad_values << std::endl;
     std::cerr << "--" << std::endl;
+
     // read and print flame data
     if (arg_flame == "-")
         json_flame = tkoz::flame::Json(std::cin);
@@ -124,6 +129,8 @@ int main(int argc, char **argv)
     }
     std::cerr << "flame: " << json_flame << std::endl;
     tkoz::flame::JsonInt dims = json_flame["dimensions"].intValue();
+
+    // run appropriate renderer
     switch(dims)
     {
     case 1: return run_renderer<1>();
@@ -156,6 +163,7 @@ int run_renderer()
     std::cerr << std::endl;
     std::cerr << "color: " << renderer.getColorDims()
         << " dimensions" << std::endl;
+
     // add initial input buffers
     for (auto& s : arg_input)
     {
@@ -173,6 +181,7 @@ int run_renderer()
             input_file.close();
         }
     }
+
     // perform the render
     if (arg_samples > 0)
     {
@@ -219,6 +228,7 @@ int run_renderer()
         if (!success)
             std::cerr << "render failure "
                 << " (flame may not be sufficiently contractive)" << std::endl;
+
         // output render statistics
         double iter_part = renderer.getSamplesIterated() / (double) arg_samples;
         std::cerr << "samples iterated: "
@@ -245,6 +255,7 @@ int run_renderer()
             std::cerr << " (" << p.first << "," << p.second << ")";
         std::cerr << std::endl;
     }
+
     // write output
     std::cerr << "writing output" << std::endl;
     if (arg_output == "-")

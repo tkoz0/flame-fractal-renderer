@@ -25,6 +25,7 @@ typedef int64_t  i64;
 // float - slightly faster, reasonable
 // (not an option but half precision may be ok for smaller buffers)
 typedef double num_t;
+
 // histogram counter type
 // uint64_t - big enough for plenty
 // uint32_t - reasonable choice for most renders
@@ -38,10 +39,10 @@ typedef uint64_t hist_t;
 namespace tkoz::flame
 {
 
-static_assert(std::is_same<num_t,float>::value
-           || std::is_same<num_t,double>::value);
-static_assert(std::is_same<hist_t,uint32_t>::value
-           || std::is_same<hist_t,uint64_t>::value);
+static_assert(std::is_same_v<num_t,float>
+           || std::is_same_v<num_t,double>);
+static_assert(std::is_same_v<hist_t,uint32_t>
+           || std::is_same_v<hist_t,uint64_t>);
 static_assert(sizeof(num_t) == sizeof(hist_t));
 
 // random number generator type to use
@@ -50,4 +51,4 @@ static_assert(sizeof(num_t) == sizeof(hist_t));
 // word_t can be u32 for isaac32 or u64 for isaac64
 using rng_t = FlameRNG<num_t,hist_t,4>;
 
-}
+} // namespace tkoz::flame
