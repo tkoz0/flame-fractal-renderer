@@ -1,0 +1,35 @@
+{
+    "dimensions": 2,
+    "size": [900,900],
+    "bounds": [[-2,2],[-2,2]],
+    "color_dimensions": 3,
+    "color_speed": 0.7,
+    "xforms": [
+        {
+            "weight": 200,
+            "color": [1,0.8,0.4],
+            "variations": [
+                {"name":"cosine","weight":-0.5},
+                {"name":"fisheye","weight":0.3,"addval":1}
+            ],
+            "pre_affine": {"A":[[2.1,0.8],[0.3,-0.8]],"b":[-0.8,0.8]}
+        },
+        {
+            "weight": 100,
+            "color": [0.8,0,1],
+            "variations": [
+                {"name":"linear","weight":0.5},
+                {"name":"disc","weight":-0.5}
+            ],
+            "pre_affine": {"A":[[0.4,0.2],[-0.2,-0.7]],"b":[-0.2,-0.2]}
+        }
+    ],
+    "final_xform": {
+        //"color": [0.9,0.7,0.5],
+        //"color_speed": 0.2,
+        "variations": [
+            {"name":"linear","weight":0.75},
+            {"name":"swirl","weight":0.6}
+        ]
+    }
+}
