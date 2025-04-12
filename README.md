@@ -185,3 +185,4 @@ to render a color image with gamma=2.5.
 - improve compile times by making not header only
 - support both float and double
 - split variations into separate files
+- tests for math code

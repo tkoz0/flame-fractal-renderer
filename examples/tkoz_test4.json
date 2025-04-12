@@ -1,0 +1,36 @@
+{
+    "dimensions": 2,
+    "size": [768,512],
+    "bounds": [[-3,3],[-2,2]],
+    "color_dimensions": 3,
+    "color_speed": 0.8,
+    "xforms": [
+        {
+            "weight": 300,
+            "color": [1,0,0],
+            "variations": [
+                {"name":"spherical","weight":0.2},
+                {"name":"horseshoe","weight":0.4}
+            ],
+            "post_affine": {"A":[[1.3,-0.2],[0.4,0.9]],"b":[0.33,-0.33]}
+        },
+        {
+            "weight": 200,
+            "color": [0,1,0],
+            "variations": [
+                {"name":"swirl","weight":-0.3},
+                {"name":"disc","weight":0.4}
+            ],
+            "post_affine": {"A":[[-1.2,-0.3],[0.1,-0.5]],"b":[-0.7,-0.7]}
+        },
+        {
+            "weight": 100,
+            "color": [0,0,1],
+            "variations": [
+                {"name":"spiral","weight":-0.3},
+                {"name":"ex","weight":-0.1}
+            ],
+            "post_affine": {"A":[[0.8,-0.5],[0.6,0.8]],"b":[-0.2,0.15]}
+        }
+    ]
+}
