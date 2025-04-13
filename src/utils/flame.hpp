@@ -25,7 +25,7 @@ template <typename T, typename U> struct max_int_as
 // bad value is NaN or absolute value above the threshold
 template <typename T> inline bool bad_value(T n)
 {
-    return std::fabs(n) > bad_value_threshold<T>::value || std::isnan(n);
+    return std::fabs(n) > bad_value_threshold_v<T> || std::isnan(n);
 }
 
 } // namespace tkoz::flame

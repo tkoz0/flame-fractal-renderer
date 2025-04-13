@@ -15,14 +15,9 @@ See https://www.burtleburtle.net/bob/rand/isaacafa.html
 #include "../utils/clock.hpp"
 #include "../types/types.hpp"
 
-#define likely(x)   __builtin_expect(!!(x),1)
-#define unlikely(x) __builtin_expect(!!(x),0)
-
 // macros for using SFINAE
 #define FUNC_ENABLE_IF(T1,T2,RET) template <typename dummy = T1> \
-    typename std::enable_if_t<std::is_same<dummy,T2>::value,RET>
-//#define VAR_ENABLE_IF(T1,T2,TYPE) template <typename dummy = T1>
-//static const typename std::enable_if<std::is_same<dummy,T2>::value,TYPE>::type
+    typename std::enable_if_t<std::is_same_v<dummy,T2>,RET>
 
 namespace tkoz::flame
 {
@@ -37,6 +32,8 @@ template <> struct golden_ratio<u32>
 { static const u32 value = 0x9e3779b9u; };
 template <> struct golden_ratio<u64>
 { static const u64 value = 0x9e3779b97f4a7c13uLL; };
+template <typename T>
+static constexpr auto golden_ratio_v = golden_ratio<T>::value;
 
 /*
 ISAAC random number generator. Based on the code from
@@ -48,8 +45,8 @@ template <typename word_t, size_t rparam>
 class Isaac
 {
     static_assert(rparam >= 3 && rparam <= 16, "rparam out of range");
-    static_assert(std::is_same<word_t,u32>::value
-            || std::is_same<word_t,u64>::value, "word_t must be u32 or u64");
+    static_assert(std::is_same_v<word_t,u32>
+               || std::is_same_v<word_t,u64>, "word_t must be u32 or u64");
 
 public:
 
@@ -90,7 +87,7 @@ private:
         randa = a0;
         randb = b0;
         randc = c0;
-        a = b = c = d = e = f = g = h = golden_ratio<word_t>::value;
+        a = b = c = d = e = f = g = h = golden_ratio_v<word_t>;
         mix(a,b,c,d,e,f,g,h); // scramble (4 times)
         mix(a,b,c,d,e,f,g,h);
         mix(a,b,c,d,e,f,g,h);
@@ -311,7 +308,7 @@ public:
     // extract the next word, advancing the internal state if necessary
     inline word_t next()
     {
-        if (unlikely(randcnt-- == 0))
+        if (randcnt-- == 0) [[unlikely]]
         {
             gen();
             randcnt = randsiz-1;
@@ -355,5 +352,3 @@ public:
 } // namespace tkoz::flame
 
 #undef FUNC_ENABLE_IF
-#undef likely
-#undef unlikely

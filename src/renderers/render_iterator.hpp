@@ -4,9 +4,6 @@
 #include "../types/flame.hpp"
 #include "../types/types.hpp"
 
-#define likely(x)   __builtin_expect(!!(x),1)
-#define unlikely(x) __builtin_expect(!!(x),0)
-
 namespace tkoz::flame
 {
 
@@ -49,7 +46,7 @@ private:
     inline void _init()
     {
         p = rng.randPoint<dims>();
-        for (size_t i = 0; i < settle_iters<num_t>::value; ++i)
+        for (size_t i = 0; i < settle_iters_v<num_t>; ++i)
             p = flame.getRandomXForm(rng).applyIteration(rng,p);
         if (enable_color)
             for (size_t i = 0; i < r; ++i)
@@ -60,7 +57,7 @@ private:
     inline static bool _bad_value(const point_t& x)
     {
         for (size_t i = 0; i < dims; ++i)
-            if (unlikely(bad_value(x[i])))
+            if (bad_value(x[i])) [[unlikely]]
                 return true;
         return false;
     }
@@ -206,6 +203,3 @@ public:
 };
 
 } // namespace tkoz::flame
-
-#undef likely
-#undef unlikely

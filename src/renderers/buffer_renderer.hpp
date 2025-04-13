@@ -122,7 +122,7 @@ private:
             size_t size = flame.getSize()[i];
             const num_pair_t& bounds = flame.getBounds()[i];
             mult_d[i] = (num_t)(size) / (bounds.second - bounds.first);
-            mult_d[i] *= scale_adjust_down<num_t>::value;
+            mult_d[i] *= scale_adjust_down_v<num_t>;
             mult_i[i] = buffer_cells;
             buffer_cells *= size;
             if (buffer_cells >= (1uLL << 48))

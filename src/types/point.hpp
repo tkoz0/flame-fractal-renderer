@@ -26,9 +26,9 @@ template <typename T, size_t N> class Point;
 
 // macros for using SFINAE
 #define ENABLE_IF(COND,RET) template <typename RET2 = RET> \
-    typename std::enable_if<(COND),RET2>::type
+    std::enable_if_t<(COND),RET2>
 #define ENABLE_IFEQ(N1,N2,RET) template <typename RET2 = RET> \
-    typename enable_if_eq<N1,N2,RET2>::type
+    enable_if_eq_t<N1,N2,RET2>
 
 namespace tkoz::flame
 {
@@ -93,8 +93,8 @@ public:
     // - U and Us... are convertible to T
     template <typename U, typename...Us, typename std::enable_if<
         sizeof...(Us) == N-1
-        && std::is_convertible<U,T>::value
-        && vallconv<T,Us...>::value, size_t>::type = 0>
+        && std::is_convertible_v<U,T>
+        && vallconv_v<T,Us...>, size_t>::type = 0>
     inline Point(U u, Us... us)
     {
         // explicitly cast all to type T for initializer list

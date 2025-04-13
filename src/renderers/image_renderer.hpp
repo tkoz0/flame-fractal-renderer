@@ -12,9 +12,6 @@
 #include "../utils/image.hpp"
 #include "../utils/scalers.hpp"
 
-#define likely(x)   __builtin_expect(!!(x),1)
-#define unlikely(x) __builtin_expect(!!(x),0)
-
 namespace tkoz::flame
 {
 
@@ -139,11 +136,11 @@ public:
 
     // render gray image
     template <typename pix_t>
-    typename gray_img<pix_t>::type renderGrayImage(
+    gray_img_t<pix_t> renderGrayImage(
             cell_func_t<num_t> scaler) const
     {
         buf_view_t v(buf_ren);
-        typename gray_img<pix_t>::type ret(v.xl,v.yl);
+        gray_img_t<pix_t> ret(v.xl,v.yl);
         auto view = boost::gil::view(ret);
         for (size_t y = 0; y < v.yl; ++y)
         {
@@ -151,7 +148,7 @@ public:
             for (size_t x = 0; x < v.xl; ++x)
             {
                 num_t l = scaler(v.ptr,v.r);
-                row[x] = (pix_t)(l * pix_scale<pix_t,num_t>::value);
+                row[x] = (pix_t)(l * pix_scale_v<pix_t,num_t>);
                 v.ptr += v.cellsize;
             }
         }
@@ -160,11 +157,11 @@ public:
 
     // render color image
     template <typename pix_t>
-    typename rgb_img<pix_t>::type renderColorImageRGB(
+    rgb_img_t<pix_t> renderColorImageRGB(
             cell_func_t<std::tuple<num_t,num_t,num_t>> colorer) const
     {
         buf_view_t v(buf_ren);
-        typename rgb_img<pix_t>::type ret(v.xl,v.yl);
+        rgb_img_t<pix_t> ret(v.xl,v.yl);
         auto view = boost::gil::view(ret);
         for (size_t y = 0; y < v.yl; ++y)
         {
@@ -172,9 +169,9 @@ public:
             for (size_t x = 0; x < v.xl; ++x)
             {
                 auto [r,g,b] = colorer(v.ptr,v.r);
-                pix_t rp = (pix_t)(r * pix_scale<pix_t,num_t>::value);
-                pix_t gp = (pix_t)(g * pix_scale<pix_t,num_t>::value);
-                pix_t bp = (pix_t)(b * pix_scale<pix_t,num_t>::value);
+                pix_t rp = (pix_t)(r * pix_scale_v<pix_t,num_t>);
+                pix_t gp = (pix_t)(g * pix_scale_v<pix_t,num_t>);
+                pix_t bp = (pix_t)(b * pix_scale_v<pix_t,num_t>);
                 row[x] = {rp,gp,bp};
                 v.ptr += v.cellsize;
             }
@@ -184,6 +181,3 @@ public:
 };
 
 } // namespace tkoz::flame
-
-#undef likely
-#undef unlikely

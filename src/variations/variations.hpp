@@ -22,15 +22,11 @@ TODO better error messages
 
 // macros for using SFINAE
 #define ENABLE_IF(COND,RET) template <typename RET2 = RET> \
-    typename std::enable_if<(COND),RET2>::type
+    std::enable_if_t<(COND),RET2>
 #define ENABLE_IF2(COND) template <typename RET = Variation<dims>*> \
-    typename std::enable_if<(COND),RET>::type
+    std::enable_if_t<(COND),RET>
 #define ENABLE_IF3(COND) template <typename RET> \
-    typename std::enable_if<(COND),RET>::type
-
-// macros for helping with efficient code
-#define likely(x)   __builtin_expect(!!(x),1)
-#define unlikely(x) __builtin_expect(!!(x),0)
+    std::enable_if_t<(COND),RET>
 
 // forward declarations
 namespace tkoz::flame::vars
@@ -210,7 +206,7 @@ struct Spherical: public Variation<dims>
         (void)rng;
         // for small dimensions maybe division
         // is better than precomputing 1/r^2
-        num_t r = 1.0 / (tx.norm2sq() + eps<num_t>::value);
+        num_t r = 1.0 / (tx.norm2sq() + eps_v<num_t>);
         return r * tx;
     }
 };
@@ -564,7 +560,7 @@ struct Horseshoe: public VariationFrom2D<dims>
     {
         (void)rng;
         // is division better than precomputing 1/r
-        num_t r = 1.0 / (tx.norm2() + eps<num_t>::value);
+        num_t r = 1.0 / (tx.norm2() + eps_v<num_t>);
         num_t x,y;
         tx.getXY(x,y);
         // is it faster to compute x^2-y^2
@@ -737,7 +733,7 @@ public:
     {
         num_t x = json["x"].floatValue();
         num_t y = json["y"].floatValue();
-        dx = M_PI * (x*x + eps<num_t>::value);
+        dx = M_PI * (x*x + eps_v<num_t>);
         dy = y;
     }
     inline Point<num_t,2> calc2d(
@@ -767,7 +763,7 @@ public:
     Rings(const Json& json): VariationFrom2D<dims>(json)
     {
         num_t v = json["value"].floatValue();
-        dx = v*v + eps<num_t>::value;
+        dx = v*v + eps_v<num_t>;
     }
     inline Point<num_t,2> calc2d(
         rng_t& rng, const Point<num_t,2>& tx) const
@@ -798,7 +794,7 @@ struct Spiral: public VariationFrom2D<dims>
         num_t sr,cr;
         sincosg(r,sr,cr);
         // is division faster than precomputing 1/r
-        num_t r1 = 1.0 / (r + eps<num_t>::value);
+        num_t r1 = 1.0 / (r + eps_v<num_t>);
         return r1 * Point<num_t,2>(ca+sr,sa-cr);
     }
 };
@@ -816,7 +812,7 @@ struct Hyperbolic: public VariationFrom2D<dims>
         (void)rng;
         num_t r,sa,ca;
         tx.getRadiusSinCos(r,sa,ca);
-        return Point<num_t,2>(sa/(r+eps<num_t>::value),ca*r);
+        return Point<num_t,2>(sa/(r+eps_v<num_t>),ca*r);
     }
 };
 
@@ -1174,8 +1170,8 @@ public:
         num_t phi = theta - angle*floor(theta*invangle);
         static const num_t mult[2] = {0.0,1.0};
         phi -= mult[phi > angle*0.5]*angle;
-        num_t amp = corners*(1.0/(cos(phi)+eps<num_t>::value)-1.0) + circle;
-        amp /= r + eps<num_t>::value;
+        num_t amp = corners*(1.0/(cos(phi)+eps_v<num_t>)-1.0) + circle;
+        amp /= r + eps_v<num_t>;
         return amp * tx;
     }
 };
@@ -1203,7 +1199,7 @@ public:
         num_t im = c1*y + 2.0*c2*x*y;
         // is it faster to divide than precompute 1/(re^2+im^2)
         // flam3 does not add eps to the denominator
-        num_t r = 1.0 / (re*re + im*im + eps<num_t>::value);
+        num_t r = 1.0 / (re*re + im*im + eps_v<num_t>);
         return r * Point<num_t,2>(x*re+y*im,y*re-x*im);
     }
 };
@@ -1269,7 +1265,7 @@ public:
         num_t x,y;
         tx.getXY(x,y);
         num_t a = flam3weight * rng.randNum() * M_PI;
-        num_t r = flam3weight / (tx.norm2sq() + eps<num_t>::value);
+        num_t r = flam3weight / (tx.norm2sq() + eps_v<num_t>);
         num_t tr = tan(a) * r; // not multiplying flam3weight here
         return tr * Point<num_t,2>(cos(x),sin(y));
     }
@@ -1342,7 +1338,8 @@ public:
         num_t sr,cr;
         sincosg(r,sr,cr);
         num_t diff = log10(sr*sr) + cr; // why log10?
-        if (unlikely(bad_value(diff))) // flam3 uses this, does it make sense?
+        // flam3 uses this, does it make sense?
+        if (bad_value(diff)) [[unlikely]]
             diff = -30.0;
         return tx.x() * Point<num_t,2>(diff,diff-sr*M_PI);
     }
@@ -1362,7 +1359,7 @@ struct Cross: public VariationFrom2D<dims>
         num_t x,y;
         tx.getXY(x,y);
         num_t s = x*x - y*y;
-        num_t r = sqrt(1.0 / (s*s + eps<num_t>::value));
+        num_t r = sqrt(1.0 / (s*s + eps_v<num_t>));
         return r * tx;
     }
 };
@@ -1748,7 +1745,7 @@ public:
         num_t re_v = c.x()*x - c.y()*y + d.x();
         num_t im_v = c.x()*y + c.y()*x + d.y();
         // faster to divide instead of precomputing this?
-        num_t rad = 1.0 / (re_v*re_v + im_v*im_v + eps<num_t>::value);
+        num_t rad = 1.0 / (re_v*re_v + im_v*im_v + eps_v<num_t>);
         return rad * Point<num_t,2>(re_u*re_v+im_u*im_v,im_u*re_v-re_u*im_v);
     }
 };
@@ -1771,7 +1768,7 @@ public:
     {
         (void)rng;
         num_t t = tx.norm2sq();
-        num_t r = 1.0 / (sqrt(t) * (t + 1.0/(scryweight + eps<num_t>::value)));
+        num_t r = 1.0 / (sqrt(t) * (t + 1.0/(scryweight + eps_v<num_t>)));
         return r * tx;
     }
 };
@@ -1909,7 +1906,7 @@ public:
         rng_t& rng, const Point<num_t,2>& tx) const
     {
         (void)rng;
-        num_t r = 1.0 / (tx.norm2() + eps<num_t>::value);
+        num_t r = 1.0 / (tx.norm2() + eps_v<num_t>);
         num_t a = tx.angle() + swirl*r;
         num_t c = floor((count*a + M_PI) * (M_1_PI*0.5));
         num_t sa,ca;
@@ -1998,7 +1995,7 @@ public:
     {
         num_t theta = tx.angle();
         num_t r = (rng.randNum() - holes) * cos(petals*theta);
-        r /= tx.norm2() + eps<num_t>::value; // flam3 does not add eps
+        r /= tx.norm2() + eps_v<num_t>; // flam3 does not add eps
         return r * tx;
     }
 };
@@ -2020,7 +2017,7 @@ public:
         rng_t& rng, const Point<num_t,2>& tx) const
     {
         num_t tr = tx.norm2();
-        num_t ct = tx.x() / (tr + eps<num_t>::value); // flam3 does not add eps
+        num_t ct = tx.x() / (tr + eps_v<num_t>); // flam3 does not add eps
         num_t r = (rng.randNum() - holes) * eccen / (tr + tr*eccen*ct);
         return r * tx;
     }
@@ -2144,7 +2141,7 @@ public:
         num_t x,y;
         tx.getXY(x,y);
         num_t y2 = 2.0*y;
-        num_t r = sqrt(fabs(x*y) / (x*x + y2*y2 + eps<num_t>::value));
+        num_t r = sqrt(fabs(x*y) / (x*x + y2*y2 + eps_v<num_t>));
         return r * Point<num_t,2>(x,y2);
     }
 };
@@ -2227,8 +2224,8 @@ public:
         xlen *= xlen;
         ylen *= ylen;
         // flam3 uses 1e-20 as the minimum value for the denominator
-        invxl = 1.0 / std::max(eps<num_t>::value,xlen);
-        invyl = 1.0 / std::max(eps<num_t>::value,ylen);
+        invxl = 1.0 / std::max(eps_v<num_t>,xlen);
+        invyl = 1.0 / std::max(eps_v<num_t>,ylen);
     }
     inline Point<num_t,2> calc2d(
         rng_t& rng, const Point<num_t,2>& tx) const
@@ -2384,7 +2381,7 @@ public:
         }
         else
         {
-            r = 1.0 + space / (r + eps<num_t>::value); // flam3 does not add eps
+            r = 1.0 + space / (r + eps_v<num_t>); // flam3 does not add eps
             return Point<num_t,2>(r*x+px,r*y-py);
         }
     }
@@ -2412,7 +2409,7 @@ public:
         num_t w2 = loonieweightsq;
         num_t r = loonieweight;
         // flam3 does not add eps
-        if (r2 < w2) r *= sqrt(w2/(r2 + eps<num_t>::value) - 1.0);
+        if (r2 < w2) r *= sqrt(w2/(r2 + eps_v<num_t>) - 1.0);
         return r * tx;
     }
 };
@@ -2492,7 +2489,7 @@ public:
         rng_t& rng, const Point<num_t,dims>& tx) const
     {
         (void)rng;
-        num_t r = 1.0 / (tx.normsum(norm) + eps<num_t>::value);
+        num_t r = 1.0 / (tx.normsum(norm) + eps_v<num_t>);
         return r * tx;
     }
 };
@@ -2508,7 +2505,7 @@ struct UnitSphere: public Variation<dims>
         rng_t& rng, const Point<num_t,dims>& tx) const
     {
         (void)rng;
-        num_t r = 1.0 / (tx.norm2() + eps<num_t>::value);
+        num_t r = 1.0 / (tx.norm2() + eps_v<num_t>);
         return r * tx;
     }
 };
@@ -2531,7 +2528,7 @@ public:
         rng_t& rng, const Point<num_t,dims>& tx) const
     {
         (void)rng;
-        num_t r = 1.0 / (tx.norm(norm) + eps<num_t>::value);
+        num_t r = 1.0 / (tx.norm(norm) + eps_v<num_t>);
         return r * tx;
     }
 };
@@ -2547,7 +2544,7 @@ struct UnitCube: public Variation<dims>
         rng_t& rng, const Point<num_t,dims>& tx) const
     {
         (void)rng;
-        num_t r = 1.0 / (tx.norminf() + eps<num_t>::value);
+        num_t r = 1.0 / (tx.norminf() + eps_v<num_t>);
         return r * tx;
     }
 };
@@ -2807,5 +2804,3 @@ Variation<dims> *Variation<dims>::parseVariation(const Json& json)
 #undef ENABLE_IF
 #undef ENABLE_IF2
 #undef ENABLE_IF3
-#undef likely
-#undef unlikely

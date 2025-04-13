@@ -88,7 +88,7 @@ int main(int argc, char **argv)
     if (args_map.find("input") != args_map.end())
         arg_input = args_map["input"].as<std::vector<std::string>>();
     arg_gamma = args_map["gamma"].as<tkoz::flame::num_t>();
-    if (arg_gamma < tkoz::flame::eps<tkoz::flame::num_t>::value)
+    if (arg_gamma < tkoz::flame::eps_v<tkoz::flame::num_t>)
         throw std::runtime_error("gamma too small");
     arg_m = args_map["monochrome"].as<bool>();
     arg_g = args_map["grayscale"].as<bool>();
@@ -228,7 +228,7 @@ bool render_image(std::ostream& os, tkoz::flame::ImageRenderer<>& img_ren)
     // compute max with log scaling
     auto [min,max] = img_ren.getValueBounds(func1);
     std::cerr << "scaler bounds: " << min << " " << max << std::endl;
-    if (max < tkoz::flame::eps<num_t>::value)
+    if (max < tkoz::flame::eps_v<num_t>)
         throw std::runtime_error("histogram is (probably) empty");
 
     // gamma value

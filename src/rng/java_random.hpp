@@ -13,9 +13,6 @@ It does so in everything except the Gaussian random variables
 
 #include "../utils/clock.hpp"
 
-#define likely(x)   __builtin_expect(!!(x),1)
-#define unlikely(x) __builtin_expect(!!(x),0)
-
 namespace tkoz::flame
 {
 
@@ -105,7 +102,7 @@ public:
     // returns a random integer in [0,n) (uniformly distributed)
     int32_t nextInt(int32_t n)
     {
-        if (unlikely(n <= 0))
+        if (n <= 0) [[unlikely]]
             throw "bound must be positive";
         if ((n & -n) == n)
             return (int32_t)((n * (int64_t)_next(31)) >> 31);
@@ -115,7 +112,7 @@ public:
             bits = _next(31);
             val = bits % n;
         }
-        while (unlikely(bits - val + (n - 1) < 0));
+        while (bits - val + (n - 1) < 0) [[unlikely]];
         return val;
     }
 
@@ -187,6 +184,3 @@ int64_t JavaRandomGeneric<multiplier,addend,state_size,seed_uniquifier_init,
 typedef JavaRandomGeneric<> JavaRandom;
 
 } // namespace tkoz::flame
-
-#undef likely
-#undef unlikely

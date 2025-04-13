@@ -26,9 +26,6 @@ class FlameRNG;
 #include "../types/types.hpp"
 #include "../utils/sfinae.hpp"
 
-#define likely(x)   __builtin_expect(!!(x),1)
-#define unlikely(x) __builtin_expect(!!(x),0)
-
 namespace tkoz::flame
 {
 
@@ -196,6 +193,3 @@ public:
 };
 
 } // namespace tkoz::flame
-
-#undef likely
-#undef unlikely

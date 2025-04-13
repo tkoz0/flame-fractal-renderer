@@ -12,11 +12,8 @@ MT19937 Mersenne twister implementation
 #include "../utils/clock.hpp"
 #include "../types/types.hpp"
 
-#define likely(x)   __builtin_expect(!!(x),1)
-#define unlikely(x) __builtin_expect(!!(x),0)
-
 #define FUNC_ENABLE_IF(T1,T2,RET) template <typename dummy = T1> \
-    typename std::enable_if_t<std::is_same<dummy,T2>::value,RET>
+    typename std::enable_if_t<std::is_same_v<dummy,T2>,RET>
 
 namespace tkoz::flame
 {
@@ -90,7 +87,7 @@ private:
 
     inline T _get()
     {
-        if (unlikely(index >= params::n))
+        if (index >= params::n) [[unlikely]]
             _twist();
         T y = MT[index++];
         y ^= (y >> params::u) & params::d;
@@ -137,6 +134,4 @@ public:
 
 } // namespace tkoz::flame
 
-#undef likely
-#undef unlikely
 #undef FUNC_ENABLE_IF

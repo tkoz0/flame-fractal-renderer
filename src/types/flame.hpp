@@ -103,7 +103,7 @@ public:
                 throw JsonError("incorrect size length");
             if (boundsj.size() != dims)
                 throw JsonError("incorrect bounds length");
-            num_t M = max_rect<num_t>::value;
+            num_t M = max_rect_v<num_t>;
             for (size_t i = 0; i < dims; ++i)
             {
                 try
