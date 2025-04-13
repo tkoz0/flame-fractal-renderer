@@ -9,7 +9,7 @@
             "weight": 200,
             "color": [1,0.8,0.4],
             "variations": [
-                {"name":"cosine","weight":-0.5},
+                {"name":"cosine","weight":-0.4},
                 {"name":"fisheye","weight":0.3,"addval":1}
             ],
             "pre_affine": {"A":[[2.1,0.8],[0.3,-0.8]],"b":[-0.8,0.8]}
