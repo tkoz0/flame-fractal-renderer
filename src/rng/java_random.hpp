@@ -6,12 +6,12 @@ It does so in everything except the Gaussian random variables
 
 #pragma once
 
+#include "../utils/clock.hpp"
+
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
 #include <ctime>
-
-#include "../utils/clock.hpp"
 
 namespace tkoz::flame
 {
@@ -107,12 +107,13 @@ public:
         if ((n & -n) == n)
             return (int32_t)((n * (int64_t)_next(31)) >> 31);
         int32_t bits,val;
-        do
+        for (;;)
         {
             bits = _next(31);
             val = bits % n;
+            if (bits - val + (n-1) >= 0) [[likely]]
+                break;
         }
-        while (bits - val + (n - 1) < 0) [[unlikely]];
         return val;
     }
 

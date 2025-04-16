@@ -4,11 +4,11 @@ Constants for flame fractal rendering
 
 #pragma once
 
-#include <cstdlib>
+#include "types.hpp"
 
 #include <boost/gil.hpp>
 
-#include "types.hpp"
+#include <cstdlib>
 
 namespace tkoz::flame
 {

@@ -5,15 +5,16 @@ See https://www.burtleburtle.net/bob/rand/isaacafa.html
 
 #pragma once
 
+#include "../types/types.hpp"
+
+#include "../utils/clock.hpp"
+
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
 #include <tuple>
 #include <type_traits>
-
-#include "../utils/clock.hpp"
-#include "../types/types.hpp"
 
 // macros for using SFINAE
 #define FUNC_ENABLE_IF(T1,T2,RET) template <typename dummy = T1> \
@@ -52,14 +53,25 @@ public:
 
     // number of words in the internal state
     static const size_t randsiz = 1 << rparam;
+    // size mask for binary operations
     static const size_t randsizmask = randsiz-1;
+    // internal word type
     typedef word_t word_type;
 
 private:
-    size_t randcnt; // number of unused values in randrsl
-    word_t randrsl[randsiz]; // generated values
-    word_t randmem[randsiz]; // internal state
-    word_t randa,randb,randc;
+
+    // number of unused values in randrsl
+    size_t randcnt;
+    // generated values
+    word_t randrsl[randsiz];
+    // internal state
+    word_t randmem[randsiz];
+    // extra variable (a)
+    word_t randa;
+    // extra variable (b)
+    word_t randb;
+    // extra variable (c)
+    word_t randc;
 
     // advances internal state (generates 2^rparam new words)
     void gen()
@@ -289,7 +301,7 @@ public:
     force_flag = use array of zeroes when `seed == nullptr`
     */
     Isaac(word_t a0, word_t b0, word_t c0,
-        word_t *seed = nullptr, bool force_flag = false)
+          word_t *seed = nullptr, bool force_flag = false)
     {
         setSeed(a0,b0,c0,seed,force_flag);
     }

@@ -8,9 +8,9 @@ Math functions
 #define _GNU_SOURCE
 #endif
 
-#include <ctgmath>
-
 #include "../types/types.hpp"
+
+#include <ctgmath>
 
 namespace tkoz::flame
 {

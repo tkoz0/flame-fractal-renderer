@@ -1,19 +1,17 @@
 #pragma once
 
+#include "render_iterator.hpp"
+
+#include "../types/constants.hpp"
+#include "../types/flame.hpp"
+#include "../types/types.hpp"
+
 #include <atomic>
 #include <fstream>
 #include <iostream>
 #include <mutex>
 #include <thread>
 #include <vector>
-
-#include "../types/constants.hpp"
-#include "../types/flame.hpp"
-#include "../types/types.hpp"
-#include "render_iterator.hpp"
-
-#define likely(x)   __builtin_expect(!!(x),1)
-#define unlikely(x) __builtin_expect(!!(x),0)
 
 namespace tkoz::flame
 {
@@ -40,16 +38,22 @@ Buffer Renderer
 template <size_t dims, bool enable_color = true>
 class BufferRenderer
 {
-private:
-
     static_assert(dims > 0);
     static_assert(sizeof(num_t) == sizeof(hist_t));
-    // some typedefs
+
+    private:
+
+    // point type
     typedef Point<num_t,dims> point_t;
+    // base variation type
     typedef vars::Variation<dims> var_t;
+    // xform type
     typedef XForm<dims> xform_t;
+    // flame type
     typedef Flame<dims> flame_t;
+    // number pair
     typedef std::pair<num_t,num_t> num_pair_t;
+
     // flame to be rendered
     flame_t flame;
     // the buffer, interpreted as an array of num_t and hist_t
@@ -60,7 +64,7 @@ private:
     size_t buffer_cell_size;
 
     // get pointer to first element of a buffer cell
-    inline buf_elem_t *_buf_cell(size_t i)
+    [[nodiscard]] inline buf_elem_t *_buf_cell(size_t i)
     {
         if (enable_color)
             return buffer.data() + (i*buffer_cell_size);
@@ -69,7 +73,7 @@ private:
     }
 
     // get const pointer to first element of a buffer cell
-    inline const buf_elem_t *_buf_cell(size_t i) const
+    [[nodiscard]] inline const buf_elem_t *_buf_cell(size_t i) const
     {
         if (enable_color)
             return buffer.data() + (i*buffer_cell_size);
@@ -168,25 +172,24 @@ private:
             ++xf_dist[xf_id];
             const point_t& p = iter.getPoint();
             // bad value check
-            if (unlikely(iter.badValue()))
+            if (iter.badValue()) [[unlikely]]
             {
                 if (multithreaded)
                     stats.lock();
                 stats.bv_xfs.push_back(xf_id);
                 stats.bv_pts.push_back(p);
-                bool terminate = stats.bv_xfs.size() > bv_limit;
                 if (multithreaded)
                     stats.unlock();
-                if (terminate)
+                if (stats.bv_xfs.size() > bv_limit) [[unlikely]]
                     break;
                 iter.init();
             }
             // extreme coordinates
             for (size_t i = 0; i < dims; ++i)
             {
-                if (unlikely(p[i] < pt_max[i].first))
+                if (p[i] < pt_max[i].first) [[unlikely]]
                     pt_max[i].first = p[i];
-                if (unlikely(p[i] > pt_max[i].second))
+                if (p[i] > pt_max[i].second) [[unlikely]]
                     pt_max[i].second = p[i];
             }
             // plot point
@@ -302,10 +305,10 @@ public:
                 s_render += render_size;
                 batch_lock.unlock();
                 // all batches completed
-                if (render_size == 0)
+                if (render_size == 0) [[unlikely]]
                     break;
                 // make sure batch completes successfully
-                if (!_render_batch<true>(render_size,bv_limit,rng))
+                if (!_render_batch<true>(render_size,bv_limit,rng)) [[unlikely]]
                 {
                     success = false;
                     break;
@@ -357,7 +360,7 @@ public:
         while (s_render < num_samples)
         {
             size_t render_size = std::min(batch_size,num_samples-s_render);
-            if (!_render_batch<false>(render_size,bv_limit,rng))
+            if (!_render_batch<false>(render_size,bv_limit,rng)) [[unlikely]]
             {
                 return false;
             }
@@ -477,7 +480,7 @@ public:
     }
 
     // the total number of samples rendered in this buffer
-    size_t histogramSum() const
+    [[nodiscard]] size_t histogramSum() const
     {
         size_t ret = 0;
         for (size_t i = 0; i < buffer_cells; ++i)
@@ -486,7 +489,7 @@ public:
     }
 
     // the minimum cell value in the buffer histogram
-    hist_t histogramMin() const
+    [[nodiscard]] hist_t histogramMin() const
     {
         hist_t ret = -1;
         for (size_t i = 0; i < buffer_cells; ++i)
@@ -495,7 +498,7 @@ public:
     }
 
     // the maximum cell value in the buffer histogram
-    hist_t histogramMax() const
+    [[nodiscard]] hist_t histogramMax() const
     {
         hist_t ret = 0;
         for (size_t i = 0; i < buffer_cells; ++i)
@@ -503,83 +506,80 @@ public:
         return ret;
     }
 
-    inline const flame_t& getFlame() const
+    [[nodiscard]] inline const flame_t& getFlame() const
     {
         return flame;
     }
 
-    inline const std::vector<buf_elem_t>& getBuffer() const
+    [[nodiscard]] inline const std::vector<buf_elem_t>& getBuffer() const
     {
         return buffer;
     }
 
-    inline const buf_elem_t *getBufferCell(size_t i) const
+    [[nodiscard]] inline const buf_elem_t *getBufferCell(size_t i) const
     {
         return _buf_cell(i);
     }
 
-    inline size_t getBufferNumCells() const
+    [[nodiscard]] inline size_t getBufferNumCells() const
     {
         return buffer_cells;
     }
 
-    inline size_t getBufferCellSize() const
+    [[nodiscard]] inline size_t getBufferCellSize() const
     {
         return buffer_cell_size;
     }
 
-    inline size_t getSamplesIterated() const
+    [[nodiscard]] inline size_t getSamplesIterated() const
     {
         return stats.s_iter;
     }
 
-    inline size_t getSamplesPlotted() const
+    [[nodiscard]] inline size_t getSamplesPlotted() const
     {
         return stats.s_plot;
     }
 
-    inline const std::vector<size_t>& getXFormDistribution() const
+    [[nodiscard]] inline const std::vector<size_t>& getXFormDistribution() const
     {
         return stats.xf_dist;
     }
 
-    inline const std::vector<size_t>& getBadValueXForms() const
+    [[nodiscard]] inline const std::vector<size_t>& getBadValueXForms() const
     {
         return stats.bv_xfs;
     }
 
-    inline const std::vector<point_t>& getBadValuePoints() const
+    [[nodiscard]] inline const std::vector<point_t>& getBadValuePoints() const
     {
         return stats.bv_pts;
     }
 
-    inline const std::array<num_pair_t,dims>& getPointExtremes() const
+    [[nodiscard]] inline const std::array<num_pair_t,dims>& getPointExtremes() const
     {
         return stats.pt_max;
     }
 
-    inline const std::array<num_t,dims>& getDimMults() const
+    [[nodiscard]] inline const std::array<num_t,dims>& getDimMults() const
     {
         return mult_d;
     }
 
-    inline const std::array<size_t,dims>& getIndexMults() const
+    [[nodiscard]] inline const std::array<size_t,dims>& getIndexMults() const
     {
         return mult_i;
     }
 
-    inline size_t getDims() const
+    [[nodiscard]] inline size_t getDims() const
     {
         return dims;
     }
 
-    inline size_t getColorDims() const
+    [[nodiscard]] inline size_t getColorDims() const
     {
         return enable_color ? flame.getColorDims() : 0;
     }
 };
 
 } // namnespace tkoz::flame
-
-#undef likely
-#undef unlikely

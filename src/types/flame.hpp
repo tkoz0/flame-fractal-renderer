@@ -4,19 +4,14 @@ Representation of a flame fractal
 
 #pragma once
 
+#include "xform.hpp"
+
+#include "../utils/json.hpp"
+
 #include <algorithm>
 #include <array>
 #include <cstdlib>
 #include <vector>
-
-// forward declaration
-namespace tkoz::flame
-{
-template <size_t dims> class Flame;
-}
-
-#include "../utils/json.hpp"
-#include "xform.hpp"
 
 namespace tkoz::flame
 {

@@ -1,5 +1,7 @@
 #include "image.hpp"
 
+#include <type_traits>
+
 namespace tkoz::flame
 {
 

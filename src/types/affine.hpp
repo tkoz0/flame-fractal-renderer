@@ -4,18 +4,13 @@ Representation of affine transformation
 
 #pragma once
 
+#include "point.hpp"
+
+#include "../utils/json.hpp"
+
 #include <array>
 #include <cstdlib>
 #include <iostream>
-
-// forward declaration
-namespace tkoz::flame
-{
-template <typename T, size_t N> class Affine;
-}
-
-#include "../utils/json.hpp"
-#include "point.hpp"
 
 namespace tkoz::flame
 {
@@ -96,17 +91,17 @@ public:
         }
     }
 
-    inline const std::array<Point<T,N>,N>& getA() const
+    [[nodiscard]] inline const std::array<Point<T,N>,N>& getA() const
     {
         return A;
     }
 
-    inline const Point<T,N>& getB() const
+    [[nodiscard]] inline const Point<T,N>& getB() const
     {
         return b;
     }
 
-    inline Point<T,N> apply_to(const Point<T,N>& x) const
+    [[nodiscard]] inline Point<T,N> apply_to(const Point<T,N>& x) const
     {
         Point<T,N> ret(b);
         for (size_t i = 0; i < N; ++i)

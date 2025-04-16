@@ -1,11 +1,11 @@
 #pragma once
 
+#include "../../nlohmann/json.hpp"
+
 #include <iostream>
 #include <string>
 #include <vector>
 #include <unordered_map>
-
-#include "../../nlohmann/json.hpp"
 
 namespace tkoz::flame
 {
@@ -56,34 +56,34 @@ public:
     // convert a nlohmann::json object into this type
     Json(const nlohmann::json& input);
     // is value null
-    bool isNull() const noexcept;
+    [[nodiscard]] bool isNull() const noexcept;
     // is value true or false
-    bool isBool() const noexcept;
+    [[nodiscard]] bool isBool() const noexcept;
     // is value an integer
-    bool isInt() const noexcept;
+    [[nodiscard]] bool isInt() const noexcept;
     // is value a floating point
-    bool isFloat() const noexcept;
+    [[nodiscard]] bool isFloat() const noexcept;
     // is value a string
-    bool isString() const noexcept;
+    [[nodiscard]] bool isString() const noexcept;
     // is value an array
-    bool isArray() const noexcept;
+    [[nodiscard]] bool isArray() const noexcept;
     // is value an object
-    bool isObject() const noexcept;
+    [[nodiscard]] bool isObject() const noexcept;
     // returns the length of the array/object
     // throws an exception for other types
-    size_t size() const;
+    [[nodiscard]] size_t size() const;
     // returns boolean value, exception if not a boolean
-    bool boolValue() const;
+    [[nodiscard]] bool boolValue() const;
     // returns integer value, exception if not an integer
-    JsonInt intValue() const;
+    [[nodiscard]] JsonInt intValue() const;
     // returns floating point value, exception if not a floating point
-    JsonFloat floatValue() const;
+    [[nodiscard]] JsonFloat floatValue() const;
     // returns string value, exception if not a string
-    std::string stringValue() const;
+    [[nodiscard]] JsonString stringValue() const;
     // returns array value, exception if not an array
-    JsonArray arrayValue() const;
+    [[nodiscard]] JsonArray arrayValue() const;
     // returns object value, exception if not an object
-    JsonObject objectValue() const;
+    [[nodiscard]] JsonObject objectValue() const;
     // if this is a long enough array, sets value and returns true
     bool valueAt(size_t index, Json& value) const noexcept;
     // if this is an object with the given key, sets value and returns true
@@ -91,11 +91,11 @@ public:
     // if this is an object with the given key, sets value and returns true
     bool valueAt(const char *key, Json& value) const noexcept;
     // access array index, exception if not an array or not long enough
-    Json operator[](size_t index) const;
+    [[nodiscard]] Json operator[](size_t index) const;
     // access object key, exception if not an object or does not have key
-    Json operator[](const std::string& key) const;
+    [[nodiscard]] Json operator[](const std::string& key) const;
     // access object key, exception if not an object or does not have key
-    Json operator[](const char *key) const;
+    [[nodiscard]] Json operator[](const char *key) const;
     // assignment operator
     Json& operator=(const Json& a);
     // compare equality of JSON objects

@@ -24,19 +24,19 @@ TODO
   - render with larger buffer but average cells into one before output
 */
 
-#include <algorithm>
-#include <fstream>
-#include <iostream>
-#include <string>
-#include <vector>
-
-#include <boost/program_options.hpp>
-
 #include "renderers/buffer_renderer.hpp"
 
 #include "utils/endian.hpp"
 #include "utils/hardware.hpp"
 #include "utils/json.hpp"
+
+#include <boost/program_options.hpp>
+
+#include <algorithm>
+#include <fstream>
+#include <iostream>
+#include <string>
+#include <vector>
 
 const std::string VERSION = "unspecified";
 

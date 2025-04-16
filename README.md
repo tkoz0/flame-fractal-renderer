@@ -182,7 +182,15 @@ to render a color image with gamma=2.5.
 
 ## todo
 
+- rename getters and variables to change style
+- more exception classes for better error handling
 - improve compile times by making not header only
-- support both float and double
+- reproducible results with rng seeding
+- remove passing rng and its template type around and use thread_local
+- support both float and double (uint32_t and uint64_t for counter)
 - split variations into separate files
-- tests for math code
+- tests for math code (variations)
+- fractal editor gui
+- variation visualizer gui
+- renderer on gpu
+

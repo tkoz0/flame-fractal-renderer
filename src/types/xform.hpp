@@ -5,18 +5,13 @@ This class is coupled with Flame and not designed to be used independently
 
 #pragma once
 
-#include <cstdlib>
-#include <vector>
-
-// forward declaration
-namespace tkoz::flame
-{
-template <size_t dims> class XForm;
-}
-
 #include "point.hpp"
 #include "affine.hpp"
+
 #include "../variations/variations.hpp"
+
+#include <cstdlib>
+#include <vector>
 
 namespace tkoz::flame
 {
@@ -27,7 +22,9 @@ class XForm
 {
 private:
 
+    // point type
     typedef Point<num_t,dims> point_t;
+    // base variation type
     typedef vars::Variation<dims> var_t;
     // xform id unique to the flame (using order of input file)
     size_t id;
@@ -174,43 +171,45 @@ public:
         _optimize();
     }
 
-    inline num_t getWeight() const
+    [[nodiscard]] inline num_t getWeight() const
     {
         return weight;
     }
 
-    inline size_t getID() const
+    [[nodiscard]] inline size_t getID() const
     {
         return id;
     }
 
-    inline const Affine<num_t,dims>& getPreAffine() const
+    [[nodiscard]] inline const Affine<num_t,dims>& getPreAffine() const
     {
         return pre;
     }
 
-    inline const Affine<num_t,dims>& getPostAffine() const
+    [[nodiscard]] inline const Affine<num_t,dims>& getPostAffine() const
     {
         return post;
     }
 
-    inline const std::vector<std::shared_ptr<var_t>>& getVariations() const
+    [[nodiscard]] inline
+    const std::vector<std::shared_ptr<var_t>>& getVariations() const
     {
         return vars;
     }
 
-    inline bool hasPreAffine() const
+    [[nodiscard]] inline bool hasPreAffine() const
     {
         return has_pre;
     }
 
-    inline bool hasPostAffine() const
+    [[nodiscard]] inline bool hasPostAffine() const
     {
         return has_post;
     }
 
     // iterate a state for the rendering process
-    inline point_t applyIteration(rng_t& rng, const point_t& p) const
+    [[nodiscard]] inline
+    point_t applyIteration(rng_t& rng, const point_t& p) const
     {
         point_t t,v;
         // for 2d, faster to apply identity affine than to branch
@@ -227,17 +226,17 @@ public:
         return t;
     }
 
-    inline const std::vector<num_t>& getColor() const
+    [[nodiscard]] inline const std::vector<num_t>& getColor() const
     {
         return color;
     }
 
-    inline bool hasColor() const
+    [[nodiscard]] inline bool hasColor() const
     {
         return color.size() != 0;
     }
 
-    inline num_t getColorSpeed() const
+    [[nodiscard]] inline num_t getColorSpeed() const
     {
         return color_speed;
     }

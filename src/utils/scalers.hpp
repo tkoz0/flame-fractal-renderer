@@ -1,8 +1,8 @@
 #pragma once
 
-#include <functional>
-
 #include "../types/types.hpp"
+
+#include <functional>
 
 namespace tkoz::flame
 {

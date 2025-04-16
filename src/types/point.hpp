@@ -4,31 +4,25 @@ Representation of a point in N dimensional real space.
 
 #pragma once
 
-#include <array>
-#include <cstdlib>
-#include <iostream>
-
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
 
-#include <ctgmath>
-
-// forward declaration
-namespace tkoz::flame
-{
-template <typename T, size_t N> class Point;
-}
+#include "types.hpp"
 
 #include "../utils/json.hpp"
 #include "../utils/sfinae.hpp"
-#include "types.hpp"
+
+#include <array>
+#include <cstdlib>
+#include <ctgmath>
+#include <iostream>
 
 // macros for using SFINAE
 #define ENABLE_IF(COND,RET) template <typename RET2 = RET> \
     std::enable_if_t<(COND),RET2>
-#define ENABLE_IFEQ(N1,N2,RET) template <typename RET2 = RET> \
-    enable_if_eq_t<N1,N2,RET2>
+#define ENABLE_IFND(COND,RET) template <typename RET2 = RET> \
+    [[nodiscard]] std::enable_if_t<(COND),RET2>
 
 namespace tkoz::flame
 {
@@ -146,30 +140,30 @@ public:
 
     /* === element access === */
 
-    inline T operator[](size_t i) const
+    [[nodiscard]] inline T operator[](size_t i) const
     {
         return vec[i];
     }
 
-    inline T& operator[](size_t i)
+    [[nodiscard]] inline T& operator[](size_t i)
     {
         return vec[i];
     }
 
     // x value (1st component)
-    ENABLE_IF(N>=1,T) inline x() const
+    ENABLE_IFND(N>=1,T) inline x() const
     {
         return vec[0];
     }
 
     // y value (2nd component) (requires 2D)
-    ENABLE_IF(N>=2,T) inline y() const
+    ENABLE_IFND(N>=2,T) inline y() const
     {
         return vec[1];
     }
 
     // z value (3rd component) (requires 3D)
-    ENABLE_IF(N>=3,T) inline z() const
+    ENABLE_IFND(N>=3,T) inline z() const
     {
         return vec[2];
     }
@@ -189,13 +183,13 @@ public:
     }
 
     // return the ith component (0 indexed)
-    inline T get(size_t i) const
+    [[nodiscard]] inline T get(size_t i) const
     {
         return vec[i];
     }
 
     // return interval array
-    inline const std::array<T,N>& getArray() const
+    [[nodiscard]] inline const std::array<T,N>& getArray() const
     {
         return vec;
     }
@@ -249,7 +243,7 @@ public:
     /* === functional programming stuff === */
 
     // map each coordinate under the same function
-    inline Point<T,N> map(std::function<T(T)> func) const
+    [[nodiscard]] inline Point<T,N> map(std::function<T(T)> func) const
     {
         Point<T,N> ret;
         for (size_t i = 0; i < N; ++i)
@@ -258,7 +252,7 @@ public:
     }
 
     // fold left
-    inline T foldl(std::function<T(T,T)> func, T init = 0) const
+    [[nodiscard]] inline T foldl(std::function<T(T,T)> func, T init = 0) const
     {
         for (size_t i = 0; i < N; ++i)
             init = func(init,vec[i]);
@@ -266,7 +260,7 @@ public:
     }
 
     // fold right
-    inline T foldr(std::function<T(T,T)> func, T init = 0) const
+    [[nodiscard]] inline T foldr(std::function<T(T,T)> func, T init = 0) const
     {
         for (size_t i = N-1; i--;)
             init = func(vec[i],init);
@@ -276,7 +270,7 @@ public:
     /* === vector norm functions === */
 
     // templated vector p-norms (p == 0 means infinity norm)
-    template <u32 p> inline T norm() const
+    template <u32 p> [[nodiscard]] inline T norm() const
     {
         T ret;
         if (N == 1)
@@ -298,13 +292,13 @@ public:
     }
 
     // untemplated vector p-norms
-    inline T norm(T p) const
+    [[nodiscard]] inline T norm(T p) const
     {
         return pow(normsum(p),1.0/p);
     }
 
     // templated vector p-norms before taking the root
-    template <u32 p> inline T normsum() const
+    template <u32 p> [[nodiscard]] inline T normsum() const
     {
         T ret;
         switch (p)
@@ -330,7 +324,7 @@ public:
     }
 
     // untemplated vector p-norms before taking the root
-    inline T normsum(T p) const
+    [[nodiscard]] inline T normsum(T p) const
     {
         T ret = pow(std::abs(x()),p);
         for (size_t i = 1; i < N; ++i)
@@ -339,30 +333,30 @@ public:
     }
 
     // 1-norm
-    inline T norm1() const { return norm<1>(); }
+    [[nodiscard]] inline T norm1() const { return norm<1>(); }
 
     // 2-norm
-    inline T norm2() const { return norm<2>(); }
+    [[nodiscard]] inline T norm2() const { return norm<2>(); }
 
     // infinity-norm
-    inline T norminf() const { return norm<0>(); }
+    [[nodiscard]] inline T norminf() const { return norm<0>(); }
 
     // infinity-norm
-    inline T normmax() const { return norm<0>(); }
+    [[nodiscard]] inline T normmax() const { return norm<0>(); }
 
     // 2-norm squared
-    inline T norm2sq() const { return normsum<2>(); }
+    [[nodiscard]] inline T norm2sq() const { return normsum<2>(); }
 
     /* === coordinate systems === */
 
     // angle in a plane [0,2pi)
-    inline T angle(size_t d1 = 0, size_t d2 = 1) const
+    [[nodiscard]] inline T angle(size_t d1 = 0, size_t d2 = 1) const
     {
         return atan2(vec[d2],vec[d1]);
     }
 
     // alternative angle in a plane [-pi,pi]
-    inline T angle2(size_t d1 = 0, size_t d2 = 1) const
+    [[nodiscard]] inline T angle2(size_t d1 = 0, size_t d2 = 1) const
     {
         bool sign = std::signbit(vec[d2]);
         static const T signtable[2] = {1,-1};
@@ -386,7 +380,7 @@ public:
 
     // generalized spherical coordinates (see wikipedia, x_i order reversed)
     // ret[0] = radius, ret[1..N-2] in [0,pi], ret[N-1] in [-pi,pi]
-    ENABLE_IF(N>=2,self_type) inline toSpherical() const
+    ENABLE_IFND(N>=2,self_type) inline toSpherical() const
     {
         Point<T,N> ret;
         T sqsum = vec[0]*vec[0] + vec[1]*vec[1];
@@ -435,7 +429,7 @@ public:
 
 // multiply components similar to dot product but not adding them
 template <typename T, size_t N>
-Point<T,N> multComponents(const Point<T,N> a, const Point<T,N> b)
+[[nodiscard]] Point<T,N> multComponents(const Point<T,N> a, const Point<T,N> b)
 {
     Point<T,N> ret;
     for (size_t i = 0; i < N; ++i)
@@ -454,3 +448,6 @@ std::ostream& operator<<(std::ostream& os, const Point<T,N>& p)
 }
 
 } // namespace tkoz::flame
+
+#undef ENABLE_IF
+#undef ENABLE_IFND

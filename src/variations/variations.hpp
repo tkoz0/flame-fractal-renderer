@@ -7,26 +7,28 @@ TODO better error messages
 
 #pragma once
 
-#include <cstdlib>
-#include <string>
-
-#include "../utils/json.hpp"
-#include "../utils/math.hpp"
-#include "../utils/sfinae.hpp"
-#include "../utils/flame.hpp"
+#include "../rng/flame_rng.hpp"
 
 #include "../types/point.hpp"
 #include "../types/types.hpp"
 #include "../types/constants.hpp"
 #include "../types/flame.hpp"
 
+#include "../utils/json.hpp"
+#include "../utils/math.hpp"
+#include "../utils/sfinae.hpp"
+#include "../utils/flame.hpp"
+
+#include <cstdlib>
+#include <string>
+
 // macros for using SFINAE
 #define ENABLE_IF(COND,RET) template <typename RET2 = RET> \
-    std::enable_if_t<(COND),RET2>
+    [[nodiscard]] std::enable_if_t<(COND),RET2>
 #define ENABLE_IF2(COND) template <typename RET = Variation<dims>*> \
-    std::enable_if_t<(COND),RET>
+    [[nodiscard]] std::enable_if_t<(COND),RET>
 #define ENABLE_IF3(COND) template <typename RET> \
-    std::enable_if_t<(COND),RET>
+    [[nodiscard]] std::enable_if_t<(COND),RET>
 
 // forward declarations
 namespace tkoz::flame::vars
@@ -45,15 +47,15 @@ public:
         weight = json["weight"].floatValue();
     }
     virtual ~Variation(){}
-    virtual inline Point<num_t,dims> calc(
+    [[nodiscard]] virtual inline Point<num_t,dims> calc(
         rng_t& rng, const Point<num_t,dims>& tx) const = 0;
-    inline num_t getWeight() const { return weight; }
+    [[nodiscard]] inline num_t getWeight() const { return weight; }
     ENABLE_IF2(dims<2) static parseVariation2d(const Json& json);
     ENABLE_IF2(dims>=2) static parseVariation2d(const Json& json);
     ENABLE_IF2(dims<3) static parseVariation3d(const Json& json);
     ENABLE_IF2(dims>=3) static parseVariation3d(const Json& json);
-    static Variation<dims> *parseVariationNd(const Json& json);
-    static Variation<dims> *parseVariation(const Json& json);
+    [[nodiscard]] static Variation<dims> *parseVariationNd(const Json& json);
+    [[nodiscard]] static Variation<dims> *parseVariation(const Json& json);
 };
 
 // class for generalizing 2d variation to higher dimensions
@@ -85,15 +87,17 @@ public:
         axis_y = ay;
     }
     virtual ~VariationFrom2D(){}
-    inline _nd calc(rng_t& rng, const _nd& tx) const
+    [[nodiscard]] inline _nd calc(rng_t& rng, const _nd& tx) const
     {
         return calc_h(rng,tx);
     }
-    ENABLE_IF(dims==2,_nd) inline calc_h(rng_t& rng, const _nd& tx) const
+    ENABLE_IF(dims==2,_nd) inline calc_h(
+        rng_t& rng, const _nd& tx) const
     {
         return calc2d(rng,tx);
     }
-    ENABLE_IF(dims>2,_nd) inline calc_h(rng_t& rng, const _nd& tx) const
+    ENABLE_IF(dims>2,_nd) inline calc_h(
+        rng_t& rng, const _nd& tx) const
     {
         _2d ret2d = calc2d(rng,_2d(tx[axis_x],tx[axis_y]));
         _nd ret;
@@ -101,7 +105,8 @@ public:
         ret[axis_y] = ret2d.y();
         return ret;
     }
-    virtual inline _2d calc2d(rng_t& rng, const _2d& tx) const = 0;
+    [[nodiscard]] virtual inline _2d calc2d(
+        rng_t& rng, const _2d& tx) const = 0;
 };
 
 // class for generalizing 3d variation to higher dimensions
@@ -137,15 +142,18 @@ public:
         axis_z = az;
     }
     virtual ~VariationFrom3D(){}
-    inline _nd calc(rng_t& rng, const _nd& tx) const
+    [[nodiscard]] inline _nd calc(
+        rng_t& rng, const _nd& tx) const
     {
         return calc_h(rng,tx);
     }
-    ENABLE_IF(dims==3,_nd) inline calc_h(rng_t& rng, const _nd& tx) const
+    ENABLE_IF(dims==3,_nd) inline calc_h(
+        rng_t& rng, const _nd& tx) const
     {
         return calc2d(rng,tx);
     }
-    ENABLE_IF(dims>3,_nd) inline calc_h(rng_t& rng, const _nd& tx) const
+    ENABLE_IF(dims>3,_nd) inline calc_h(
+        rng_t& rng, const _nd& tx) const
     {
         _3d ret3d = calc3d(rng,_3d(tx[axis_x],tx[axis_y],tx[axis_z]));
         _nd ret;
@@ -154,7 +162,8 @@ public:
         ret[axis_z] = ret3d.z();
         return ret;
     }
-    virtual inline _3d calc3d(rng_t& rng, const _3d& tx) const = 0;
+    [[nodiscard]] virtual inline _3d calc3d(
+        rng_t& rng, const _3d& tx) const = 0;
 };
 
 /*

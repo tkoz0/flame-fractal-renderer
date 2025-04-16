@@ -1,16 +1,17 @@
 #pragma once
 
-#include <algorithm>
-#include <cmath>
-#include <iostream>
-
-#include <boost/gil.hpp>
-
 #include "buffer_renderer.hpp"
+
 #include "../utils/color.hpp"
 #include "../utils/endian.hpp"
 #include "../utils/image.hpp"
 #include "../utils/scalers.hpp"
+
+#include <boost/gil.hpp>
+
+#include <algorithm>
+#include <cmath>
+#include <iostream>
 
 namespace tkoz::flame
 {
@@ -34,15 +35,21 @@ template <bool enable_color = true>
 class ImageRenderer
 {
 private:
-    // some typedefs
+
+    // point type
     typedef Point<num_t,2> point_t;
+    // base variation type
     typedef vars::Variation<2> var_t;
+    // xform type
     typedef XForm<2> xform_t;
+    // flame type
     typedef Flame<2> flame_t;
+    // number pair
     typedef std::pair<num_t,num_t> num_pair_t;
 
     // renderer object with buffer
     BufferRenderer<2,enable_color> buf_ren;
+
     // buffer viewer object for the filtered
     struct buf_view_t
     {
@@ -64,43 +71,46 @@ public:
 
     ImageRenderer(const Json& json): buf_ren(json) {}
 
-    inline BufferRenderer<2,enable_color>& getBufferRenderer()
+    // reference to buffer renderer used
+    [[nodiscard]] inline BufferRenderer<2,enable_color>& getBufferRenderer()
     {
         return buf_ren;
     }
 
-    inline const BufferRenderer<2,enable_color>& getBufferRenderer() const
+    // const reference to buffer renderer used
+    [[nodiscard]] inline
+    const BufferRenderer<2,enable_color>& getBufferRenderer() const
     {
         return buf_ren;
     }
 
     // buffer length in columns (X)
-    inline size_t getBufferSizeX() const
+    [[nodiscard]] inline size_t getBufferSizeX() const
     {
         return buf_ren.getFlame().getSize()[0];
     }
 
     // buffer length in rows (Y)
-    inline size_t getBufferSizeY() const
+    [[nodiscard]] inline size_t getBufferSizeY() const
     {
         return buf_ren.getFlame().getSize()[1];
     }
 
     // buffer size (both dimensions)
-    inline std::pair<size_t,size_t> getBufferSize() const
+    [[nodiscard]] inline std::pair<size_t,size_t> getBufferSize() const
     {
         return std::make_pair(getBufferSizeX(),getBufferSizeY());
     }
 
     // number of color dimensions
-    inline size_t getColorDims() const
+    [[nodiscard]] inline size_t getColorDims() const
     {
         return buf_ren.getColorDims();
     }
 
     // get min and max value of a function over all pixels
     template <typename T>
-    std::pair<T,T> getValueBounds(cell_func_t<T> func) const
+    [[nodiscard]] std::pair<T,T> getValueBounds(cell_func_t<T> func) const
     {
         buf_view_t v(buf_ren);
         T min,max;
@@ -117,7 +127,7 @@ public:
 
     // render binary image (monochrome bitmap)
     // bool function determines which points are white
-    mono_img_t renderBinaryImage(cell_func_t<bool> white) const
+    [[nodiscard]] mono_img_t renderBinaryImage(cell_func_t<bool> white) const
     {
         buf_view_t v(buf_ren);
         mono_img_t ret(v.xl,v.yl);
@@ -135,9 +145,8 @@ public:
     }
 
     // render gray image
-    template <typename pix_t>
-    gray_img_t<pix_t> renderGrayImage(
-            cell_func_t<num_t> scaler) const
+    template <typename pix_t> [[nodiscard]]
+    gray_img_t<pix_t> renderGrayImage(cell_func_t<num_t> scaler) const
     {
         buf_view_t v(buf_ren);
         gray_img_t<pix_t> ret(v.xl,v.yl);
@@ -156,7 +165,7 @@ public:
     }
 
     // render color image
-    template <typename pix_t>
+    template <typename pix_t> [[nodiscard]]
     rgb_img_t<pix_t> renderColorImageRGB(
             cell_func_t<std::tuple<num_t,num_t,num_t>> colorer) const
     {

@@ -1,11 +1,11 @@
 #pragma once
 
-#include <iostream>
+#include "../types/types.hpp"
 
 #include <boost/gil.hpp>
 #include <boost/gil/extension/io/png.hpp>
 
-#include "../types/types.hpp"
+#include <iostream>
 
 namespace tkoz::flame
 {

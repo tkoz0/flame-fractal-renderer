@@ -5,12 +5,13 @@ MT19937 Mersenne twister implementation
 
 #pragma once
 
+#include "../types/types.hpp"
+
+#include "../utils/clock.hpp"
+
 #include <array>
 #include <cstdint>
 #include <ctime>
-
-#include "../utils/clock.hpp"
-#include "../types/types.hpp"
 
 #define FUNC_ENABLE_IF(T1,T2,RET) template <typename dummy = T1> \
     typename std::enable_if_t<std::is_same_v<dummy,T2>,RET>

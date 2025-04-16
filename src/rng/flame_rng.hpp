@@ -9,22 +9,15 @@ Based on ISAAC with extra helpful functions
 #define _GNU_SOURCE
 #endif
 
-#include <ctgmath>
+#include "isaac.hpp"
+
+#include "../types/point.hpp"
+#include "../types/types.hpp"
 
 #include "../utils/math.hpp"
 #include "../utils/sfinae.hpp"
 
-// forward declaration
-namespace tkoz::flame
-{
-template <typename num_t, typename word_t, size_t rparam>
-class FlameRNG;
-}
-
-#include "isaac.hpp"
-#include "../types/point.hpp"
-#include "../types/types.hpp"
-#include "../utils/sfinae.hpp"
+#include <ctgmath>
 
 namespace tkoz::flame
 {
@@ -43,6 +36,7 @@ public:
 
     FlameRNG(u64 seed): Isaac<word_t,rparam>(seed) {}
 
+    // next uniformly distributed binary word type
     inline word_t nextWord()
     {
         return Isaac<word_t,rparam>::next();
@@ -79,9 +73,27 @@ public:
 
     // random integer in [0,n)
     // uniformly distributed only when n is a power of 2
+    // requires n != 0, close to uniform for small n
+    // for powers of 2, bit masking is faster
     inline word_t randInt(word_t n)
     {
         return nextWord() % n;
+    }
+
+    // random integer in [0,n) (uniformly distributed)
+    // requires n != 0
+    // worst case average words needed is 2
+    inline word_t randIntUniform(word_t n)
+    {
+        word_t word,ret;
+        for (;;)
+        {
+            word = nextWord();
+            ret = word % n;
+            if (word - ret + (n-1) >= word) [[likely]]
+                break;
+        }
+        return ret;
     }
 
     // generates 2 gaussian variables
@@ -191,5 +203,11 @@ public:
         return ret/ret.norm2();
     }
 };
+
+// random number generator type to use
+// rparam=4 recommended for simulations, rparam=8 recommended for cryptography
+// state size is 2^rparam of word_t
+// word_t can be u32 for isaac32 or u64 for isaac64
+using rng_t = FlameRNG<num_t,hist_t,4>;
 
 } // namespace tkoz::flame

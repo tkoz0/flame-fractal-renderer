@@ -1,10 +1,11 @@
 #pragma once
 
+#include "../types/constants.hpp"
+
+#include "../utils/math.hpp"
+
 #include <cmath>
 #include <ctgmath>
-
-#include "../types/constants.hpp"
-#include "../utils/math.hpp"
 
 namespace tkoz::flame
 {

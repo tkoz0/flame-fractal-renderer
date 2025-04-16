@@ -26,42 +26,42 @@ Json::Json(const nlohmann::json& input): nlohmann::json(input)
 {
 }
 
-bool Json::isNull() const noexcept
+[[nodiscard]] bool Json::isNull() const noexcept
 {
     return this->is_null();
 }
 
-bool Json::isBool() const noexcept
+[[nodiscard]] bool Json::isBool() const noexcept
 {
     return this->is_boolean();
 }
 
-bool Json::isInt() const noexcept
+[[nodiscard]] bool Json::isInt() const noexcept
 {
     return this->is_number_integer();
 }
 
-bool Json::isFloat() const noexcept
+[[nodiscard]] bool Json::isFloat() const noexcept
 {
     return this->is_number();
 }
 
-bool Json::isString() const noexcept
+[[nodiscard]] bool Json::isString() const noexcept
 {
     return this->is_string();
 }
 
-bool Json::isArray() const noexcept
+[[nodiscard]] bool Json::isArray() const noexcept
 {
     return this->is_array();
 }
 
-bool Json::isObject() const noexcept
+[[nodiscard]] bool Json::isObject() const noexcept
 {
     return this->is_object();
 }
 
-size_t Json::size() const
+[[nodiscard]] size_t Json::size() const
 {
     if (isArray() || isObject())
         return nlohmann::json::size();
@@ -69,7 +69,7 @@ size_t Json::size() const
         throw JsonError("Json::size(): type is not an array or object");
 }
 
-JsonBool Json::boolValue() const
+[[nodiscard]] JsonBool Json::boolValue() const
 {
     if (isBool())
         return this->get<JsonBool>();
@@ -77,7 +77,7 @@ JsonBool Json::boolValue() const
         throw JsonError("Json::boolValue(): type is not bool");
 }
 
-JsonInt Json::intValue() const
+[[nodiscard]] JsonInt Json::intValue() const
 {
     if (isInt())
         return this->get<JsonInt>();
@@ -85,7 +85,7 @@ JsonInt Json::intValue() const
         throw JsonError("Json::intValue(): type is not int");
 }
 
-JsonFloat Json::floatValue() const
+[[nodiscard]] JsonFloat Json::floatValue() const
 {
     if (isFloat())
         return this->get<JsonFloat>();
@@ -93,7 +93,7 @@ JsonFloat Json::floatValue() const
         throw JsonError("Json::floatValue(): type is not float");
 }
 
-JsonString Json::stringValue() const
+[[nodiscard]] JsonString Json::stringValue() const
 {
     if (isString())
         return this->get<JsonString>();
@@ -101,7 +101,7 @@ JsonString Json::stringValue() const
         throw JsonError("Json::stringValue(): type is not string");
 }
 
-JsonArray Json::arrayValue() const
+[[nodiscard]] JsonArray Json::arrayValue() const
 {
     if (isArray())
     {
@@ -116,7 +116,7 @@ JsonArray Json::arrayValue() const
         throw JsonError("Json::arrayValue(): type is not array");
 }
 
-JsonObject Json::objectValue() const
+[[nodiscard]] JsonObject Json::objectValue() const
 {
     if (isObject())
     {
@@ -155,7 +155,7 @@ bool Json::valueAt(const char *key, Json& value) const noexcept
     return true;
 }
 
-Json Json::operator[](size_t index) const
+[[nodiscard]] Json Json::operator[](size_t index) const
 {
     if (!isArray())
         throw JsonError("Json::operator[](size_t): not an array");
@@ -166,7 +166,7 @@ Json Json::operator[](size_t index) const
         return static_cast<Json>(this->at(index));
 }
 
-Json Json::operator[](const std::string& key) const
+[[nodiscard]] Json Json::operator[](const std::string& key) const
 {
     if (!isObject())
         throw JsonError("Json::operator[](std::string): not an object");
@@ -177,7 +177,7 @@ Json Json::operator[](const std::string& key) const
         return static_cast<Json>(this->at(key));
 }
 
-Json Json::operator[](const char *key) const
+[[nodiscard]] Json Json::operator[](const char *key) const
 {
     if (!isObject())
         throw JsonError("Json::operator[](char*): not an object");

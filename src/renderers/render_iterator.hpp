@@ -24,17 +24,25 @@ private:
 
     static_assert(dims > 0);
 
-    // some typedefs
+    // point type
     typedef Point<num_t,dims> point_t;
+    // base variation type
     typedef vars::Variation<dims> var_t;
+    // xform type
     typedef XForm<dims> xform_t;
+    // flame type
     typedef Flame<dims> flame_t;
+    // number pair
     typedef std::pair<num_t,num_t> num_pair_t;
 
     // iterating point
-    point_t p,pf;
+    point_t p;
+    // iterating point after final xform
+    point_t pf;
     // iterating color
-    num_t *c,*cf;
+    num_t *c;
+    // iterating color after final xform
+    num_t *cf;
     // flame to be rendered
     const flame_t& flame;
     // color dimensions (or 0 if disabled)
@@ -54,7 +62,7 @@ private:
     }
 
     // check point for bad value
-    inline static bool _bad_value(const point_t& x)
+    [[nodiscard]] inline static bool _bad_value(const point_t& x)
     {
         for (size_t i = 0; i < dims; ++i)
             if (bad_value(x[i])) [[unlikely]]
@@ -63,11 +71,11 @@ private:
     }
 
     // check if point is within rectangle bounds
-    inline bool _in_bounds(const point_t& x) const
+    [[nodiscard]] inline bool _in_bounds(const point_t& x) const
     {
         const std::array<num_pair_t,dims>& bounds = flame.getBounds();
         for (size_t i = 0; i < dims; ++i)
-            if (x[i] < bounds[i].first || x[i] > bounds[i].second)
+            if (x[i] < bounds[i].first || x[i] > bounds[i].second) [[unlikely]]
                 return false;
         return true;
     }
@@ -146,57 +154,57 @@ public:
     }
 
     // check if point has reached a bad value
-    inline bool badValue() const
+    [[nodiscard]] inline bool badValue() const
     {
         return _bad_value(p);
     }
 
     // check if final point has reached a bad value
-    inline bool badValueFinal() const
+    [[nodiscard]] inline bool badValueFinal() const
     {
         return _bad_value(pf);
     }
 
     // check if point is in bounds
-    inline bool inBounds() const
+    [[nodiscard]] inline bool inBounds() const
     {
         return _in_bounds(p);
     }
 
     // check if final point is in bounds
-    inline bool inBoundsFinal() const
+    [[nodiscard]] inline bool inBoundsFinal() const
     {
         return _in_bounds(pf);
     }
 
-    inline const point_t& getPoint() const
+    [[nodiscard]] inline const point_t& getPoint() const
     {
         return p;
     }
 
-    inline const point_t& getPointFinal() const
+    [[nodiscard]] inline const point_t& getPointFinal() const
     {
         return pf;
     }
 
     // should not use this if color is disabled
-    inline const num_t *getColor() const
+    [[nodiscard]] inline const num_t *getColor() const
     {
         return c;
     }
 
     // should not use this if color is disabled
-    inline const num_t *getColorFinal() const
+    [[nodiscard]] inline const num_t *getColorFinal() const
     {
         return cf;
     }
 
-    inline const flame_t& getFlame() const
+    [[nodiscard]] inline const flame_t& getFlame() const
     {
         return flame;
     }
 
-    inline size_t getColorDims() const
+    [[nodiscard]] inline size_t getColorDims() const
     {
         return r;
     }

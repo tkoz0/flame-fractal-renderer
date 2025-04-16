@@ -4,7 +4,7 @@
 #include <ctime>
 
 // returns the nanosecond (or most precise) performance counter
-inline size_t clock_nanotime()
+[[nodiscard]] inline size_t clock_nanotime()
 {
     struct timespec t;
     clock_gettime(CLOCK_MONOTONIC,&t);

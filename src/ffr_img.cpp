@@ -27,18 +27,18 @@ planned ideas:
 - more scaling modes
 */
 
-#include <fstream>
-#include <iostream>
-#include <string>
-#include <vector>
-
-#include <boost/program_options.hpp>
-
 #include "renderers/image_renderer.hpp"
 
 #include "utils/endian.hpp"
 #include "utils/image.hpp"
 #include "utils/json.hpp"
+
+#include <boost/program_options.hpp>
+
+#include <fstream>
+#include <iostream>
+#include <string>
+#include <vector>
 
 const std::string VERSION = "unspecified";
 
