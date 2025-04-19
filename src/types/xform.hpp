@@ -209,7 +209,7 @@ public:
 
     // iterate a state for the rendering process
     [[nodiscard]] inline
-    point_t applyIteration(rng_t& rng, const point_t& p) const
+    point_t applyIteration(const point_t& p) const
     {
         point_t t,v;
         // for 2d, faster to apply identity affine than to branch
@@ -218,7 +218,7 @@ public:
         else
             t = p;
         for (auto var : vars)
-            v += var->getWeight() * var->calc(rng,t);
+            v += var->getWeight() * var->calc(t);
         if (dims < 3 || has_post)
             t = post.apply_to(v);
         else

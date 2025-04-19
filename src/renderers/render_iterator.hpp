@@ -47,18 +47,16 @@ private:
     const flame_t& flame;
     // color dimensions (or 0 if disabled)
     size_t r;
-    // random number generator
-    rng_t& rng;
 
     // initialize the iterating state (point and possibly color)
     inline void _init()
     {
-        p = rng.randPoint<dims>();
+        p = rng::randPoint<dims>();
         for (size_t i = 0; i < settle_iters_v<num_t>; ++i)
-            p = flame.getRandomXForm(rng).applyIteration(rng,p);
+            p = flame.getRandomXForm().applyIteration(p);
         if (enable_color)
             for (size_t i = 0; i < r; ++i)
-                c[i] = rng.randNum();
+                c[i] = rng::randNum();
     }
 
     // check point for bad value
@@ -82,7 +80,7 @@ private:
 
 public:
 
-    RenderIterator(const flame_t& flame, rng_t& rng): flame(flame), rng(rng)
+    RenderIterator(const flame_t& flame): flame(flame)
     {
         r = enable_color ? flame.getColorDims() : 0;
         if (enable_color && r > 0)
@@ -107,10 +105,10 @@ public:
     // store the selected xform id in xf_id
     inline void iterate(size_t& xf_id)
     {
-        const xform_t& xf = flame.getRandomXForm(rng);
+        const xform_t& xf = flame.getRandomXForm();
         num_t s = xf.getColorSpeed();
         xf_id = xf.getID();
-        p = xf.applyIteration(rng,p);
+        p = xf.applyIteration(p);
         if (enable_color && xf.hasColor())
         {
             for (size_t i = 0; i < r; ++i)
@@ -120,7 +118,7 @@ public:
         {
             const xform_t& xff = flame.getFinalXForm();
             s = xff.getColorSpeed();
-            pf = xff.applyIteration(rng,p);
+            pf = xff.applyIteration(p);
             if (enable_color)
             {
                 if (xff.hasColor())

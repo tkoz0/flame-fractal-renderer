@@ -148,11 +148,11 @@ class BufferRenderer
     returns false if terminating due to bad value limit
     */
     template <bool multithreaded>
-    bool _render_batch(size_t samples, size_t bv_limit, rng_t& rng)
+    bool _render_batch(size_t samples, size_t bv_limit)
     {
         if (stats.bv_xfs.size() > bv_limit)
             return false;
-        RenderIterator<dims,enable_color> iter(flame,rng);
+        RenderIterator<dims,enable_color> iter(flame);
         // local stats variables to avoid locking mutex on every iteration
         num_t s_iter = 0;
         num_t s_plot = 0;
@@ -297,7 +297,7 @@ public:
         auto batch_processor = [this,&batch_lock,&s_render,&success,
             &num_samples,&batch_size,&bv_limit,&cb_batch]()
         {
-            rng_t rng; // rng object for the life of this thread
+            rng::setSeed(); // seed rng for life of this thread
             for (;;) // loop requesting batches until done
             {
                 batch_lock.lock();
@@ -308,7 +308,7 @@ public:
                 if (render_size == 0) [[unlikely]]
                     break;
                 // make sure batch completes successfully
-                if (!_render_batch<true>(render_size,bv_limit,rng)) [[unlikely]]
+                if (!_render_batch<true>(render_size,bv_limit)) [[unlikely]]
                 {
                     success = false;
                     break;
@@ -347,7 +347,7 @@ public:
       - called with a number in [0,1] indicating rendering progress
     */
     bool renderSeeded(size_t num_samples, size_t batch_size, size_t bv_limit,
-            rng_t& rng, std::function<void()> cb_batch = nullptr)
+            std::function<void()> cb_batch = nullptr)
     {
         stats.bv_pts.clear();
         stats.bv_xfs.clear();
@@ -360,7 +360,7 @@ public:
         while (s_render < num_samples)
         {
             size_t render_size = std::min(batch_size,num_samples-s_render);
-            if (!_render_batch<false>(render_size,bv_limit,rng)) [[unlikely]]
+            if (!_render_batch<false>(render_size,bv_limit)) [[unlikely]]
             {
                 return false;
             }

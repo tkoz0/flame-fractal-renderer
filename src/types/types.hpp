@@ -24,13 +24,14 @@ using i64 = int64_t;
 // number type
 // double - slightly slower, unnecessary
 // float - slightly faster, reasonable
+// half - not supported, may be ok for smaller renders
 // (not an option but half precision may be ok for smaller buffers)
 using num_t = double;
 
 // histogram counter type
 // uint64_t - big enough for plenty
 // uint32_t - reasonable choice for most renders
-// uint16_t - too small to be practical (not supported)
+// uint16_t - not supported, too small to be practical
 using hist_t = uint64_t;
 
 static_assert(std::is_same_v<num_t,float>

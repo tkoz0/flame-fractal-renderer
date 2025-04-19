@@ -22,34 +22,49 @@ Based on ISAAC with extra helpful functions
 namespace tkoz::flame
 {
 
+// random number generator for the flame iteration
+// provides an interface and implementation underneath can change
+// currently uses isaac with 64 bit words and rparam=4
+// each thread has its own separate instance
 template <typename num_t, typename word_t, size_t rparam>
-class FlameRNG: public Isaac<word_t,rparam>
+class FlameRNG
 {
     static_assert(std::is_same_v<num_t,float>
                || std::is_same_v<num_t,double>);
+private:
+    static thread_local Isaac<word_t,rparam> state;
+    FlameRNG() = delete;
 
 public:
 
-    FlameRNG(): Isaac<word_t,rparam>() {}
+    // set a random seed
+    static inline void setSeed()
+    {
+        state.setSeed();
+    }
 
-    FlameRNG(u32 seed): Isaac<word_t,rparam>(seed) {}
-
-    FlameRNG(u64 seed): Isaac<word_t,rparam>(seed) {}
+    // set rng seed
+    template <typename T>
+    static inline void setSeed(T seed)
+    {
+        static_assert(std::is_same_v<T,u32> || std::is_same_v<T,u64>);
+        state.setSeed(seed);
+    }
 
     // next uniformly distributed binary word type
-    inline word_t nextWord()
+    static inline word_t nextWord()
     {
-        return Isaac<word_t,rparam>::next();
+        return state.next();
     }
 
     // random true/false
-    inline bool randBool()
+    static inline bool randBool()
     {
         return nextWord() & 1;
     }
 
     // random number in [0,1)
-    inline num_t randNum()
+    static inline num_t randNum()
     {
         if (std::is_same_v<num_t,float>)
         {
@@ -75,7 +90,7 @@ public:
     // uniformly distributed only when n is a power of 2
     // requires n != 0, close to uniform for small n
     // for powers of 2, bit masking is faster
-    inline word_t randInt(word_t n)
+    static inline word_t randInt(word_t n)
     {
         return nextWord() % n;
     }
@@ -83,7 +98,7 @@ public:
     // random integer in [0,n) (uniformly distributed)
     // requires n != 0
     // worst case average words needed is 2
-    inline word_t randIntUniform(word_t n)
+    static inline word_t randIntUniform(word_t n)
     {
         word_t word,ret;
         for (;;)
@@ -96,8 +111,8 @@ public:
         return ret;
     }
 
-    // generates 2 gaussian variables
-    inline void randGaussianPair(num_t& z1, num_t& z2)
+    // generates 2 gaussian distributed variables (mean 0, stdev 1)
+    static inline void randGaussianPair(num_t& z1, num_t& z2)
     {
 #if 1 // box muller transform
         num_t u1 = randNum();
@@ -125,7 +140,7 @@ public:
     }
 
     // generates 1 gaussian variable, the unused 1 is wasted
-    inline num_t randGaussian()
+    static inline num_t randGaussian()
     {
         num_t z1,z2;
         randGaussianPair(z1,z2);
@@ -134,7 +149,7 @@ public:
 
     // random point in [-1,1]x[-1,1]x...
     template <size_t dims>
-    inline Point<num_t,dims> randPoint()
+    static inline Point<num_t,dims> randPoint()
     {
         Point<num_t,dims> ret;
         for (size_t i = 0; i < dims; ++i)
@@ -144,7 +159,7 @@ public:
 
     // random point in [-0.5,0.5]x[-0.5,0.5]x...
     template <size_t dims>
-    inline Point<num_t,dims> randPoint2()
+    static inline Point<num_t,dims> randPoint2()
     {
         Point<num_t,dims> ret;
         for (size_t i = 0; i < dims; ++i)
@@ -153,14 +168,14 @@ public:
     }
 
     // random point on the unit 0-sphere (random sign)
-    template <size_t dims> inline
+    template <size_t dims> static inline
     meta::enable_if_eq_t<dims,1,Point<num_t,1>> randDirection()
     {
         return Point<num_t,1>(copysign(1.0,randNum()-0.5));
     }
 
     // random point on the unit 1-sphere (circle)
-    template <size_t dims> inline
+    template <size_t dims> static inline
     meta::enable_if_eq_t<dims,2,Point<num_t,2>> randDirection()
     {
         num_t a = (2.0*M_PI) * randNum();
@@ -170,7 +185,7 @@ public:
     }
 
     // random point on the unit 2-sphere (sphere)
-    template <size_t dims> inline
+    template <size_t dims> static inline
     meta::enable_if_eq_t<dims,3,Point<num_t,3>> randDirection()
     {
 #if 0 // first method on wolfram mathworld
@@ -191,7 +206,7 @@ public:
     }
 
     // random point on the unit (dims-1)-sphere
-    template <size_t dims> inline
+    template <size_t dims> static inline
     std::enable_if_t<(dims>3),Point<num_t,dims>> randDirection()
     {
         // gaussian distributed points and then normalize
@@ -208,6 +223,6 @@ public:
 // rparam=4 recommended for simulations, rparam=8 recommended for cryptography
 // state size is 2^rparam of word_t
 // word_t can be u32 for isaac32 or u64 for isaac64
-using rng_t = FlameRNG<num_t,hist_t,4>;
+using rng = FlameRNG<num_t,hist_t,4>;
 
 } // namespace tkoz::flame

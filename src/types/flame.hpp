@@ -209,10 +209,10 @@ public:
         _setupCumulativeWeights();
     }
 
-    inline const XForm<dims>& getRandomXForm(rng_t& rng) const
+    inline const XForm<dims>& getRandomXForm() const
     {
         size_t i = 0;
-        num_t r = rng.randNum();
+        num_t r = rng::randNum();
         while (xfcw[i] < r)
             ++i;
         return xforms[i];
