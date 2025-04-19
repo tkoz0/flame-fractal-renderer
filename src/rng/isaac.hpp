@@ -238,14 +238,14 @@ public:
     {
         static u32 seed_uniq = 2451404387u;
         seed_uniq = (seed_uniq * 229) + 137;
-        setSeed((clock_nanotime() ^ seed_uniq) + time(NULL));
+        setSeed((util::clock_nanotime() ^ seed_uniq) + time(NULL));
     }
 
     FUNC_ENABLE_IF(word_t,u64,void) setSeed()
     {
         static u64 seed_uniq = 11713835213681433683uLL;
         seed_uniq = (seed_uniq * 53161) + 46457;
-        setSeed((clock_nanotime() ^ seed_uniq) + time(NULL));
+        setSeed((util::clock_nanotime() ^ seed_uniq) + time(NULL));
     }
 
     FUNC_ENABLE_IF(word_t,u32,void) setSeed(u32 s)

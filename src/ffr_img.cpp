@@ -205,9 +205,9 @@ bool render_image(std::ostream& os, tkoz::flame::ImageRenderer<>& img_ren)
     using buf_elem_t = tkoz::flame::buf_elem_t;
     using num_t3 = std::tuple<num_t,num_t,num_t>;
     //using cf_bool = tkoz::flame::cell_func_t<bool>;
-    using cf_hist_t = tkoz::flame::cell_func_t<hist_t>;
-    using cf_num_t = tkoz::flame::cell_func_t<num_t>;
-    using cf_num_t3 = tkoz::flame::cell_func_t<num_t3>;
+    using cf_hist_t = tkoz::flame::util::cell_func_t<hist_t>;
+    using cf_num_t = tkoz::flame::util::cell_func_t<num_t>;
+    using cf_num_t3 = tkoz::flame::util::cell_func_t<num_t3>;
 
     // histogram min/max calculation
     cf_hist_t funch = [](const buf_elem_t *cell, size_t r) -> hist_t

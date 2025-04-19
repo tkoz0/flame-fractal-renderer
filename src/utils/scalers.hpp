@@ -4,7 +4,7 @@
 
 #include <functional>
 
-namespace tkoz::flame
+namespace tkoz::flame::util
 {
 
 // function type for operating on a buffer cell
@@ -66,4 +66,4 @@ x -> x^(1/p) + c
 maybe allow functions to be decreasing or not even monotonic
 */
 
-} // namespace tkoz::flame
+} // namespace tkoz::flame::util

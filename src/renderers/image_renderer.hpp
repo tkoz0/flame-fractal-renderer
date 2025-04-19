@@ -110,7 +110,8 @@ public:
 
     // get min and max value of a function over all pixels
     template <typename T>
-    [[nodiscard]] std::pair<T,T> getValueBounds(cell_func_t<T> func) const
+    [[nodiscard]] std::pair<T,T> getValueBounds(
+        util::cell_func_t<T> func) const
     {
         buf_view_t v(buf_ren);
         T min,max;
@@ -127,7 +128,8 @@ public:
 
     // render binary image (monochrome bitmap)
     // bool function determines which points are white
-    [[nodiscard]] mono_img_t renderBinaryImage(cell_func_t<bool> white) const
+    [[nodiscard]] mono_img_t renderBinaryImage(
+        util::cell_func_t<bool> white) const
     {
         buf_view_t v(buf_ren);
         mono_img_t ret(v.xl,v.yl);
@@ -146,7 +148,8 @@ public:
 
     // render gray image
     template <typename pix_t> [[nodiscard]]
-    gray_img_t<pix_t> renderGrayImage(cell_func_t<num_t> scaler) const
+    gray_img_t<pix_t> renderGrayImage(
+        util::cell_func_t<num_t> scaler) const
     {
         buf_view_t v(buf_ren);
         gray_img_t<pix_t> ret(v.xl,v.yl);
@@ -167,7 +170,7 @@ public:
     // render color image
     template <typename pix_t> [[nodiscard]]
     rgb_img_t<pix_t> renderColorImageRGB(
-            cell_func_t<std::tuple<num_t,num_t,num_t>> colorer) const
+            util::cell_func_t<std::tuple<num_t,num_t,num_t>> colorer) const
     {
         buf_view_t v(buf_ren);
         rgb_img_t<pix_t> ret(v.xl,v.yl);

@@ -106,7 +106,7 @@ public:
         num_t u2 = (2.0*M_PI)*randNum();
         num_t r = sqrt(-2.0*log(u1));
         num_t s,c;
-        sincosg(u2,s,c);
+        math::sincosg(u2,s,c);
         z1 = r*c;
         z2 = r*s;
 #else // marsaglia polar method
@@ -154,38 +154,38 @@ public:
 
     // random point on the unit 0-sphere (random sign)
     template <size_t dims> inline
-    enable_if_eq_t<dims,1,Point<num_t,1>> randDirection()
+    meta::enable_if_eq_t<dims,1,Point<num_t,1>> randDirection()
     {
         return Point<num_t,1>(copysign(1.0,randNum()-0.5));
     }
 
     // random point on the unit 1-sphere (circle)
     template <size_t dims> inline
-    enable_if_eq_t<dims,2,Point<num_t,2>> randDirection()
+    meta::enable_if_eq_t<dims,2,Point<num_t,2>> randDirection()
     {
         num_t a = (2.0*M_PI) * randNum();
         num_t sa,ca;
-        sincosg(a,sa,ca);
+        math::sincosg(a,sa,ca);
         return Point<num_t,2>(ca,sa);
     }
 
     // random point on the unit 2-sphere (sphere)
     template <size_t dims> inline
-    enable_if_eq_t<dims,3,Point<num_t,3>> randDirection()
+    meta::enable_if_eq_t<dims,3,Point<num_t,3>> randDirection()
     {
 #if 0 // first method on wolfram mathworld
         num_t p = acos(2.0*randNum() - 1.0);
         num_t t = (2.0*M_PI) * randNum();
         num_t st,ct,sp,cp;
-        sincosg(p,sp,cp);
-        sincosg(t,st,ct);
+        math::sincosg(p,sp,cp);
+        math::sincosg(t,st,ct);
         return Point<num_t,3>(st*cp,st*sp,ct);
 #else // second method on wolfram mathworld
         num_t u = 2.0*randNum() - 1.0;
         num_t t = (2.0*M_PI) * randNum();
         num_t r = sqrt(1.0 - u*u);
         num_t st,ct;
-        sincosg(t,st,ct);
+        math::sincosg(t,st,ct);
         return Point<num_t,3>(r*ct,r*st,u);
 #endif
     }

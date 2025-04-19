@@ -1,93 +1,96 @@
 #pragma once
 
 #include "../types/constants.hpp"
+#include "../types/types.hpp"
 
 #include "../utils/math.hpp"
 
 #include <cmath>
 #include <ctgmath>
 
-namespace tkoz::flame
+namespace tkoz::flame::color
 {
 
+// TODO redo this file properly
+
 // forward declarations
-struct color_lrgb;
-struct color_srgb;
-struct color_hsi;
-struct color_hsl;
-struct color_hsv;
-struct color_xyz;
-struct color_oklab;
+struct lrgb;
+struct srgb;
+struct hsi;
+struct hsl;
+struct hsv;
+struct xyz;
+struct oklab;
 
 // linear RGB
 // r,g,b in [0,1]
-struct color_lrgb
+struct lrgb
 {
     num_t r,g,b;
-    inline color_lrgb(num_t r, num_t g, num_t b): r(r), g(g), b(b) {}
-    inline color_lrgb(color_hsl);
-    inline color_lrgb(color_hsv);
-    inline color_lrgb(color_hsi);
-    inline color_lrgb(color_xyz);
-    inline color_lrgb(color_srgb);
-    inline color_lrgb(color_oklab);
+    inline lrgb(num_t r, num_t g, num_t b): r(r), g(g), b(b) {}
+    inline lrgb(hsl);
+    inline lrgb(hsv);
+    inline lrgb(hsi);
+    inline lrgb(xyz);
+    inline lrgb(srgb);
+    inline lrgb(oklab);
 };
 
 // standard RGB (linear with gamma correction)
 // r,g,b in [0,1]
-struct color_srgb
+struct srgb
 {
     num_t r,g,b;
-    inline color_srgb(num_t r, num_t g, num_t b): r(r), g(g), b(b) {}
-    inline color_srgb(color_lrgb);
+    inline srgb(num_t r, num_t g, num_t b): r(r), g(g), b(b) {}
+    inline srgb(lrgb);
 };
 
 // h in [0,2pi) s,i in [0,1]
-struct color_hsi
+struct hsi
 {
     num_t h,s,i;
-    inline color_hsi(num_t h, num_t s, num_t i): h(h), s(s), i(i) {}
-    inline color_hsi(color_lrgb);
+    inline hsi(num_t h, num_t s, num_t i): h(h), s(s), i(i) {}
+    inline hsi(lrgb);
 };
 
 // h in [0,2pi) s,l in [0,1]
-struct color_hsl
+struct hsl
 {
     num_t h,s,l;
-    inline color_hsl(num_t h, num_t s, num_t l): h(h), s(s), l(l) {}
-    inline color_hsl(color_hsv);
-    inline color_hsl(color_lrgb);
+    inline hsl(num_t h, num_t s, num_t l): h(h), s(s), l(l) {}
+    inline hsl(hsv);
+    inline hsl(lrgb);
 };
 
 // h in [0,2pi) s,v in [0,1]
-struct color_hsv
+struct hsv
 {
     num_t h,s,v;
-    inline color_hsv(num_t h, num_t s, num_t v): h(h), s(s), v(v) {}
-    inline color_hsv(color_hsl);
-    inline color_hsv(color_lrgb);
+    inline hsv(num_t h, num_t s, num_t v): h(h), s(s), v(v) {}
+    inline hsv(hsl);
+    inline hsv(lrgb);
 };
 
 // cie xyz x,y,z in [0,1]
-struct color_xyz
+struct xyz
 {
     num_t x,y,z;
-    inline color_xyz(num_t x, num_t y, num_t z): x(x), y(y), z(z) {}
-    inline color_xyz(color_lrgb);
-    inline color_xyz(color_oklab);
+    inline xyz(num_t x, num_t y, num_t z): x(x), y(y), z(z) {}
+    inline xyz(lrgb);
+    inline xyz(oklab);
 };
 
 // oklab L,a,b in [0,1]
 // https://bottosson.github.io/posts/oklab/
-struct color_oklab
+struct oklab
 {
     num_t L,a,b;
-    inline color_oklab(num_t L, num_t a, num_t b): L(L), a(a), b(b) {}
-    inline color_oklab(color_xyz);
-    inline color_oklab(color_lrgb);
+    inline oklab(num_t L, num_t a, num_t b): L(L), a(a), b(b) {}
+    inline oklab(xyz);
+    inline oklab(lrgb);
 };
 
-const num_t hp_scaler = c_pi_3;
+const num_t hp_scaler = math::c_pi_3;
 
 // helper for intermediate calculation to convert hsl/hsv to rgb
 inline void _set_from_hue(num_t hp, num_t x, num_t c, num_t& r1, num_t& g1, num_t& b1)
@@ -111,11 +114,11 @@ inline num_t _hue_from_rgb(num_t c, num_t v, num_t r, num_t g, num_t b)
     if (c == 0.0)
         return 0.0;
     if (v == r)
-        return c_pi_3 * fmod((g-b)/c,6.0);
+        return hp_scaler * fmod((g-b)/c,6.0);
     if (v == g)
-        return c_pi_3 * ((b-r)/c + 2.0);
+        return hp_scaler * ((b-r)/c + 2.0);
     if (v == b)
-        return c_pi_3 * ((r-g)/c + 4.0);
+        return hp_scaler * ((r-g)/c + 4.0);
     throw std::runtime_error("_hue_from_rgb");
 }
 
@@ -129,7 +132,7 @@ inline num_t _linear_to_srgb(num_t c)
     return c <= 0.0031308 ? 12.92*c : 1.055*std::pow(c,1.0/2.4) - 0.055;
 }
 
-inline color_lrgb::color_lrgb(color_hsl z)
+inline lrgb::lrgb(hsl z)
 {
     num_t c = (1.0 - std::abs(2*z.l - 1.0)) * z.s;
     num_t hp = z.h / hp_scaler;
@@ -142,7 +145,7 @@ inline color_lrgb::color_lrgb(color_hsl z)
     b = b1 + m;
 }
 
-inline color_lrgb::color_lrgb(color_hsv z)
+inline lrgb::lrgb(hsv z)
 {
     num_t c = z.v * z.s;
     num_t hp = z.h / hp_scaler;
@@ -155,7 +158,7 @@ inline color_lrgb::color_lrgb(color_hsv z)
     b = b1 + m;
 }
 
-inline color_lrgb::color_lrgb(color_hsi y)
+inline lrgb::lrgb(hsi y)
 {
     num_t hp = y.h / hp_scaler;
     num_t z = 1.0 - std::abs(std::fmod(hp,2.0) - 1.0);
@@ -169,21 +172,21 @@ inline color_lrgb::color_lrgb(color_hsi y)
     b = b1 + m;
 }
 
-inline color_lrgb::color_lrgb(color_xyz w)
+inline lrgb::lrgb(xyz w)
 {
     r = +3.2406255*w.x - 1.5372080*w.y - 0.4986286*w.z;
     g = -0.9689307*w.x + 1.8757561*w.y + 0.0415175*w.z;
     b = +0.0577101*w.x - 0.2040211*w.y + 1.0569959*w.z;
 }
 
-inline color_lrgb::color_lrgb(color_srgb z)
+inline lrgb::lrgb(srgb z)
 {
     r = _linear_to_srgb(z.r);
     g = _linear_to_srgb(z.g);
     b = _linear_to_srgb(z.b);
 }
 
-inline color_lrgb::color_lrgb(color_oklab z)
+inline lrgb::lrgb(oklab z)
 {
     num_t l = z.L + 0.3963377774*z.a + 0.2158037573*z.b;
     num_t m = z.L - 0.1055613458*z.a - 0.0638541728*z.b;
@@ -196,14 +199,14 @@ inline color_lrgb::color_lrgb(color_oklab z)
     b = -0.0041960863*l - 0.7034186147*m + 1.7076147010*s;
 }
 
-inline color_srgb::color_srgb(color_lrgb z)
+inline srgb::srgb(lrgb z)
 {
     r = _srgb_to_linear(z.r);
     g = _srgb_to_linear(z.g);
     b = _srgb_to_linear(z.b);
 }
 
-inline color_hsi::color_hsi(color_lrgb z)
+inline hsi::hsi(lrgb z)
 {
     num_t rgbsum = z.r + z.g + z.b;
     i = rgbsum / 3.0;
@@ -213,17 +216,17 @@ inline color_hsi::color_hsi(color_lrgb z)
     h = std::acos((rmg +(rmb))
         / (2.0 * std::sqrt(rmg*rmg + rmb*(z.g-z.b))));
     if (z.b > z.g)
-        h = c_2pi - h;
+        h = math::c_2pi - h;
 }
 
-inline color_hsl::color_hsl(color_hsv z)
+inline hsl::hsl(hsv z)
 {
     h = z.h;
     l = z.v * (1.0 - z.s/2.0);
     s = (l == 0.0 || l == 1.0) ? 0.0 : (z.v - l) / std::min(l,1.0-l);
 }
 
-inline color_hsl::color_hsl(color_lrgb z)
+inline hsl::hsl(lrgb z)
 {
     num_t xmax = std::max(std::max(z.r,z.g),z.b);
     num_t xmin = std::min(std::min(z.r,z.g),z.b);
@@ -233,14 +236,14 @@ inline color_hsl::color_hsl(color_lrgb z)
     h = _hue_from_rgb(c,xmax,z.r,z.g,z.b);
 }
 
-inline color_hsv::color_hsv(color_hsl z)
+inline hsv::hsv(hsl z)
 {
     h = z.h;
     v = z.l + z.s*std::min(z.l,1.0-z.l);
     s = (v == 0.0) ? 0.0 : 2.0*(1.0 - z.l/v);
 }
 
-inline color_hsv::color_hsv(color_lrgb z)
+inline hsv::hsv(lrgb z)
 {
     num_t xmax = std::max(std::max(z.r,z.g),z.b);
     num_t xmin = std::min(std::min(z.r,z.g),z.b);
@@ -250,14 +253,14 @@ inline color_hsv::color_hsv(color_lrgb z)
     h = _hue_from_rgb(c,v,z.r,z.g,z.b);
 }
 
-inline color_xyz::color_xyz(color_lrgb w)
+inline xyz::xyz(lrgb w)
 {
     x = 0.4124*w.r + 0.3576*w.g + 0.1805*w.b;
     y = 0.2126*w.r + 0.7152*w.g + 0.0722*w.b;
     z = 0.0193*w.r + 0.1192*w.g + 0.9505*w.b;
 }
 
-inline color_xyz::color_xyz(color_oklab w)
+inline xyz::xyz(oklab w)
 {
     num_t l = 0.9999999984505196*w.L + 0.39633779217376774*w.a + 0.2158037580607588*w.b;
     num_t m = 1.0000000088817607*w.L - 0.10556134232365633*w.a - 0.0638541747717059*w.b;
@@ -270,7 +273,7 @@ inline color_xyz::color_xyz(color_oklab w)
     z = -0.0763812845057069*l - 0.4214819784180127*m + 1.5861632204407947*s;
 }
 
-inline color_oklab::color_oklab(color_xyz w)
+inline oklab::oklab(xyz w)
 {
     num_t l = 0.8189330101*w.x + 0.3618667424*w.y - 0.1288597137*w.z;
     num_t m = 0.0329845436*w.x + 0.9293118715*w.y + 0.0361456387*w.z;
@@ -283,7 +286,7 @@ inline color_oklab::color_oklab(color_xyz w)
     b = 0.0259040371*l + 0.7827717662*m - 0.8086757660*s;
 }
 
-inline color_oklab::color_oklab(color_lrgb z)
+inline oklab::oklab(lrgb z)
 {
     num_t l = 0.4122214708*z.r + 0.5363325363*z.g + 0.0514459929*z.b;
     num_t m = 0.2119034982*z.r + 0.6806995451*z.g + 0.1073969566*z.b;
@@ -296,4 +299,4 @@ inline color_oklab::color_oklab(color_lrgb z)
     b = 0.0259040371*l + 0.7827717662*m - 0.8086757660*s;
 }
 
-} // namespace tkoz::flame
+} // namespace tkoz::flame::color

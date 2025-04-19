@@ -88,7 +88,7 @@ public:
     template <typename U, typename...Us, typename std::enable_if<
         sizeof...(Us) == N-1
         && std::is_convertible_v<U,T>
-        && vallconv_v<T,Us...>, size_t>::type = 0>
+        && meta::vallconv_v<T,Us...>, size_t>::type = 0>
     inline Point(U u, Us... us)
     {
         // explicitly cast all to type T for initializer list

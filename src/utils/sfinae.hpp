@@ -8,6 +8,9 @@ for some complicated stuff with advanced features
 #include <cstdlib>
 #include <type_traits>
 
+namespace tkoz::flame::meta
+{
+
 // variadic template all same type
 // https://www.fluentcpp.com/2019/01/25/variadic-number-function-parameters-type/
 template <bool...> struct bool_pack{};
@@ -36,3 +39,5 @@ template <size_t N, typename T>
 struct enable_if_eq<N,N,T> { typedef T type; };
 template <size_t N1, size_t N2, typename T = void>
 using enable_if_eq_t = enable_if_eq<N1,N2,T>::type;
+
+} // namespace tkoz::flame::meta

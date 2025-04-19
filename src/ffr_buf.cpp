@@ -43,7 +43,7 @@ const std::string VERSION = "unspecified";
 namespace bpo = boost::program_options;
 
 // variables for command line arguments
-size_t arg_threads = number_of_threads();
+size_t arg_threads = tkoz::flame::util::number_of_threads();
 std::string arg_flame;
 std::string arg_output;
 std::vector<std::string> arg_input;

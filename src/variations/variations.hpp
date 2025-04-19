@@ -552,7 +552,7 @@ struct Swirl: public VariationFrom2D<dims>
         num_t x,y;
         tx.getXY(x,y);
         num_t sr,cr;
-        sincosg(r,sr,cr);
+        math::sincosg(r,sr,cr);
         return Point<num_t,2>(x*sr-y*cr,x*cr+y*sr);
     }
 };
@@ -641,7 +641,7 @@ struct Heart: public VariationFrom2D<dims>
         num_t a = tx.angle();
         num_t r = tx.norm2();
         num_t sa,ca;
-        sincosg(r*a,sa,ca);
+        math::sincosg(r*a,sa,ca);
         return r * Point<num_t,2>(sa,-ca);
     }
 };
@@ -660,7 +660,7 @@ struct Disc: public VariationFrom2D<dims>
         num_t a = tx.angle(); // not including M_1_PI factor
         num_t r = tx.norm2();
         num_t sr,cr;
-        sincosg(M_PI*r,sr,cr);
+        math::sincosg(M_PI*r,sr,cr);
         return a * Point<num_t,2>(sr,cr);
     }
 };
@@ -680,7 +680,7 @@ public:
         num_t twist = json["twist"].floatValue();
         rotpi = rot*M_PI;
         num_t sinadd,cosadd;
-        sincosg(twist,sinadd,cosadd);
+        math::sincosg(twist,sinadd,cosadd);
         cosadd -= 1.0;
         num_t k = 1.0 + twist;
         if (twist > 2.0*M_PI) k -= 2.0*M_PI;
@@ -697,7 +697,7 @@ public:
         tx.getXY(x,y);
         num_t t = rotpi * (x + y);
         num_t st,ct;
-        sincosg(t,st,ct);
+        math::sincosg(t,st,ct);
         // order of ct,st switched from flam3
         return tx.angle() * (Point<num_t,2>(ct,st) + addval);
     }
@@ -755,7 +755,7 @@ public:
         num_t m = copysign(1.0,dx2-fmod(a+dy,dx));
         a += m*dx2;
         num_t sa,ca;
-        sincosg(a,sa,ca);
+        math::sincosg(a,sa,ca);
         // order of ca,sa switched from flam3
         return tx.norm2() * Point<num_t,2>(ca,sa);
     }
@@ -801,7 +801,7 @@ struct Spiral: public VariationFrom2D<dims>
         num_t r,sa,ca;
         tx.getRadiusSinCos(r,sa,ca);
         num_t sr,cr;
-        sincosg(r,sr,cr);
+        math::sincosg(r,sr,cr);
         // is division faster than precomputing 1/r
         num_t r1 = 1.0 / (r + eps_v<num_t>);
         return r1 * Point<num_t,2>(ca+sr,sa-cr);
@@ -839,7 +839,7 @@ struct Diamond: public VariationFrom2D<dims>
         num_t r,sa,ca;
         tx.getRadiusSinCos(r,sa,ca);
         num_t sr,cr;
-        sincosg(r,sr,cr);
+        math::sincosg(r,sr,cr);
         return Point<num_t,2>(sa*cr,ca*sr);
     }
 };
@@ -877,7 +877,7 @@ struct Julia: public VariationFrom2D<dims>
     {
         num_t a = 0.5*tx.angle() + rng.randBool()*M_PI; // + 0 or PI
         num_t sa,ca;
-        sincosg(a,sa,ca);
+        math::sincosg(a,sa,ca);
         // switched order of sin,cos from flam3
         return tx.norm2() * Point<num_t,2>(ca,sa);
     }
@@ -898,7 +898,7 @@ struct Exponential: public VariationFrom2D<dims>
         tx.getXY(x,y);
         num_t dx = exp(x-1.0);
         num_t sdy,cdy;
-        sincosg(M_PI*y,sdy,cdy);
+        math::sincosg(M_PI*y,sdy,cdy);
         return dx * Point<num_t,2>(cdy,sdy);
     }
 };
@@ -934,7 +934,7 @@ struct Cosine: public VariationFrom2D<dims>
         num_t x,y;
         tx.getXY(x,y);
         num_t sa,ca;
-        sincosg(x*M_PI,sa,ca);
+        math::sincosg(x*M_PI,sa,ca);
         return Point<num_t,2>(ca*cosh(y),-sa*sinh(y));
     }
 };
@@ -1062,7 +1062,7 @@ public:
         num_t a = (tx.angle() + (2.0*M_PI)*t) * invpower;
         num_t r = pow(tx.norm2sq(),cn);
         num_t sa,ca;
-        sincosg(a,sa,ca);
+        math::sincosg(a,sa,ca);
         return r * Point<num_t,2>(ca,sa);
     }
 };
@@ -1091,7 +1091,7 @@ public:
         num_t a = ((2.0*M_PI)*t + dir*tx.angle()) * invpower;
         num_t r = pow(tx.norm2sq(),cn);
         num_t sa,ca;
-        sincosg(a,sa,ca);
+        math::sincosg(a,sa,ca);
         return r * Point<num_t,2>(ca,sa);
     }
 };
@@ -1108,7 +1108,7 @@ public:
     RadialBlur(const Json& json): VariationFrom2D<dims>(json)
     {
         num_t angle = json["angle"].floatValue();
-        sincosg(angle*M_PI_2,spin,zoom);
+        math::sincosg(angle*M_PI_2,spin,zoom);
         flam3weight = json["flam3_weight"].floatValue();
     }
     inline Point<num_t,2> calc2d(
@@ -1119,7 +1119,7 @@ public:
         num_t ra = tx.norm2();
         num_t a = tx.angle() + spin*g;
         num_t sa,ca;
-        sincosg(a,sa,ca);
+        math::sincosg(a,sa,ca);
         num_t rz = zoom*g - 1.0;
         return ra*Point<num_t,2>(ca,sa) + rz*tx;
     }
@@ -1148,7 +1148,7 @@ public:
         num_t a = rotation + (sl + rng.randNum()*thickness)*invslices2pi;
         num_t r = rng.randNum();
         num_t sa,ca;
-        sincosg(a,sa,ca);
+        math::sincosg(a,sa,ca);
         return r * Point<num_t,2>(ca,sa);
     }
 };
@@ -1232,7 +1232,7 @@ public:
         (void)tx;
         num_t a = flam3weight * rng.randNum() * M_PI;
         num_t sa,ca;
-        sincosg(a,sa,ca);
+        math::sincosg(a,sa,ca);
         return Point<num_t,2>(sa,sa*sa/ca);
     }
 };
@@ -1298,7 +1298,7 @@ public:
     {
         num_t r = rng.randNum() * flam3weight * tx.norm2();
         num_t sr,cr;
-        sincosg(r,sr,cr);
+        math::sincosg(r,sr,cr);
         return tx.x() * Point<num_t,2>(cr+sr,cr-sr);
     }
 };
@@ -1345,7 +1345,7 @@ public:
     {
         num_t r = rng.randNum() * flam3weight * tx.norm2();
         num_t sr,cr;
-        sincosg(r,sr,cr);
+        math::sincosg(r,sr,cr);
         num_t diff = log10(sr*sr) + cr; // why log10?
         // flam3 uses this, does it make sense?
         if (bad_value(diff)) [[unlikely]]
@@ -1388,7 +1388,7 @@ struct Exp: public VariationFrom2D<dims>
         tx.getXY(x,y);
         num_t e = exp(x);
         num_t es,ec;
-        sincosg(y,es,ec);
+        math::sincosg(y,es,ec);
         return e * Point<num_t,2>(ec,es);
     }
 };
@@ -1422,7 +1422,7 @@ struct Sin: public VariationFrom2D<dims>
         num_t x,y;
         tx.getXY(x,y);
         num_t s,c;
-        sincosg(x,s,c);
+        math::sincosg(x,s,c);
         num_t sh = sinh(y);
         num_t ch = cosh(y);
         return Point<num_t,2>(s*ch,c*sh);
@@ -1443,7 +1443,7 @@ struct Cos: public VariationFrom2D<dims>
         num_t x,y;
         tx.getXY(x,y);
         num_t s,c;
-        sincosg(x,s,c);
+        math::sincosg(x,s,c);
         num_t ch = cosh(y);
         num_t sh = sinh(y);
         return Point<num_t,2>(c*ch,-s*sh);
@@ -1464,7 +1464,7 @@ struct Tan: public VariationFrom2D<dims>
         num_t x,y;
         tx.getXY(x,y);
         num_t s,c;
-        sincosg(2.0*x,s,c);
+        math::sincosg(2.0*x,s,c);
         num_t sh = sinh(2.0*y);
         num_t ch = cosh(2.0*y);
         // is it faster to precompute 1/(c+ch) and multiply?
@@ -1486,7 +1486,7 @@ struct Sec: public VariationFrom2D<dims>
         num_t x,y;
         tx.getXY(x,y);
         num_t s,c;
-        sincosg(x,s,c);
+        math::sincosg(x,s,c);
         num_t sh = sinh(y);
         num_t ch = cosh(y);
         // is it faster to compute 1/(cos(2x)+cosh(2y)) and multiply?
@@ -1508,7 +1508,7 @@ struct Csc: public VariationFrom2D<dims>
         num_t x,y;
         tx.getXY(x,y);
         num_t s,c;
-        sincosg(x,s,c);
+        math::sincosg(x,s,c);
         num_t sh = sinh(y);
         num_t ch = cosh(y);
         // is it faster to compute 1/(cosh(2y)-cos(2x)) and multiply?
@@ -1530,7 +1530,7 @@ struct Cot: public VariationFrom2D<dims>
         num_t x,y;
         tx.getXY(x,y);
         num_t s,c;
-        sincosg(2.0*x,s,c);
+        math::sincosg(2.0*x,s,c);
         num_t sh = sinh(2.0*y);
         num_t ch = cosh(2.0*y);
         // is it faster to compute 1/(ch-c) and multiply?
@@ -1552,7 +1552,7 @@ struct Sinh: public VariationFrom2D<dims>
         num_t x,y;
         tx.getXY(x,y);
         num_t s,c;
-        sincosg(y,s,c);
+        math::sincosg(y,s,c);
         num_t sh = sinh(x);
         num_t ch = cosh(x);
         return Point<num_t,2>(sh*c,ch*s);
@@ -1573,7 +1573,7 @@ struct Cosh: public VariationFrom2D<dims>
         num_t x,y;
         tx.getXY(x,y);
         num_t s,c;
-        sincosg(y,s,c);
+        math::sincosg(y,s,c);
         num_t sh = sinh(x);
         num_t ch = cosh(x);
         return Point<num_t,2>(ch*c,sh*s);
@@ -1594,7 +1594,7 @@ struct Tanh: public VariationFrom2D<dims>
         num_t x,y;
         tx.getXY(x,y);
         num_t s,c;
-        sincosg(2.0*y,s,c);
+        math::sincosg(2.0*y,s,c);
         num_t sh = sinh(2.0*x);
         num_t ch = cosh(2.0*x);
         // is it faster to compute 1/(ch+c) and multiply?
@@ -1616,7 +1616,7 @@ struct Sech: public VariationFrom2D<dims>
         num_t x,y;
         tx.getXY(x,y);
         num_t s,c;
-        sincosg(y,s,c);
+        math::sincosg(y,s,c);
         num_t sh = sinh(x);
         num_t ch = cosh(x);
         // is it faster to compute 1/(cos(2y)+cosh(2x)) and multiply?
@@ -1638,7 +1638,7 @@ struct Csch: public VariationFrom2D<dims>
         num_t x,y;
         tx.getXY(x,y);
         num_t s,c;
-        sincosg(y,s,c);
+        math::sincosg(y,s,c);
         num_t sh = sinh(x);
         num_t ch = cosh(x);
         // is it faster to compute 1/(cosh(2x)-cos(2y)) and multiply?
@@ -1660,7 +1660,7 @@ struct Coth: public VariationFrom2D<dims>
         num_t x,y;
         tx.getXY(x,y);
         num_t s,c;
-        sincosg(2.0*y,s,c);
+        math::sincosg(2.0*y,s,c);
         num_t sh = sinh(2.0*x);
         num_t ch = cosh(2.0*x);
         // is it faster to compute 1/(ch-c) and multiply?
@@ -1723,7 +1723,7 @@ public:
         num_t avgr = spread * sqrt(sqrt(y2+xpw*xpw)/sqrt(y2+xmw*xmw));
         num_t avga = (atan2(y,xmw) - atan2(y,xpw)) * 0.5;
         num_t c,s;
-        sincosg(avga,c,s);
+        math::sincosg(avga,c,s);
         return avgr * Point<num_t,2>(c,s);
     }
 };
@@ -1857,7 +1857,7 @@ public:
         num_t c = floor((count*a + M_PI) * (M_1_PI*0.5));
         a = a*cf + c*angle;
         num_t sa,ca;
-        sincosg(a,sa,ca);
+        math::sincosg(a,sa,ca);
         return (r+hole) * Point<num_t,2>(ca,sa);
     }
 };
@@ -1890,7 +1890,7 @@ public:
         num_t c = floor((count*a + M_PI) * (M_1_PI*0.5));
         num_t sa,ca;
         a = a*cf + c*angle;
-        sincosg(a,sa,ca);
+        math::sincosg(a,sa,ca);
         return r * Point<num_t,2>(ca,sa);
     }
 };
@@ -1920,7 +1920,7 @@ public:
         num_t c = floor((count*a + M_PI) * (M_1_PI*0.5));
         num_t sa,ca;
         a = a*cf + c*angle;
-        sincosg(a,sa,ca);
+        math::sincosg(a,sa,ca);
         return (r+hole) * Point<num_t,2>(ca,sa);
     }
 };
@@ -1948,7 +1948,7 @@ public:
         num_t a = tx.angle();
         a += choice[r >= whorlweight] / (whorlweight - r);
         num_t sa,ca;
-        sincosg(a,sa,ca);
+        math::sincosg(a,sa,ca);
         return r * Point<num_t,2>(ca,sa);
     }
 };
@@ -1976,7 +1976,7 @@ public:
     {
         num_t theta = pm_4*tx.angle() + M_PI_4;
         num_t st,ct;
-        sincosg(theta,st,ct);
+        math::sincosg(theta,st,ct);
         num_t t1 = pow(fabs(ct),n2);
         num_t t2 = pow(fabs(st),n3);
         num_t tr = tx.norm2();
@@ -2049,7 +2049,7 @@ public:
         rng_t& rng, const Point<num_t,2>& tx) const
     {
         num_t sr,cr;
-        sincosg(tx.norm2(),sr,cr);
+        math::sincosg(tx.norm2(),sr,cr);
         num_t x = h*sr*sr*rng.randNum();
         num_t y = w*cr*rng.randNum();
         return Point<num_t,2>(x,y);
@@ -2211,7 +2211,7 @@ public:
         num_t lnr = 0.5 * log(tx.norm2sq());
         num_t ang = vc*a + vd*lnr + va*floor(power*rng.randNum());
         num_t sa,ca;
-        sincosg(ang,sa,ca);
+        math::sincosg(ang,sa,ca);
         return exp(vc*lnr - vd*a) * Point<num_t,2>(ca,sa);
     }
 };
@@ -2271,7 +2271,7 @@ public:
         num_t a1 = log(xmax + sqrt(xmax-1.0));
         num_t a2 = -acos(x/xmax);
         num_t s1,c1;
-        sincosg(a1,s1,c1);
+        math::sincosg(a1,s1,c1);
         num_t s2 = sinh(a2);
         num_t c2 = cosh(a2);
         s1 *= copysign(1.0,-y);
@@ -2317,7 +2317,7 @@ public:
     {
         num_t beta = json["beta"].floatValue();
         num_t seb,ceb;
-        sincosg(beta,seb,ceb);
+        math::sincosg(beta,seb,ceb);
         vc = 0.5*(1.0+ceb);
         vd = 0.5*seb;
     }
@@ -2329,7 +2329,7 @@ public:
         num_t lnr = 0.5*log(tx.norm2sq());
         num_t n = vc*a + vd*lnr;
         num_t sn,cn;
-        sincosg(n,sn,cn);
+        math::sincosg(n,sn,cn);
         return exp(vc*lnr - vd*a) * Point<num_t,2>(cn,sn);
     }
 };
@@ -2350,7 +2350,7 @@ struct Foci: public VariationFrom2D<dims>
         num_t expx = 0.5*exp(x);
         num_t expnx = 0.25/expx;
         num_t sn,cn;
-        sincosg(y,sn,cn);
+        math::sincosg(y,sn,cn);
         num_t tmp = 1.0 / (expx + expnx - cn);
         return tmp * Point<num_t,2>(expx-expnx,sn);
     }
@@ -2385,7 +2385,7 @@ public:
         {
             num_t a = atan2(y,x) + spin + twist*(lsweight - r);
             num_t sa,ca;
-            sincosg(a,sa,ca);
+            math::sincosg(a,sa,ca);
             return Point<num_t,2>(r*ca+px,r*sa-py);
         }
         else

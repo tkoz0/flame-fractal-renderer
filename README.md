@@ -182,6 +182,7 @@ to render a color image with gamma=2.5.
 
 ## todo
 
+- consider replacing c arrays and c stuff with c++ things
 - rename getters and variables to change style
 - more exception classes for better error handling
 - improve compile times by making not header only
