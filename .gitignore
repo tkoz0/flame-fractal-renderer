@@ -11,3 +11,5 @@
 *.png
 *.buf
 .prereq
+*.old
+/build

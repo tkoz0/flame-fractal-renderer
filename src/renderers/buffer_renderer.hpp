@@ -541,7 +541,8 @@ public:
         return stats.s_plot;
     }
 
-    [[nodiscard]] inline const std::vector<size_t>& getXFormDistribution() const
+    [[nodiscard]] inline
+    const std::vector<size_t>& getXFormDistribution() const
     {
         return stats.xf_dist;
     }
@@ -556,7 +557,8 @@ public:
         return stats.bv_pts;
     }
 
-    [[nodiscard]] inline const std::array<num_pair_t,dims>& getPointExtremes() const
+    [[nodiscard]] inline
+    const std::array<num_pair_t,dims>& getPointExtremes() const
     {
         return stats.pt_max;
     }
