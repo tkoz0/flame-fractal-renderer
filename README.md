@@ -102,8 +102,10 @@ https://www.baeldung.com/linux/boost-install-on-ubuntu
 7. `./b2`
 8. `sudo ./b2 install --prefix=/usr/local`
 
-Then if everything is setup correctly, running `make all` should build 2
-executables, described below.
+Then if everything is setup correctly, make a directory named `build`, enter it,
+and run the following:
+- `cmake .. -DCMAKE_BUILD_TYPE=Release`
+- `make VERBOSE=1`
 
 For development, static linking should be avoided because Valgrind will show
 memory errors when glibc is statically linked. The solution I have for now is
